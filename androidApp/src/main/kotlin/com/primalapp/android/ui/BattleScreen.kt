@@ -17,6 +17,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -58,7 +59,7 @@ fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
         OutlinedTextField(
             value = damageForWound,
             onValueChange = { damageForWound = it },
-            label = { Text("Урон для нанесения раны") },
+            label = { Text("Урон для нанесения раны на игрока") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -73,10 +74,12 @@ fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
         Spacer(Modifier.height(16.dp))
         Button(
             onClick = {
-                val count = hunterCount.toIntOrNull() ?: return@Button
-                val wound = damageForWound.toIntOrNull() ?: return@Button
-                val stance = healthForStance.toIntOrNull() ?: return@Button
-                onStart(count, wound, stance)
+                val count = hunterCount.toIntOrNull()
+                val wound = damageForWound.toIntOrNull()
+                val stance = healthForStance.toIntOrNull()
+                if (count != null && wound != null && stance != null) {
+                    onStart(count, wound, stance)
+                }
             },
             modifier = Modifier.fillMaxWidth()
         ) { Text("Начать бой") }
@@ -89,12 +92,18 @@ fun SetupScreen(onConfirm: (Int, Int, Int) -> Unit) {
 }
 
 @Composable
-fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel) {
+fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
     val monster = state.monster
     val phaseLabel = when (state.phase) {
         FightPhase.PHASE_I -> "I"
         FightPhase.PHASE_II -> "II"
         FightPhase.PHASE_III -> "III"
+        FightPhase.PHASE_IV -> "IV"
+        FightPhase.PHASE_V -> "V"
+        FightPhase.PHASE_VI -> "VI"
+        FightPhase.PHASE_VII -> "VII"
+        FightPhase.PHASE_VIII -> "VIII"
+        FightPhase.PHASE_IX -> "IX"
         else -> ""
     }
 
@@ -134,7 +143,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel) {
                 value = state.damageInputText,
                 onValueChange = { viewModel.onDamageInputChanged(it) },
                 label = { Text("Ввести урон") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { viewModel.onOkPress() }),
                 singleLine = true,
                 modifier = Modifier.weight(1f).onFocusChanged { fs -> if (fs.isFocused) viewModel.onInputFieldFocused() }
@@ -152,7 +161,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel) {
         }
         if (state.canUndo) {
             Button(onClick = { viewModel.onUndoPress() }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                Text("Отменить предыдущее действие")
+                Text("Отменить действие")
             }
         }
 
@@ -174,6 +183,11 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel) {
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+        OutlinedButton(onClick = onBackToMenu, modifier = Modifier.fillMaxWidth()) {
+            Text("Выход в меню")
+        }
+        Spacer(Modifier.height(8.dp))
+
         Button(onClick = { viewModel.endRound() }, modifier = Modifier.fillMaxWidth()) {
             Text("Закончить раунд")
         }
@@ -188,6 +202,11 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel) {
 fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
     var damageForWound by remember { mutableStateOf("") }
     var healthForStance by remember { mutableStateOf("") }
+    var bossHealth by remember { mutableStateOf("") }
+
+    val damageForWoundVal = damageForWound.toIntOrNull() ?: 0
+    val healthForStanceVal = healthForStance.toIntOrNull() ?: 0
+    val bossHealthVal = bossHealth.toIntOrNull() ?: 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -196,13 +215,21 @@ fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
             Column {
                 Text("Монстр перешёл на следующую стойку. Укажите новые параметры:")
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = damageForWound, onValueChange = { damageForWound = it }, label = { Text("Урон для раны") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = damageForWound, onValueChange = { damageForWound = it }, label = { Text("Урон для нанесения раны на игрока") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = healthForStance, onValueChange = { healthForStance = it }, label = { Text("Здоровье для смены стойки") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                if (healthForStanceVal > 0) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(value = bossHealth, onValueChange = { bossHealth = it }, label = { Text("Здоровье босса в новой стойке") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { val w = damageForWound.toIntOrNull() ?: return@TextButton; val s = healthForStance.toIntOrNull() ?: return@TextButton; viewModel.confirmPhaseChange(w, s) }) { Text("OK") }
+            TextButton(onClick = {
+                if (damageForWoundVal > 0 && healthForStanceVal >= 0) {
+                    viewModel.confirmPhaseChange(damageForWoundVal, healthForStanceVal, bossHealthVal)
+                }
+            }) { Text("OK") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Отмена") } }
     )
@@ -219,23 +246,27 @@ fun RageSurgeDialog(viewModel: BattleViewModel) {
 }
 
 @Composable
-fun VictoryScreen(viewModel: BattleViewModel) {
+fun VictoryScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text("ПОБЕДА!", fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text("Монстр повержен!")
         Spacer(Modifier.height(32.dp))
         Button(onClick = { viewModel.resetBattle() }) { Text("Новый бой") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onBackToMenu) { Text("Выход в меню") }
     }
 }
 
 @Composable
-fun DefeatScreen(viewModel: BattleViewModel) {
+fun DefeatScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         Text("Закончились раунды...")
         Spacer(Modifier.height(32.dp))
         Button(onClick = { viewModel.resetBattle() }) { Text("Новый бой") }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = onBackToMenu) { Text("Выход в меню") }
     }
 }

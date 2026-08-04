@@ -1,0 +1,20 @@
+{
+  "$schema": "https://app.kilo.ai/config.json", // Schema validation
+  
+  // Custom Agent Skills Configuration
+  "skills": [
+    { "name": "addTask", "files": ["SKILL.md", ".kilo/skills/addTask/SKILL.md"] }
+  ],
+
+  // Project-wide custom rules and instruction files
+  "instructions": [
+  ],
+
+  // Example tool auto-approvals often coupled with skill automation
+  "permissions": {
+    "autoApprove": [
+      "read_file",
+      "semantic_search"
+    ]
+  }
+}

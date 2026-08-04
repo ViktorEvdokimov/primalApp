@@ -332,4 +332,42 @@ BUILD SUCCESSFUL in 6s
 - `MainActivity.kt`: импорт `CampaignRepositoryImpl`, `PlatformContext`, `createPrimalDatabase` теперь из `com.primalapp.database` вместо `com.primalapp.android.database`
 - Создание БД: `createPrimalDatabase(context as PlatformContext)` вместо `Room.databaseBuilder(context, PrimalDatabase::class.java, "primal.db").build()`
 - `build.gradle.kts`: удалены KSP и Room-зависимости (транзитивно через shared)
-- Удалён весь каталог `androidApp/.../database/` |
+- Удалён весь каталог `androidApp/.../database/`
+
+---
+
+## H. Задача 1: Лейбл + авто-расчёт здоровья (02.08.2026)
+
+### 28. Расхождение с правилами по начальному здоровью
+
+**Проблема:** В правилах игры (с. 10) начальное здоровье монстра — 10. Формула `hunterCount * damageForWound` при значениях по умолчанию (2 × 4) даёт 8.
+
+**Ответ:** Приложение — компаньон, формула удобнее для игроков. Использовать `hunterCount * damageForWound`.
+
+### 29. Где менять лейбл «Урон для нанесения раны на игрока»?
+
+**Ответ:** Только в `PhaseChangeDialog` (BattleScreen.kt:206). В `PreBattleScreen` (строка 61) лейбл уже корректный.
+
+### 30. Где менять расчёт здоровья босса?
+
+**Ответ:** В `BattleViewModel.startBattleWithHunters()` — единственное место создания Monster с hardcoded `currentHealth = 10`. Метод `startBattle()` делегирует в `startBattleWithHunters()`.
+
+---
+
+## I. Задача 2: endRound + hardened (04.08.2026)
+
+### 31. Почему hardened проявляет баг смены стойки заметнее?
+
+**Ответ:** При hardened `accumulatedDamage` сгорает после ран, `currentPhase` в модели меняется, а UI не обновляется, потому что `endRound()` игнорировал `DamageResult`. Без hardened баг тоже есть, но менее заметен — accumulatedDamage сохраняется и фаза менялась бы при следующем `commitDamage()`.
+
+### 32. Почему используется маппинг `result.newPhase` вместо чтения `currentPhase` из модели?
+
+**Ответ:** `currentPhase` может измениться несколько раз за один вызов `takeDamage()` (при большом уроне), но `result.newPhase` фиксирует последнюю фазу. Маппинг из `commitDamage()` уже зарекомендовал себя — используем тот же подход.
+
+---
+
+## J. Задача 3: документация 9 стоек (04.08.2026)
+
+### 33. Почему в коде уже 9 стоек, а в документации 3?
+
+**Ответ:** Код был расширен до 9 стоек (`FightPhase.PHASE_I…PHASE_IX`, `maxPhases = 9`), но документация не обновлялась. Задача 3 — синхронизировать документацию с реализацией.

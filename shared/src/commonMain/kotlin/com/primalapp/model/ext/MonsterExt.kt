@@ -15,6 +15,10 @@ fun Monster.takeDamage(amount: Int): DamageResult {
         return DamageResult(0, amount, false, currentPhase, "Монстр уже побеждён.")
     }
 
+    if (amount < 0) {
+        return healWound(-amount)
+    }
+
     accumulatedDamage += amount
     var wounds = 0
     var phaseChanged = false
@@ -36,7 +40,7 @@ fun Monster.takeDamage(amount: Int): DamageResult {
             )
         }
 
-        if (!isHardened && currentHealth <= healthForStanceChange && currentPhase < maxPhases) {
+        if (currentHealth <= healthForStanceChange && currentPhase < maxPhases) {
             currentPhase++
             phaseChanged = true
         }
@@ -59,6 +63,38 @@ fun Monster.takeDamage(amount: Int): DamageResult {
             if (wounds > 0) append("Нанесено ран: $wounds. ")
             if (phaseChanged) append("Монстр перешёл на стойку $currentPhase! ")
         }.trimEnd().ifEmpty { "Урон накоплен, но рана не нанесена." }
+    )
+}
+
+private fun Monster.healWound(amount: Int): DamageResult {
+    var healRemaining = amount
+    var woundsHealed = 0
+
+    if (accumulatedDamage > 0) {
+        val reduceBy = minOf(healRemaining, accumulatedDamage)
+        accumulatedDamage -= reduceBy
+        healRemaining -= reduceBy
+    }
+
+    while (healRemaining >= damageForWound) {
+        currentHealth += 1
+        woundsHealed++
+        healRemaining -= damageForWound
+    }
+
+    if (healRemaining > 0) {
+        accumulatedDamage = damageForWound - healRemaining
+    }
+
+    return DamageResult(
+        woundsInflicted = 0,
+        remainingDamage = accumulatedDamage,
+        phaseChanged = false,
+        newPhase = currentPhase,
+        message = buildString {
+            if (woundsHealed > 0) append("Заживлено ран: $woundsHealed. ")
+            append("Босс восстановил здоровье.")
+        }
     )
 }
 

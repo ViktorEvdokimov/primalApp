@@ -70,7 +70,7 @@ class MonsterTest {
     fun `takeDamage does not change phase in last phase`() {
         val monster = Monster(
             name = "Test",
-            currentPhase = 3,
+            currentPhase = 9,
             currentHealth = 3,
             damageForWound = 4,
             healthForStanceChange = 2

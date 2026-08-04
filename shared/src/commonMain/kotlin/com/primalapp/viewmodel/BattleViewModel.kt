@@ -26,6 +26,12 @@ enum class FightPhase {
     PHASE_I,
     PHASE_II,
     PHASE_III,
+    PHASE_IV,
+    PHASE_V,
+    PHASE_VI,
+    PHASE_VII,
+    PHASE_VIII,
+    PHASE_IX,
     VICTORY,
     DEFEAT
 }
@@ -41,7 +47,9 @@ data class MonsterSnapshot(
     val accumulatedDamage: Int,
     val currentPhase: Int,
     val isDefeated: Boolean,
-    val rage: Int
+    val rage: Int,
+    val damageForWound: Int,
+    val healthForStanceChange: Int
 )
 
 data class BattleScreenState(
@@ -71,8 +79,7 @@ class BattleViewModel(
     val state: StateFlow<BattleScreenState> = _state.asStateFlow()
 
     private var timerJob: Job? = null
-    private var lastSnapshot: MonsterSnapshot? = null
-    private var lastAppliedDamage: Int = 0
+    private val actionHistory = mutableListOf<ActionSnapshot>()
 
     fun startBattle(
         hunterCount: Int,
@@ -93,11 +100,10 @@ class BattleViewModel(
         val monster = Monster(
             name = "Вираксен",
             currentHealth = 10,
-            damageForWound = damageForWound,
+            damageForWound = hunters.size * damageForWound,
             healthForStanceChange = healthForStanceChange
         )
-        lastSnapshot = null
-        lastAppliedDamage = 0
+        actionHistory.clear()
         _state.update {
             it.copy(
                 phase = FightPhase.PHASE_I,
@@ -118,7 +124,31 @@ class BattleViewModel(
     private fun isBattlePhase(phase: FightPhase): Boolean {
         return phase == FightPhase.PHASE_I ||
             phase == FightPhase.PHASE_II ||
-            phase == FightPhase.PHASE_III
+            phase == FightPhase.PHASE_III ||
+            phase == FightPhase.PHASE_IV ||
+            phase == FightPhase.PHASE_V ||
+            phase == FightPhase.PHASE_VI ||
+            phase == FightPhase.PHASE_VII ||
+            phase == FightPhase.PHASE_VIII ||
+            phase == FightPhase.PHASE_IX
+    }
+
+    private fun saveSnapshot(actionType: ActionType, description: String) {
+        val current = _state.value
+        val monster = current.monster
+        val snapshot = MonsterSnapshot(
+            currentHealth = monster.currentHealth,
+            accumulatedDamage = monster.accumulatedDamage,
+            currentPhase = monster.currentPhase,
+            isDefeated = monster.isDefeated,
+            rage = monster.rage,
+            damageForWound = monster.damageForWound,
+            healthForStanceChange = monster.healthForStanceChange
+        )
+        actionHistory.add(0, ActionSnapshot(snapshot, current.phase, actionType, description))
+        if (actionHistory.size > 10) {
+            actionHistory.removeAt(actionHistory.lastIndex)
+        }
     }
 
     fun onInputFieldFocused() {
@@ -205,22 +235,31 @@ class BattleViewModel(
     }
 
     fun onUndoPress() {
-        val snapshot = lastSnapshot ?: return
+        if (actionHistory.isEmpty()) return
+        val snapshot = actionHistory.removeAt(0)
         val current = _state.value
 
-        current.monster.currentHealth = snapshot.currentHealth
-        current.monster.accumulatedDamage = snapshot.accumulatedDamage
-        current.monster.currentPhase = snapshot.currentPhase
-        current.monster.isDefeated = snapshot.isDefeated
-        current.monster.rage = snapshot.rage
+        current.monster.currentHealth = snapshot.monster.currentHealth
+        current.monster.accumulatedDamage = snapshot.monster.accumulatedDamage
+        current.monster.currentPhase = snapshot.monster.currentPhase
+        current.monster.isDefeated = snapshot.monster.isDefeated
+        current.monster.rage = snapshot.monster.rage
+        current.monster.damageForWound = snapshot.monster.damageForWound
+        current.monster.healthForStanceChange = snapshot.monster.healthForStanceChange
 
-        val newPhase = if (snapshot.isDefeated) {
+        val newPhase = if (snapshot.monster.isDefeated) {
             current.phase
         } else {
-            when (snapshot.currentPhase) {
+            when (snapshot.monster.currentPhase) {
                 1 -> FightPhase.PHASE_I
                 2 -> FightPhase.PHASE_II
                 3 -> FightPhase.PHASE_III
+                4 -> FightPhase.PHASE_IV
+                5 -> FightPhase.PHASE_V
+                6 -> FightPhase.PHASE_VI
+                7 -> FightPhase.PHASE_VII
+                8 -> FightPhase.PHASE_VIII
+                9 -> FightPhase.PHASE_IX
                 else -> current.phase
             }
         }
@@ -228,19 +267,17 @@ class BattleViewModel(
         _state.update {
             it.copy(
                 monster = current.monster,
-                message = "Отменено: $lastAppliedDamage урона",
-                canUndo = false,
+                message = "Отменено: ${snapshot.description}",
+                canUndo = actionHistory.isNotEmpty(),
                 phase = newPhase
             )
         }
-        lastSnapshot = null
-        lastAppliedDamage = 0
     }
 
     fun commitDamage() {
         timerJob?.cancel()
         val current = _state.value
-        if (current.pendingDamage <= 0) {
+        if (current.pendingDamage == 0) {
             _state.update {
                 it.copy(
                     isTimerRunning = false,
@@ -252,14 +289,12 @@ class BattleViewModel(
         }
 
         val monster = current.monster
-        lastSnapshot = MonsterSnapshot(
-            currentHealth = monster.currentHealth,
-            accumulatedDamage = monster.accumulatedDamage,
-            currentPhase = monster.currentPhase,
-            isDefeated = monster.isDefeated,
-            rage = monster.rage
-        )
-        lastAppliedDamage = current.pendingDamage
+        val damageDescription = if (current.pendingDamage >= 0) {
+            "урон +${current.pendingDamage}"
+        } else {
+            "лечение ${-current.pendingDamage}"
+        }
+        saveSnapshot(ActionType.DAMAGE, damageDescription)
 
         val result = monster.takeDamage(current.pendingDamage)
 
@@ -269,6 +304,12 @@ class BattleViewModel(
                 when (result.newPhase) {
                     2 -> FightPhase.PHASE_II
                     3 -> FightPhase.PHASE_III
+                    4 -> FightPhase.PHASE_IV
+                    5 -> FightPhase.PHASE_V
+                    6 -> FightPhase.PHASE_VI
+                    7 -> FightPhase.PHASE_VII
+                    8 -> FightPhase.PHASE_VIII
+                    9 -> FightPhase.PHASE_IX
                     else -> current.phase
                 }
             }
@@ -286,21 +327,32 @@ class BattleViewModel(
                 phase = newPhase,
                 monster = monster,
                 showPhaseChangeDialog = result.phaseChanged && newPhase != FightPhase.VICTORY,
-                canUndo = true
+                canUndo = actionHistory.isNotEmpty()
             )
         }
     }
 
-    fun confirmPhaseChange(damageForWound: Int, healthForStanceChange: Int) {
+    fun confirmPhaseChange(damageForWound: Int, healthForStanceChange: Int, bossHealth: Int = 0) {
         val current = _state.value
-        current.monster.resetPhase(damageForWound, healthForStanceChange)
+        saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${current.monster.currentPhase + 1}")
+        val totalDamageForWound = damageForWound * current.hunterCount
+        current.monster.resetPhase(totalDamageForWound, healthForStanceChange)
+        if (bossHealth > 0) {
+            current.monster.currentHealth = bossHealth
+        }
         _state.update {
             it.copy(
                 showPhaseChangeDialog = false,
                 message = "Стойка ${current.monster.currentPhase}. " +
-                    "Урон для раны: $damageForWound, смена при: $healthForStanceChange HP"
+                    "Урон для раны: $totalDamageForWound, смена при: $healthForStanceChange HP",
+                canUndo = actionHistory.isNotEmpty()
             )
         }
+    }
+
+    fun dismissPhaseChangeDialog() {
+        onUndoPress()
+        _state.update { it.copy(showPhaseChangeDialog = false) }
     }
 
     fun confirmRageSurge() {
@@ -316,39 +368,47 @@ class BattleViewModel(
     }
 
     fun addRage(amount: Int) {
+        val sign = if (amount >= 0) "+" else ""
+        saveSnapshot(ActionType.RAGE, "ярость $sign$amount")
         _state.update { current ->
             val monster = current.monster
             monster.rage += amount
             current.copy(
                 monster = monster,
                 message = "Ярость: ${monster.rage}",
-                showRageSurgeDialog = monster.rage >= current.hunterCount * 3
+                showRageSurgeDialog = monster.rage >= current.hunterCount * 3,
+                canUndo = actionHistory.isNotEmpty()
             )
         }
     }
 
     fun removeRage(amount: Int) {
+        saveSnapshot(ActionType.RAGE, "ярость -$amount")
         _state.update { current ->
             current.copy(
                 monster = current.monster.apply { removeRage(amount) },
-                message = "Ярость: ${current.monster.rage}"
+                message = "Ярость: ${current.monster.rage}",
+                canUndo = actionHistory.isNotEmpty()
             )
         }
     }
 
     fun addRagePerHunter() {
+        saveSnapshot(ActionType.RAGE, "ярость +1/охот")
         _state.update { current ->
             current.copy(
                 monster = current.monster.apply {
                     addRagePerHunter(current.hunterCount)
                 },
                 message = "Ярость: ${current.monster.rage}",
-                showRageSurgeDialog = current.monster.rage >= current.hunterCount * 3
+                showRageSurgeDialog = current.monster.rage >= current.hunterCount * 3,
+                canUndo = actionHistory.isNotEmpty()
             )
         }
     }
 
     fun addRagePerHunterMinusOne() {
+        saveSnapshot(ActionType.RAGE, "ярость +1/охот-1")
         _state.update { current ->
             val count = (current.hunterCount - 1).coerceAtLeast(0)
             current.copy(
@@ -356,7 +416,8 @@ class BattleViewModel(
                     addRagePerHunter(count)
                 },
                 message = "Ярость: ${current.monster.rage}",
-                showRageSurgeDialog = current.monster.rage >= current.hunterCount * 3
+                showRageSurgeDialog = current.monster.rage >= current.hunterCount * 3,
+                canUndo = actionHistory.isNotEmpty()
             )
         }
     }
@@ -373,31 +434,66 @@ class BattleViewModel(
 
     fun endRound() {
         val current = _state.value
+        saveSnapshot(ActionType.ROUND_END, "завершение раунда ${current.currentRound}")
+        var phaseUpdated = false
+        var newFightPhase = current.phase
+        var defeatMessage: String? = null
+
         if (current.pendingDamage > 0) {
-            current.monster.takeDamage(current.pendingDamage)
-            _state.update { it.copy(pendingDamage = 0) }
+            val result = current.monster.takeDamage(current.pendingDamage)
+
+            if (result.message.contains("побеждён")) {
+                _state.update {
+                    it.copy(
+                        phase = FightPhase.VICTORY,
+                        message = result.message,
+                        monster = current.monster,
+                        pendingDamage = 0,
+                        isTimerRunning = false,
+                        damageInputText = "",
+                        inputMode = InputMode.NONE,
+                        canUndo = actionHistory.isNotEmpty()
+                    )
+                }
+                return
+            }
+
+            if (result.phaseChanged) {
+                newFightPhase = when (result.newPhase) {
+                    2 -> FightPhase.PHASE_II
+                    3 -> FightPhase.PHASE_III
+                    4 -> FightPhase.PHASE_IV
+                    5 -> FightPhase.PHASE_V
+                    6 -> FightPhase.PHASE_VI
+                    7 -> FightPhase.PHASE_VII
+                    8 -> FightPhase.PHASE_VIII
+                    9 -> FightPhase.PHASE_IX
+                    else -> newFightPhase
+                }
+                phaseUpdated = true
+            }
         }
+
         current.monster.endRound(current.hunterCount)
 
         val nextRound = current.currentRound + 1
-        val newPhase = if (nextRound > current.maxRounds) {
-            FightPhase.DEFEAT
-        } else {
-            current.phase
-        }
+        val defeatByRounds = nextRound > current.maxRounds
+        val finalPhase = if (defeatByRounds) FightPhase.DEFEAT else newFightPhase
 
         _state.update {
             it.copy(
                 monster = current.monster,
                 currentRound = nextRound,
-                phase = newPhase,
+                phase = finalPhase,
+                pendingDamage = 0,
                 damageInputText = "",
                 inputMode = InputMode.NONE,
                 isTimerRunning = false,
-                canUndo = false,
-                showRageSurgeDialog = newPhase != FightPhase.DEFEAT &&
+                canUndo = actionHistory.isNotEmpty(),
+                showPhaseChangeDialog = phaseUpdated && finalPhase != FightPhase.DEFEAT,
+                showRageSurgeDialog = finalPhase != FightPhase.DEFEAT &&
                     current.monster.rage >= current.hunterCount * 3,
-                message = if (newPhase == FightPhase.DEFEAT) {
+                message = if (defeatByRounds) {
                     "Поражение! Прошло ${current.maxRounds} раундов."
                 } else {
                     "Раунд $nextRound. Ярость: ${current.monster.rage}"
@@ -408,8 +504,7 @@ class BattleViewModel(
 
     fun resetBattle() {
         timerJob?.cancel()
-        lastSnapshot = null
-        lastAppliedDamage = 0
+        actionHistory.clear()
         _state.update { BattleScreenState() }
     }
 }

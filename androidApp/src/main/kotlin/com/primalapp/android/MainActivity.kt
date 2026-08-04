@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -79,7 +80,14 @@ fun PrimalApp() {
         AppScreen.QuickBattle -> {
             val quickBattleVm = remember { BattleViewModel() }
             val quickState by quickBattleVm.state.collectAsState()
-            QuickBattleHost(quickState, quickBattleVm)
+            QuickBattleHost(
+                quickState,
+                quickBattleVm,
+                onBackToMenu = {
+                    quickBattleVm.resetBattle()
+                    campaignViewModel.onBackToMenu()
+                }
+            )
         }
     }
 
@@ -109,8 +117,10 @@ fun CampaignBattleHost(
                 Text("Охотники готовы к сражению.")
             }
         }
-        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III -> {
-            BattleScreen(battleState, battleViewModel)
+        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
+        FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
+        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> {
+            BattleScreen(battleState, battleViewModel, onBackToMenu = { campaignViewModel.onBackToMenu() })
         }
         FightPhase.VICTORY -> {
             Column(
@@ -124,6 +134,10 @@ fun CampaignBattleHost(
                 Spacer(Modifier.height(32.dp))
                 Button(onClick = { campaignViewModel.onVictory() }) {
                     Text("Продолжить")
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                    Text("Выход в меню")
                 }
             }
         }
@@ -140,12 +154,16 @@ fun CampaignBattleHost(
                 Button(onClick = { campaignViewModel.onBattleFinished() }) {
                     Text("К листу кампании")
                 }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                    Text("Выход в меню")
+                }
             }
         }
     }
 
     if (battleState.showPhaseChangeDialog) {
-        PhaseChangeDialog(battleViewModel) { battleViewModel.resetBattle() }
+        PhaseChangeDialog(battleViewModel) { battleViewModel.dismissPhaseChangeDialog() }
     }
     if (battleState.showRageSurgeDialog) {
         RageSurgeDialog(battleViewModel)
@@ -155,15 +173,18 @@ fun CampaignBattleHost(
 @Composable
 fun QuickBattleHost(
     state: com.primalapp.viewmodel.BattleScreenState,
-    viewModel: BattleViewModel
+    viewModel: BattleViewModel,
+    onBackToMenu: () -> Unit = {}
 ) {
     when (state.phase) {
         FightPhase.PRE_BATTLE -> PreBattleScreen { c, w, s -> viewModel.startBattle(c, w, s) }
         FightPhase.SETUP -> SetupScreen { c, w, s -> viewModel.startBattle(c, w, s) }
-        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III -> BattleScreen(state, viewModel)
-        FightPhase.VICTORY -> VictoryScreen(viewModel)
-        FightPhase.DEFEAT -> DefeatScreen(viewModel)
+        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
+        FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
+        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> BattleScreen(state, viewModel, onBackToMenu)
+        FightPhase.VICTORY -> VictoryScreen(viewModel, onBackToMenu)
+        FightPhase.DEFEAT -> DefeatScreen(viewModel, onBackToMenu)
     }
-    if (state.showPhaseChangeDialog) PhaseChangeDialog(viewModel) { viewModel.resetBattle() }
+    if (state.showPhaseChangeDialog) PhaseChangeDialog(viewModel) { viewModel.dismissPhaseChangeDialog() }
     if (state.showRageSurgeDialog) RageSurgeDialog(viewModel)
 }

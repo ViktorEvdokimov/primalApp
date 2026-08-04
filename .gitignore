@@ -17,3 +17,5 @@ iosApp/*.xcworkspace
 iosApp/DerivedData/
 *.xcuserdata
 *.DS_Store
+implementationTasks.md
+testTasks.md
