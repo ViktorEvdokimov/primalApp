@@ -28,6 +28,8 @@ data class QuestEntity(
     val name: String,
     val chapter: Int,
     val element: String? = null,
+    @ColumnInfo(name = "quest_number")
+    val questNumber: Int = 0,
     @ColumnInfo(name = "is_completed")
     val isCompleted: Boolean = false,
     @ColumnInfo(name = "is_available")

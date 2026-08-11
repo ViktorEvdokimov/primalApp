@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -17,10 +18,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.viewmodel.CampaignViewModel
 
 @Composable
-fun MainMenuScreen(viewModel: CampaignViewModel) {
+fun MainMenuScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -53,6 +55,15 @@ fun MainMenuScreen(viewModel: CampaignViewModel) {
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             Text("Режим кампании", fontSize = 18.sp)
+        }
+        if (state.lastActiveBattle != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedButton(
+                onClick = { viewModel.onResumeBattle() },
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+            ) {
+                Text("Вернуться к бою", fontSize = 16.sp)
+            }
         }
     }
 }

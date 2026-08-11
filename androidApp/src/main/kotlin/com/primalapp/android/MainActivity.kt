@@ -7,20 +7,28 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.primalapp.database.CampaignRepositoryImpl
@@ -66,7 +74,7 @@ fun PrimalApp() {
     val campaignState by campaignViewModel.state.collectAsState()
 
     when (campaignState.screen) {
-        AppScreen.MainMenu -> MainMenuScreen(campaignViewModel)
+        AppScreen.MainMenu -> MainMenuScreen(campaignState, campaignViewModel)
         AppScreen.CampaignSetup -> CampaignSetupScreen(campaignState, campaignViewModel)
         AppScreen.CampaignList -> CampaignListScreen(campaignState, campaignViewModel)
         is AppScreen.CampaignSheet -> CampaignSheetScreen(campaignState, campaignViewModel)
@@ -78,16 +86,19 @@ fun PrimalApp() {
             }
         }
         AppScreen.QuickBattle -> {
-            val quickBattleVm = remember { BattleViewModel() }
-            val quickState by quickBattleVm.state.collectAsState()
-            QuickBattleHost(
-                quickState,
-                quickBattleVm,
-                onBackToMenu = {
-                    quickBattleVm.resetBattle()
-                    campaignViewModel.onBackToMenu()
-                }
-            )
+            val battleVm = campaignViewModel.getBattleViewModel()
+            if (battleVm != null) {
+                val quickState by battleVm.state.collectAsState()
+                QuickBattleHost(
+                    quickState,
+                    battleVm,
+                    onPauseBattle = { campaignViewModel.onPauseBattle() },
+                    onBackToMenu = {
+                        battleVm.resetBattle()
+                        campaignViewModel.onBackToMenu()
+                    }
+                )
+            }
         }
     }
 
@@ -96,6 +107,18 @@ fun PrimalApp() {
     }
     if (campaignState.showExchangeDialog) {
         ExchangeDialog(campaignState, campaignViewModel)
+    }
+    if (campaignState.fatalError != null) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Ошибка") },
+            text = { Text(campaignState.fatalError ?: "") },
+            confirmButton = {
+                TextButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                    Text("Закрыть")
+                }
+            }
+        )
     }
 }
 
@@ -107,20 +130,54 @@ fun CampaignBattleHost(
 ) {
     when (battleState.phase) {
         FightPhase.PRE_BATTLE, FightPhase.SETUP -> {
+            var damageForWound by remember { mutableStateOf("4") }
+            var healthForStance by remember { mutableStateOf("7") }
+
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text("Бой начинается!", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
+                Text("Подготовка к бою", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(16.dp))
                 Text("Охотники готовы к сражению.")
+                Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = damageForWound,
+                    onValueChange = { damageForWound = it },
+                    label = { Text("Урон для нанесения раны на игрока") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = healthForStance,
+                    onValueChange = { healthForStance = it },
+                    label = { Text("Здоровье для смены стойки") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        val wound = damageForWound.toIntOrNull() ?: return@Button
+                        val stance = healthForStance.toIntOrNull() ?: return@Button
+                        campaignViewModel.onConfirmCampaignBattleStart(wound, stance)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Начать бой", fontSize = 18.sp)
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = { campaignViewModel.onPauseBattle() }) {
+                    Text("Выход в меню")
+                }
             }
         }
         FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
         FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
         FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> {
-            BattleScreen(battleState, battleViewModel, onBackToMenu = { campaignViewModel.onBackToMenu() })
+            BattleScreen(battleState, battleViewModel, onBackToMenu = { campaignViewModel.onPauseBattle() })
         }
         FightPhase.VICTORY -> {
             Column(
@@ -174,6 +231,7 @@ fun CampaignBattleHost(
 fun QuickBattleHost(
     state: com.primalapp.viewmodel.BattleScreenState,
     viewModel: BattleViewModel,
+    onPauseBattle: () -> Unit = {},
     onBackToMenu: () -> Unit = {}
 ) {
     when (state.phase) {
@@ -181,7 +239,7 @@ fun QuickBattleHost(
         FightPhase.SETUP -> SetupScreen { c, w, s -> viewModel.startBattle(c, w, s) }
         FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
         FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
-        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> BattleScreen(state, viewModel, onBackToMenu)
+        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> BattleScreen(state, viewModel, onPauseBattle)
         FightPhase.VICTORY -> VictoryScreen(viewModel, onBackToMenu)
         FightPhase.DEFEAT -> DefeatScreen(viewModel, onBackToMenu)
     }

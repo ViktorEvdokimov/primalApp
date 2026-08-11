@@ -121,6 +121,7 @@ fun QuestEntity.toDomain() = Quest(
     name = name,
     chapter = chapter,
     element = element?.let { Element.valueOf(it) },
+    questNumber = questNumber,
     isCompleted = isCompleted,
     isAvailable = isAvailable
 )
@@ -131,6 +132,7 @@ fun Quest.toEntity(campaignId: Long) = QuestEntity(
     name = name,
     chapter = chapter,
     element = element?.name,
+    questNumber = questNumber,
     isCompleted = isCompleted,
     isAvailable = isAvailable
 )

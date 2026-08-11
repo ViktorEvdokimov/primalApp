@@ -1,15 +1,22 @@
 package com.primalapp.android.ui
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,20 +25,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.primalapp.model.campaign.Element
 import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.viewmodel.CampaignViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
-    var bossName by remember { mutableStateOf("") }
-    var selectedElement by remember { mutableStateOf<Element?>(null) }
     var elementDropdownExpanded by remember { mutableStateOf(false) }
-    var selectedQuestId by remember { mutableStateOf<String?>(null) }
-    var questDropdownExpanded by remember { mutableStateOf(false) }
+    var bossDropdownExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { },
@@ -41,13 +48,34 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                 Text("Задание выполнено!")
                 Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = bossName,
-                    onValueChange = { bossName = it },
-                    label = { Text("Имя поверженного босса") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                ExposedDropdownMenuBox(
+                    expanded = bossDropdownExpanded,
+                    onExpandedChange = { bossDropdownExpanded = it },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = state.bossName,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Имя поверженного босса") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bossDropdownExpanded) },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = bossDropdownExpanded,
+                        onDismissRequest = { bossDropdownExpanded = false }
+                    ) {
+                        state.defeatedBosses.forEach { boss ->
+                            DropdownMenuItem(
+                                text = { Text(boss) },
+                                onClick = {
+                                    viewModel.onVictoryBossSelected(boss)
+                                    bossDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
 
                 ExposedDropdownMenuBox(
@@ -56,12 +84,12 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = selectedElement?.displayName ?: "",
+                        value = state.bossElement?.displayName ?: "",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Стихия босса") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = elementDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
                     )
                     ExposedDropdownMenu(
                         expanded = elementDropdownExpanded,
@@ -71,7 +99,7 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                             DropdownMenuItem(
                                 text = { Text(elem.displayName) },
                                 onClick = {
-                                    selectedElement = elem
+                                    viewModel.onVictoryBossElementChanged(elem)
                                     elementDropdownExpanded = false
                                 }
                             )
@@ -80,50 +108,36 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text("Следующее задание:")
-                ExposedDropdownMenuBox(
-                    expanded = questDropdownExpanded,
-                    onExpandedChange = { questDropdownExpanded = it },
+                Text("Открытые задания:", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                FlowRow(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = state.availableQuestsForNext.find { it.id == selectedQuestId }?.name ?: "Выберите задание",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Задание") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = questDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = questDropdownExpanded,
-                        onDismissRequest = { questDropdownExpanded = false }
-                    ) {
-                        state.availableQuestsForNext.forEach { quest ->
-                            DropdownMenuItem(
-                                text = { Text(quest.name) },
-                                onClick = {
-                                    selectedQuestId = quest.id
-                                    questDropdownExpanded = false
-                                }
+                    (1..49).forEach { number ->
+                        val checked = state.selectedQuestNumbers.contains(number)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.width(52.dp)
+                        ) {
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = { viewModel.onVictoryQuestToggled(number) },
+                                modifier = Modifier.size(24.dp)
                             )
+                            Text("$number", fontSize = 12.sp)
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(12.dp))
 
                 val errorText = state.error
                 if (errorText != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(errorText, color = androidx.compose.ui.graphics.Color.Red)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                viewModel.onVictoryBossNameChanged(bossName)
-                selectedElement?.let { viewModel.onVictoryBossElementChanged(it) }
-                selectedQuestId?.let { viewModel.onVictoryNextQuestSelected(it) }
-                viewModel.onConfirmVictory()
-            }) {
+            TextButton(onClick = { viewModel.onConfirmVictory() }) {
                 Text("Продолжить")
             }
         },

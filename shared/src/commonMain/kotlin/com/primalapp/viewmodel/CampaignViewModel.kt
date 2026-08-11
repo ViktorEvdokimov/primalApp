@@ -57,9 +57,15 @@ data class CampaignUiState(
     val completedQuestId: String = "",
     val availableQuestsForNext: List<Quest> = emptyList(),
     val selectedNextQuestId: String? = null,
+    val selectedQuestNumbers: Set<Int> = emptySet(),
     val isSaving: Boolean = false,
     val saveMessage: String = "",
-    val error: String? = null
+    val error: String? = null,
+    val lastActiveBattle: AppScreen? = null,
+    val fatalError: String? = null,
+    val preBattleHunters: List<Hunter> = emptyList(),
+    val isPrologue: Boolean = false,
+    val defeatedBosses: List<String> = emptyList()
 )
 
 class CampaignViewModel(
@@ -77,18 +83,32 @@ class CampaignViewModel(
     private var battleCollectJob: Job? = null
     private var lastSavedRound: Int = 0
 
+    companion object {
+        val ALL_BOSS_NAMES = listOf(
+            "Вираксен", "Торамат", "Коровон", "Харджа", "Дигоракс", "Оруксен",
+            "Фелаксир", "Юром", "Таррагуа", "Моркраас", "Озев", "Иекорос", "Пробуждённый"
+        )
+    }
+
     fun onQuickBattleSelected() {
+        if (battleViewModel == null) {
+            battleViewModel = BattleViewModel(scope)
+        }
         _state.update { it.copy(screen = AppScreen.QuickBattle) }
     }
 
     fun onCampaignModeSelected() {
         scope.launch {
-            val count = repository.getCampaignCount()
-            if (count == 0) {
-                _state.update { it.copy(screen = AppScreen.CampaignSetup) }
-            } else {
-                val campaigns = repository.getAllCampaigns()
-                _state.update { it.copy(screen = AppScreen.CampaignList, campaigns = campaigns) }
+            try {
+                val count = repository.getCampaignCount()
+                if (count == 0) {
+                    _state.update { it.copy(screen = AppScreen.CampaignSetup) }
+                } else {
+                    val campaigns = repository.getAllCampaigns()
+                    _state.update { it.copy(screen = AppScreen.CampaignList, campaigns = campaigns) }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(fatalError = "Ошибка базы данных. Перезапустите приложение.") }
             }
         }
     }
@@ -127,8 +147,28 @@ class CampaignViewModel(
             val campaignId = repository.createCampaign(name)
             val hunters = classes.map { CampaignHunter(campaignId = campaignId, playerName = it.displayName, className = it) }
             repository.addHunters(campaignId, hunters)
-            loadCampaignSheet(campaignId)
+            val campaign = repository.getCampaign(campaignId)
+            _state.update { it.copy(currentCampaign = campaign, hunters = hunters, isPrologue = true) }
+            startBattleInternal(campaignId, hunters)
         }
+    }
+
+    private fun startBattleInternal(campaignId: Long, hunters: List<CampaignHunter>) {
+        val battleHunters = hunters.map { Hunter(name = "${it.playerName} (${it.className.displayName})") }
+        battleViewModel = BattleViewModel(scope)
+        _state.update { it.copy(preBattleHunters = battleHunters, screen = AppScreen.CampaignBattle(campaignId)) }
+        observeBattleForAutoSave(campaignId)
+    }
+
+    fun onConfirmCampaignBattleStart(damageForWound: Int, healthForStanceChange: Int) {
+        val hunters = _state.value.preBattleHunters
+        if (hunters.isEmpty()) return
+        battleViewModel?.startBattleWithHunters(
+            hunters = hunters,
+            damageForWound = damageForWound,
+            healthForStanceChange = healthForStanceChange
+        )
+        _state.update { it.copy(preBattleHunters = emptyList()) }
     }
 
     fun onCampaignSelected(campaignId: Long) {
@@ -203,16 +243,8 @@ class CampaignViewModel(
         val campaignId = _state.value.currentCampaign?.id ?: return
         val hunters = _state.value.hunters
         if (hunters.isEmpty()) return
-
-        battleViewModel = BattleViewModel(scope)
-        battleViewModel?.startBattleWithHunters(
-            hunters = hunters.map { Hunter(name = "${it.playerName} (${it.className.displayName})") },
-            damageForWound = 4,
-            healthForStanceChange = 7
-        )
-
-        observeBattleForAutoSave(campaignId)
-        _state.update { it.copy(screen = AppScreen.CampaignBattle(campaignId)) }
+        battleCollectJob?.cancel()
+        startBattleInternal(campaignId, hunters)
     }
 
     fun getBattleViewModel(): BattleViewModel? = battleViewModel
@@ -229,14 +261,23 @@ class CampaignViewModel(
     fun onVictory() {
         val campaignId = _state.value.currentCampaign?.id ?: return
         scope.launch {
-            val quests = repository.getQuests(campaignId)
+            val trophies = repository.getTrophies(campaignId)
+            val isPrologue = _state.value.isPrologue
+            val bossNames = if (isPrologue) {
+                listOf("Вираксен")
+            } else {
+                ALL_BOSS_NAMES
+            }
             _state.update {
                 it.copy(
                     showPostVictory = true,
-                    bossName = "",
-                    bossElement = null,
-                    completedQuestId = quests.firstOrNull { it.isAvailable && !it.isCompleted }?.id ?: "",
-                    availableQuestsForNext = quests.filter { !it.isCompleted && it.isAvailable }
+                    bossName = if (isPrologue) "Вираксен" else "",
+                    bossElement = if (isPrologue) Element.FIRE else null,
+                    defeatedBosses = bossNames,
+                    completedQuestId = "",
+                    availableQuestsForNext = emptyList(),
+                    selectedQuestNumbers = emptySet(),
+                    error = null
                 )
             }
         }
@@ -246,20 +287,41 @@ class CampaignViewModel(
         _state.update { it.copy(bossName = name) }
     }
 
+    fun onVictoryBossSelected(name: String) {
+        _state.update { it.copy(bossName = name) }
+    }
+
     fun onVictoryBossElementChanged(element: Element) {
         _state.update { it.copy(bossElement = element) }
     }
 
-    fun onVictoryNextQuestSelected(questId: String) {
-        _state.update { it.copy(selectedNextQuestId = questId) }
+    fun onVictoryQuestToggled(number: Int) {
+        _state.update { state ->
+            val current = state.selectedQuestNumbers.toMutableSet()
+            if (current.contains(number)) {
+                current.remove(number)
+            } else {
+                current.add(number)
+            }
+            state.copy(selectedQuestNumbers = current)
+        }
     }
 
     fun onConfirmVictory() {
         val state = _state.value
         val campaignId = state.currentCampaign?.id ?: return
-        val element = state.bossElement ?: return
+        val element = state.bossElement
+        if (element == null) {
+            _state.update { it.copy(error = "Выберите стихию босса") }
+            return
+        }
         val bossName = state.bossName.ifBlank {
             _state.update { it.copy(error = "Введите имя босса") }
+            return
+        }
+        val questNumbers = state.selectedQuestNumbers
+        if (questNumbers.isEmpty()) {
+            _state.update { it.copy(error = "Выберите хотя бы одно задание") }
             return
         }
         scope.launch {
@@ -268,17 +330,29 @@ class CampaignViewModel(
                 element = element,
                 chapter = state.currentCampaign?.currentChapter ?: 1
             )
+            questNumbers.forEach { number ->
+                val quest = Quest(
+                    id = number.toString(),
+                    name = "Задание $number",
+                    chapter = state.currentCampaign?.currentChapter ?: 1,
+                    element = element,
+                    questNumber = number,
+                    isAvailable = true
+                )
+                repository.saveQuest(campaignId, quest)
+            }
+            val firstQuestId = questNumbers.first().toString()
             repository.saveVictory(
                 campaignId = campaignId,
                 trophy = trophy,
-                completedQuestId = state.completedQuestId,
-                nextQuestId = state.selectedNextQuestId
+                completedQuestId = firstQuestId,
+                nextQuestId = questNumbers.joinToString(",") { it.toString() }
             )
             val hunters = state.hunters
             hunters.forEach { hunter ->
                 addResourceToAll(hunter.id, "ELEMENT", element.name, 1)
             }
-            _state.update { it.copy(showPostVictory = false, error = null) }
+            _state.update { it.copy(showPostVictory = false, error = null, selectedQuestNumbers = emptySet(), isPrologue = false) }
             loadCampaignSheet(campaignId)
         }
     }
@@ -286,7 +360,21 @@ class CampaignViewModel(
     fun onBackToMenu() {
         battleCollectJob?.cancel()
         battleViewModel = null
+        lastSavedRound = 0
         _state.update { CampaignUiState() }
+    }
+
+    fun onPauseBattle() {
+        val currentScreen = _state.value.screen
+        if (currentScreen !is AppScreen.CampaignBattle && currentScreen != AppScreen.QuickBattle) return
+        _state.update {
+            it.copy(screen = AppScreen.MainMenu, lastActiveBattle = currentScreen)
+        }
+    }
+
+    fun onResumeBattle() {
+        val battle = _state.value.lastActiveBattle ?: return
+        _state.update { it.copy(screen = battle, lastActiveBattle = null) }
     }
 
     fun onErrorDismissed() {

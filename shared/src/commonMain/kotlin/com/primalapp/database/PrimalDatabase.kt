@@ -2,6 +2,9 @@ package com.primalapp.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import com.primalapp.database.dao.AchievementDao
 import com.primalapp.database.dao.CampaignDao
 import com.primalapp.database.dao.HunterDao
@@ -17,6 +20,12 @@ import com.primalapp.database.entity.ResourceEntity
 import com.primalapp.database.entity.SkillEntity
 import com.primalapp.database.entity.TrophyEntity
 
+val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL("ALTER TABLE quests ADD COLUMN quest_number INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 @Database(
     entities = [
         CampaignEntity::class,
@@ -27,7 +36,7 @@ import com.primalapp.database.entity.TrophyEntity
         TrophyEntity::class,
         QuestEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class PrimalDatabase : RoomDatabase() {

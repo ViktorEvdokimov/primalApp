@@ -5,6 +5,7 @@ data class Quest(
     val name: String,
     val chapter: Int,
     val element: Element? = null,
+    val questNumber: Int = 0,
     val isCompleted: Boolean = false,
     val isAvailable: Boolean = false
 )

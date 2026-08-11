@@ -14,5 +14,8 @@ actual fun createPrimalDatabase(context: PlatformContext): PrimalDatabase {
     val dbPath = (NSSearchPathForDirectoriesInDomains(
         NSDocumentDirectory, NSUserDomainMask, true
     ).first() as String) + "/primal.db"
-    return Room.databaseBuilder<PrimalDatabase>(name = dbPath).build()
+    return Room.databaseBuilder<PrimalDatabase>(name = dbPath)
+        .addMigrations(MIGRATION_1_2)
+        .fallbackToDestructiveMigration(true)
+        .build()
 }
