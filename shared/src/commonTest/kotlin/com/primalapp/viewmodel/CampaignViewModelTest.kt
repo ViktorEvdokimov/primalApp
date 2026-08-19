@@ -1,6 +1,8 @@
 package com.primalapp.viewmodel
 
 import com.primalapp.model.campaign.Achievement
+import com.primalapp.model.campaign.Boss
+import com.primalapp.model.campaign.BossStance
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
 import com.primalapp.model.campaign.Element
@@ -56,6 +58,8 @@ class CampaignViewModelTest {
         override suspend fun saveQuest(campaignId: Long, quest: Quest) {}
         override suspend fun completeQuest(campaignId: Long, questId: String) {}
         override suspend fun getAvailableQuests(campaignId: Long): List<Quest> = emptyList()
+        override suspend fun getAllBosses(): List<Boss> = bossesToReturn
+        var bossesToReturn: List<Boss> = emptyList()
         override suspend fun saveVictory(campaignId: Long, trophy: Trophy, completedQuestId: String, nextQuestId: String?) {}
         override suspend fun getSkills(hunterId: Long): List<SkillNode> = emptyList()
         override suspend fun unlockSkill(hunterId: Long, branch: SkillBranch, tier: Int) {}
@@ -64,7 +68,10 @@ class CampaignViewModelTest {
         override suspend fun getPlants(hunterId: Long): Map<Plant, Int> = emptyMap()
         override suspend fun getElements(hunterId: Long): Map<Element, Int> = emptyMap()
         override suspend fun updateResource(hunterId: Long, resourceType: ResourceType, resourceName: String, quantity: Int) {}
-        override suspend fun addResource(hunterId: Long, resourceType: ResourceType, resourceName: String, amount: Int) {}
+        override suspend fun addResource(hunterId: Long, resourceType: ResourceType, resourceName: String, amount: Int) {
+            addResourceCalls.add(resourceName)
+        }
+        val addResourceCalls = mutableListOf<String>()
         override suspend fun getHuntersWithResource(campaignId: Long, resourceName: String, resourceType: ResourceType): List<CampaignHunter> = emptyList()
         override suspend fun exchangeResources(
             fromHunterId: Long, toHunterId: Long,
@@ -83,10 +90,13 @@ class CampaignViewModelTest {
     //region 7.2.1. onPauseBattle сохраняет текущий экран боя
 
     @Test
-    fun `onPauseBattle сохраняет CampaignBattle в lastActiveBattle и переходит в MainMenu`() {
+    fun `onPauseBattle сохраняет CampaignBattle в lastActiveBattle и переходит в MainMenu`() = runBlocking {
         // Подготовка: ViewModel с экраном CampaignBattle
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         assertTrue(viewModel.state.value.screen == AppScreen.QuickBattle)
 
         // Вызов проверяемого кода
@@ -97,13 +107,17 @@ class CampaignViewModelTest {
         assertEquals(AppScreen.MainMenu, state.screen, "Экран должен переключиться в MainMenu")
         assertEquals(AppScreen.QuickBattle, state.lastActiveBattle,
             "lastActiveBattle должен сохранить QuickBattle")
+        scope.cancel()
     }
 
     @Test
-    fun `onPauseBattle сохраняет QuickBattle в lastActiveBattle`() {
+    fun `onPauseBattle сохраняет QuickBattle в lastActiveBattle`() = runBlocking {
         // Подготовка: переходим в QuickBattle
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
 
         // Вызов проверяемого кода
         viewModel.onPauseBattle()
@@ -111,6 +125,7 @@ class CampaignViewModelTest {
         // Проверка
         assertEquals(AppScreen.QuickBattle, viewModel.state.value.lastActiveBattle)
         assertEquals(AppScreen.MainMenu, viewModel.state.value.screen)
+        scope.cancel()
     }
 
     @Test
@@ -127,10 +142,13 @@ class CampaignViewModelTest {
     }
 
     @Test
-    fun `onPauseBattle не сохраняет lastActiveBattle если экран CampaignSheet`() {
+    fun `onPauseBattle не сохраняет lastActiveBattle если экран CampaignSheet`() = runBlocking {
         // Подготовка: имитируем навигацию в CampaignSheet
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         viewModel.onPauseBattle()
         assertEquals(AppScreen.MainMenu, viewModel.state.value.screen)
 
@@ -139,6 +157,7 @@ class CampaignViewModelTest {
 
         // Проверка: lastActiveBattle не изменился (остался от предыдущего вызова)
         assertEquals(AppScreen.QuickBattle, viewModel.state.value.lastActiveBattle)
+        scope.cancel()
     }
 
     //endregion
@@ -146,10 +165,13 @@ class CampaignViewModelTest {
     //region 7.2.2. onResumeBattle восстанавливает экран боя
 
     @Test
-    fun `onResumeBattle восстанавливает CampaignBattle из lastActiveBattle и очищает его`() {
+    fun `onResumeBattle восстанавливает CampaignBattle из lastActiveBattle и очищает его`() = runBlocking {
         // Подготовка: сохраняем CampaignBattle через onPauseBattle
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         viewModel.onPauseBattle()
         assertNotNull(viewModel.state.value.lastActiveBattle)
 
@@ -162,6 +184,7 @@ class CampaignViewModelTest {
             "Экран должен восстановиться в QuickBattle")
         assertNull(state.lastActiveBattle,
             "lastActiveBattle должен быть очищен после восстановления")
+        scope.cancel()
     }
 
     @Test
@@ -182,10 +205,13 @@ class CampaignViewModelTest {
     //region 7.2.3. onBackToMenu сбрасывает lastActiveBattle
 
     @Test
-    fun `onBackToMenu сбрасывает lastActiveBattle в null`() {
+    fun `onBackToMenu сбрасывает lastActiveBattle в null`() = runBlocking {
         // Подготовка: сохраняем бой через onPauseBattle
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         viewModel.onPauseBattle()
         assertNotNull(viewModel.state.value.lastActiveBattle,
             "lastActiveBattle должен быть установлен после onPauseBattle")
@@ -197,6 +223,7 @@ class CampaignViewModelTest {
         assertNull(viewModel.state.value.lastActiveBattle,
             "onBackToMenu должен сбросить lastActiveBattle в null")
         assertEquals(AppScreen.MainMenu, viewModel.state.value.screen)
+        scope.cancel()
     }
 
     //endregion
@@ -277,10 +304,13 @@ class CampaignViewModelTest {
     }
 
     @Test
-    fun `onBackToMenu сбрасывает fatalError в null`() {
+    fun `onBackToMenu сбрасывает fatalError в null`() = runBlocking {
         // Подготовка: напрямую устанавливаем fatalError через state copy
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         viewModel.onPauseBattle()
 
         // Вызов проверяемого кода: onBackToMenu создаёт новый CampaignUiState()
@@ -289,6 +319,7 @@ class CampaignViewModelTest {
         // Проверка: fatalError = null
         assertNull(viewModel.state.value.fatalError,
             "onBackToMenu должен сбросить fatalError в null через CampaignUiState()")
+        scope.cancel()
     }
 
     //endregion
@@ -561,16 +592,22 @@ class CampaignViewModelTest {
     }
 
     @Test
-    fun `ALL_BOSS_NAMES содержит 13 боссов`() {
+    fun `ALL_BOSS_NAMES содержит 19 боссов`() {
         // Подготовка
 
         // Вызов проверяемого кода
         val bosses = CampaignViewModel.ALL_BOSS_NAMES
 
         // Проверка
-        assertEquals(13, bosses.size, "ALL_BOSS_NAMES должен содержать 13 боссов")
+        assertEquals(19, bosses.size, "ALL_BOSS_NAMES должен содержать 19 боссов")
         assertTrue(bosses.contains("Вираксен"), "Должен содержать Вираксен")
         assertTrue(bosses.contains("Пробуждённый"), "Должен содержать Пробуждённый")
+        assertTrue(bosses.contains("Тараск"), "Должен содержать Тараск")
+        assertTrue(bosses.contains("Кситерос"), "Должен содержать Кситерос")
+        assertTrue(bosses.contains("Зекат"), "Должен содержать Зекат")
+        assertTrue(bosses.contains("Зекалит"), "Должен содержать Зекалит")
+        assertTrue(bosses.contains("Пазис"), "Должен содержать Пазис")
+        assertTrue(bosses.contains("Нагарджас"), "Должен содержать Нагарджас")
     }
 
     //endregion
@@ -578,25 +615,32 @@ class CampaignViewModelTest {
     //region 9.4. Возврат в бой экспедиции
 
     @Test
-    fun `onQuickBattleSelected создаёт BattleViewModel`() {
+    fun `onQuickBattleSelected создаёт BattleViewModel`() = runBlocking {
         // Подготовка
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
 
         // Вызов проверяемого кода
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
 
         // Проверка: BattleViewModel создан и сохранён
         assertNotNull(viewModel.getBattleViewModel(),
             "После onQuickBattleSelected BattleViewModel должен быть создан")
         assertEquals(AppScreen.QuickBattle, viewModel.state.value.screen,
             "Экран должен переключиться в QuickBattle")
+        scope.cancel()
     }
 
     @Test
-    fun `onQuickBattleSelected не создаёт новый BattleViewModel при повторном вызове`() {
+    fun `onQuickBattleSelected не создаёт новый BattleViewModel при повторном вызове`() = runBlocking {
         // Подготовка: первый вызов
-        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
         viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
         val firstVm = viewModel.getBattleViewModel()
         assertNotNull(firstVm)
 
@@ -615,6 +659,7 @@ class CampaignViewModelTest {
 
         assertEquals(AppScreen.QuickBattle, viewModel.state.value.screen,
             "Экран должен восстановиться в QuickBattle")
+        scope.cancel()
     }
 
     @Test
@@ -627,6 +672,507 @@ class CampaignViewModelTest {
         // Проверка
         assertNull(viewModel.getBattleViewModel(),
             "До вызова onQuickBattleSelected или onStartCampaign BattleViewModel должен быть null")
+    }
+
+    //endregion
+
+    //region 12.4/14.2. getDifficultyForChapter
+
+    @Test
+    fun `getDifficultyForChapter возвращает 0 для первой главы`() {
+        // Подготовка
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+
+        // Вызов проверяемого кода
+        val difficulty = viewModel.getDifficultyForChapter(1)
+
+        // Проверка
+        assertEquals(0, difficulty, "Глава 1 должна давать сложность 0")
+    }
+
+    @Test
+    fun `getDifficultyForChapter возвращает корректную сложность по диапазонам`() {
+        // Подготовка
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+
+        // Вызов проверяемого кода + проверка
+        assertEquals(1, viewModel.getDifficultyForChapter(2), "Глава 2 → сложность 1")
+        assertEquals(1, viewModel.getDifficultyForChapter(4), "Глава 4 → сложность 1")
+        assertEquals(2, viewModel.getDifficultyForChapter(5), "Глава 5 → сложность 2")
+        assertEquals(2, viewModel.getDifficultyForChapter(8), "Глава 8 → сложность 2")
+        assertEquals(3, viewModel.getDifficultyForChapter(9), "Глава 9 → сложность 3")
+        assertEquals(3, viewModel.getDifficultyForChapter(11), "Глава 11 → сложность 3")
+    }
+
+    //endregion
+
+    //region 14.1. Резолв босса по name+difficulty
+
+    private fun createBoss(name: String, difficulty: Int, dfw: Int, hsc: Int?, element: Element? = Element.FIRE) = Boss(
+        id = difficulty.toLong() + 1,
+        name = name,
+        element = element,
+        difficulty = difficulty,
+        stances = listOf(BossStance(dfw, hsc))
+    )
+
+    @Test
+    fun `onPreBattleBossSelected резолвит босса и заполняет dfw и hsc`() = runBlocking {
+        // Подготовка: Fake с двумя боссами разных сложностей
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(
+                createBoss("Вираксен", 0, 2, 7),
+                createBoss("Вираксен", 1, 5, 7)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
+
+        // Вызов проверяемого кода
+        viewModel.onPreBattleBossSelected("Вираксен")
+
+        // Проверка: босс разрешён по сложности 0, dfw/hsc заполнены
+        val state = viewModel.state.value
+        assertEquals("Вираксен", state.selectedPreBattleBossName)
+        assertEquals(0, state.selectedPreBattleBoss?.difficulty)
+        assertEquals("2", state.preBattleDamageForWound)
+        assertEquals("7", state.preBattleHealthForStance)
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onPreBattleBossSelected null сбрасывает на 4 и 7`() {
+        // Подготовка
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+
+        // Вызов проверяемого кода
+        viewModel.onPreBattleBossSelected(null)
+
+        // Проверка
+        val state = viewModel.state.value
+        assertNull(state.selectedPreBattleBossName, "selectedPreBattleBossName должен быть null")
+        assertEquals("4", state.preBattleDamageForWound, "dfw должен сброситься на 4")
+        assertEquals("7", state.preBattleHealthForStance, "hsc должен сброситься на 7")
+    }
+
+    @Test
+    fun `onPreBattleDifficultySelected пересчитывает dfw и hsc для выбранного босса`() = runBlocking {
+        // Подготовка: босс с двумя сложностями
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(
+                createBoss("Вираксен", 0, 2, 7),
+                createBoss("Вираксен", 1, 5, 7)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
+        viewModel.onPreBattleBossSelected("Вираксен")
+
+        // Вызов проверяемого кода: смена сложности на 1
+        viewModel.onPreBattleDifficultySelected(1)
+
+        // Проверка: босс переразрешён по сложности 1, dfw = 5
+        val state = viewModel.state.value
+        assertEquals(1, state.preBattleDifficulty)
+        assertEquals(1, state.selectedPreBattleBoss?.difficulty)
+        assertEquals("5", state.preBattleDamageForWound, "dfw должен пересчитаться для сложности 1")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 14.4. Автозаполнение bossName/bossElement в onVictory
+
+    @Test
+    fun `onVictory с выбранным боссом автозаполняет bossName и bossElement`() = runBlocking {
+        // Подготовка: кампания с выбранным боссом
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Вираксен", 0, 2, 7))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        viewModel.onPreBattleBossSelected("Вираксен")
+
+        // Вызов проверяемого кода
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: bossName и bossElement заполнены из выбранного босса
+        val state = viewModel.state.value
+        assertEquals("Вираксен", state.bossName, "bossName должен быть из выбранного босса")
+        assertEquals(Element.FIRE, state.bossElement, "bossElement должен быть из выбранного босса")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 11.1. Выпадающий список боссов в PostVictoryDialog
+
+    @Test
+    fun `onVictoryBossSelected обновляет bossName`() {
+        // Подготовка
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+
+        // Вызов проверяемого кода
+        viewModel.onVictoryBossSelected("Вираксен")
+
+        // Проверка
+        assertEquals("Вираксен", viewModel.state.value.bossName,
+            "bossName должен обновиться через onVictoryBossSelected")
+    }
+
+    //endregion
+
+    //region 11.2. Ошибка при невыбранной стихии босса
+
+    @Test
+    fun `onConfirmVictory показывает ошибку при bossElement null`() = runBlocking {
+        // Подготовка: проходим пролог, чтобы isPrologue=false, затем второй бой с пустой стихией
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        // Завершаем пролог: onVictory предзаполняет FIRE, onConfirmVictory сбрасывает isPrologue
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictoryBossSelected("Вираксен")
+        viewModel.onVictoryQuestToggled(1)
+        viewModel.onConfirmVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Теперь не-пролог: второй бой → onVictory оставляет bossElement=null
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictoryQuestToggled(1)
+
+        // Вызов проверяемого кода
+        viewModel.onConfirmVictory()
+
+        // Проверка: ошибка «Выберите стихию босса»
+        assertEquals("Выберите стихию босса", viewModel.state.value.error,
+            "Должна быть ошибка о необходимости выбрать стихию босса")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 11.3. Очистка error в onVictory
+
+    @Test
+    fun `onVictory очищает error в null`() = runBlocking {
+        // Подготовка: кампания с предустановленной ошибкой
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: error = null
+        assertNull(viewModel.state.value.error,
+            "onVictory должен очистить error в null")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 16.1. Null hsc в «Подготовке к бою»
+
+    @Test
+    fun `onPreBattleBossSelected для Иекороса оставляет preBattleHealthForStance пустым`() = runBlocking {
+        // Подготовка: Иекорос с null hsc
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Иекорос", 0, 2, null, Element.LIGHTNING))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
+
+        // Вызов проверяемого кода
+        viewModel.onPreBattleBossSelected("Иекорос")
+
+        // Проверка: dfw заполнен, hsc — пустая строка (не «7»)
+        val state = viewModel.state.value
+        assertEquals("2", state.preBattleDamageForWound, "dfw должен быть 2")
+        assertEquals("", state.preBattleHealthForStance,
+            "hsc должен быть пустым для босса с null (смена по запросу)")
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onConfirmCampaignBattleStart с null hsc стартует бой`() = runBlocking {
+        // Подготовка: кампания, preBattleHunters заполнен
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода: null hsc
+        viewModel.onConfirmCampaignBattleStart(damageForWound = 4, healthForStanceChange = null)
+
+        // Проверка: бой начался (фаза PHASE_I), monster.healthForStanceChange = null
+        val battleState = viewModel.getBattleViewModel()!!.state.value
+        assertEquals(FightPhase.PHASE_I, battleState.phase, "Бой должен начаться")
+        assertNull(battleState.monster.healthForStanceChange,
+            "monster.healthForStanceChange должен быть null при ручном вводе без hsc")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 18.x. Пробуждённый (nullable element)
+
+    @Test
+    fun `onPreBattleBossSelected для Пробуждённого авто-устанавливает сложность 3`() = runBlocking {
+        // Подготовка: Пробуждённый только при сложности 3, без стихии
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Пробуждённый", 3, 30, 8, element = null))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(50)
+
+        // Вызов проверяемого кода
+        viewModel.onPreBattleBossSelected("Пробуждённый")
+
+        // Проверка: сложность принудительно 3, босс разрешён
+        val state = viewModel.state.value
+        assertEquals(3, state.preBattleDifficulty,
+            "Для Пробуждённого сложность должна быть 3")
+        assertEquals("Пробуждённый", state.selectedPreBattleBoss?.name)
+        assertEquals("30", state.preBattleDamageForWound, "dfw должен быть 30")
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onVictory с боссом без стихии устанавливает bossHasNoElement`() = runBlocking {
+        // Подготовка: кампания с боссом без стихии, пролог завершён (не-пролог)
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Пробуждённый", 3, 30, 8, element = null))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        // Завершаем пролог (isPrologue → false)
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictoryBossSelected("Вираксен")
+        viewModel.onVictoryQuestToggled(1)
+        viewModel.onConfirmVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Второй бой: выбираем Пробуждённого (без стихии), побеждаем
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onPreBattleBossSelected("Пробуждённый")
+
+        // Вызов проверяемого кода
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: bossHasNoElement = true, bossElement = null, bossName заполнен
+        val state = viewModel.state.value
+        assertTrue(state.bossHasNoElement,
+            "bossHasNoElement должен быть true для босса без стихии")
+        assertNull(state.bossElement, "bossElement должен быть null")
+        assertEquals("Пробуждённый", state.bossName)
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onConfirmVictory без стихии не показывает ошибку и не выдаёт ресурс`() = runBlocking {
+        // Подготовка: кампания с боссом без стихии, пролог завершён
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Пробуждённый", 3, 30, 8, element = null))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        // Завершаем пролог
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictoryBossSelected("Вираксен")
+        viewModel.onVictoryQuestToggled(1)
+        viewModel.onConfirmVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Второй бой: выбираем Пробуждённого, побеждаем
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onPreBattleBossSelected("Пробуждённый")
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictoryQuestToggled(1)
+        repo.addResourceCalls.clear()
+
+        // Вызов проверяемого кода: подтверждение победы без стихии
+        viewModel.onConfirmVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: нет ошибки «Выберите стихию», ресурс стихии не выдан
+        val state = viewModel.state.value
+        assertNull(state.error, "Не должно быть ошибки «Выберите стихию»")
+        assertTrue(repo.addResourceCalls.isEmpty(),
+            "Для босса без стихии ресурс стихии не должен выдаваться")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 18.4. Логика bossElement в onVictory (исправлен баг `?:`)
+
+    @Test
+    fun `onVictory с боссом без стихии в прологе оставляет bossElement null`() = runBlocking {
+        // Подготовка: пролог (isPrologue = true) с выбранным боссом без стихии (Пробуждённый)
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(createBoss("Пробуждённый", 3, 30, 8, element = null))
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        viewModel.onPreBattleBossSelected("Пробуждённый")
+
+        // Вызов проверяемого кода
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: bossElement = null (не подставляется FIRE), bossHasNoElement = true
+        val state = viewModel.state.value
+        assertEquals("Пробуждённый", state.bossName, "bossName должен быть из выбранного босса")
+        assertNull(state.bossElement, "bossElement должен быть null для босса без стихии в прологе")
+        assertTrue(state.bossHasNoElement, "bossHasNoElement должен быть true для босса без стихии")
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onVictory без выбранного босса в прологе предзаполняет FIRE`() = runBlocking {
+        // Подготовка: пролог (isPrologue = true), босс не выбран
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: для пролога без выбранного босса bossElement = FIRE
+        val state = viewModel.state.value
+        assertEquals("Вираксен", state.bossName, "bossName должен быть Вираксен")
+        assertEquals(Element.FIRE, state.bossElement, "bossElement должен быть FIRE")
+        assertFalse(state.bossHasNoElement, "bossHasNoElement должен быть false")
+
+        scope.cancel()
+    }
+
+    //endregion
+
+    //region 25.5. Сортировка боссов + опциональный dfw
+
+    @Test
+    fun `loadBosses сортирует боссов по стихии и имени`() = runBlocking {
+        // Подготовка: боссы в неотсортированном порядке
+        val repo = FakeCampaignRepository().apply {
+            bossesToReturn = listOf(
+                createBoss("Торамат", 0, 2, 7, Element.HORN),
+                createBoss("Пробуждённый", 3, 30, 8, element = null),
+                createBoss("Оруксен", 0, 2, 6, Element.CORAL),
+                createBoss("Вираксен", 0, 2, 7, Element.FIRE),
+                createBoss("Юром", 0, 2, 6, Element.METAL),
+                createBoss("Дигоракс", 0, 2, 8, Element.HORN)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        // Вызов проверяемого кода
+        viewModel.onQuickBattleSelected()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: Коралл, Металл, Огонь, Рог (по имени), null-стихия — последняя
+        val names = viewModel.state.value.availableBosses.map { it.name }
+        assertEquals(
+            listOf("Оруксен", "Юром", "Вираксен", "Дигоракс", "Торамат", "Пробуждённый"),
+            names,
+            "Боссы должны быть отсортированы по стихии (русский алфавит) затем по имени, без стихии — в конце"
+        )
+
+        scope.cancel()
+    }
+
+    @Test
+    fun `onConfirmCampaignBattleStart с null dfw запускает бой без порога раны`() = runBlocking {
+        // Подготовка: кампания с одним охотником
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода: старт боя с пустым dfw
+        viewModel.onConfirmCampaignBattleStart(null, 7)
+
+        // Проверка: у монстра нет порога раны
+        val monster = viewModel.battleState?.value?.monster
+        assertNull(monster?.damageForWound, "damageForWound должен быть null (нет порога раны)")
+
+        scope.cancel()
     }
 
     //endregion

@@ -2,6 +2,7 @@ package com.primalapp.viewmodel
 
 import com.primalapp.model.Hunter
 import com.primalapp.model.campaign.Achievement
+import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
 import com.primalapp.model.campaign.Element
@@ -65,7 +66,15 @@ data class CampaignUiState(
     val fatalError: String? = null,
     val preBattleHunters: List<Hunter> = emptyList(),
     val isPrologue: Boolean = false,
-    val defeatedBosses: List<String> = emptyList()
+    val defeatedBosses: List<String> = emptyList(),
+    val availableBosses: List<Boss> = emptyList(),
+    val selectedPreBattleBoss: Boss? = null,
+    val selectedPreBattleBossName: String? = null,
+    val preBattleDifficulty: Int = 0,
+    val preBattleDamageForWound: String = "4",
+    val preBattleHealthForStance: String = "7",
+    val preBattleHunterCount: Int = 4,
+    val bossHasNoElement: Boolean = false
 )
 
 class CampaignViewModel(
@@ -86,7 +95,8 @@ class CampaignViewModel(
     companion object {
         val ALL_BOSS_NAMES = listOf(
             "Вираксен", "Торамат", "Коровон", "Харджа", "Дигоракс", "Оруксен",
-            "Фелаксир", "Юром", "Таррагуа", "Моркраас", "Озев", "Иекорос", "Пробуждённый"
+            "Фелаксир", "Юром", "Таррагуа", "Моркраас", "Озев", "Иекорос", "Пробуждённый",
+            "Тараск", "Кситерос", "Зекат", "Зекалит", "Пазис", "Нагарджас"
         )
     }
 
@@ -95,6 +105,7 @@ class CampaignViewModel(
             battleViewModel = BattleViewModel(scope)
         }
         _state.update { it.copy(screen = AppScreen.QuickBattle) }
+        scope.launch { loadBosses() }
     }
 
     fun onCampaignModeSelected() {
@@ -156,17 +167,23 @@ class CampaignViewModel(
     private fun startBattleInternal(campaignId: Long, hunters: List<CampaignHunter>) {
         val battleHunters = hunters.map { Hunter(name = "${it.playerName} (${it.className.displayName})") }
         battleViewModel = BattleViewModel(scope)
-        _state.update { it.copy(preBattleHunters = battleHunters, screen = AppScreen.CampaignBattle(campaignId)) }
+        val difficulty = getDifficultyForChapter(_state.value.currentCampaign?.currentChapter ?: 1)
+        _state.update { it.copy(preBattleHunters = battleHunters, screen = AppScreen.CampaignBattle(campaignId), preBattleDifficulty = difficulty) }
+        scope.launch { loadBosses() }
         observeBattleForAutoSave(campaignId)
     }
 
-    fun onConfirmCampaignBattleStart(damageForWound: Int, healthForStanceChange: Int) {
+    fun onConfirmCampaignBattleStart(damageForWound: Int?, healthForStanceChange: Int?) {
         val hunters = _state.value.preBattleHunters
         if (hunters.isEmpty()) return
+        val boss = _state.value.selectedPreBattleBoss
+        val difficulty = _state.value.preBattleDifficulty
         battleViewModel?.startBattleWithHunters(
             hunters = hunters,
             damageForWound = damageForWound,
-            healthForStanceChange = healthForStanceChange
+            healthForStanceChange = healthForStanceChange,
+            boss = boss,
+            difficulty = difficulty
         )
         _state.update { it.copy(preBattleHunters = emptyList()) }
     }
@@ -263,6 +280,7 @@ class CampaignViewModel(
         scope.launch {
             val trophies = repository.getTrophies(campaignId)
             val isPrologue = _state.value.isPrologue
+            val selectedBoss = _state.value.selectedPreBattleBoss
             val bossNames = if (isPrologue) {
                 listOf("Вираксен")
             } else {
@@ -271,8 +289,9 @@ class CampaignViewModel(
             _state.update {
                 it.copy(
                     showPostVictory = true,
-                    bossName = if (isPrologue) "Вираксен" else "",
-                    bossElement = if (isPrologue) Element.FIRE else null,
+                    bossName = selectedBoss?.name ?: if (isPrologue) "Вираксен" else "",
+                    bossElement = if (selectedBoss != null) selectedBoss.element else if (isPrologue) Element.FIRE else null,
+                    bossHasNoElement = selectedBoss != null && selectedBoss.element == null,
                     defeatedBosses = bossNames,
                     completedQuestId = "",
                     availableQuestsForNext = emptyList(),
@@ -289,6 +308,84 @@ class CampaignViewModel(
 
     fun onVictoryBossSelected(name: String) {
         _state.update { it.copy(bossName = name) }
+    }
+
+    fun onPreBattleBossSelected(name: String?) {
+        if (name != null) {
+            val difficulties = _state.value.availableBosses
+                .filter { it.name == name }
+                .map { it.difficulty }
+                .distinct()
+            val forcedDifficulty = if (difficulties.size == 1) difficulties.first() else null
+            _state.update {
+                it.copy(
+                    selectedPreBattleBossName = name,
+                    preBattleDifficulty = forcedDifficulty ?: it.preBattleDifficulty
+                )
+            }
+        } else {
+            _state.update {
+                it.copy(
+                    selectedPreBattleBossName = null,
+                    selectedPreBattleBoss = null,
+                    preBattleDamageForWound = "4",
+                    preBattleHealthForStance = "7"
+                )
+            }
+            return
+        }
+        resolvePreBattleBoss()
+    }
+
+    private fun resolvePreBattleBoss() {
+        val state = _state.value
+        val name = state.selectedPreBattleBossName ?: return
+        val difficulty = state.preBattleDifficulty
+        val boss = state.availableBosses.find { it.name == name && it.difficulty == difficulty }
+        if (boss != null) {
+            val stance = boss.stances.firstOrNull()
+            _state.update {
+                it.copy(
+                    selectedPreBattleBoss = boss,
+                    preBattleDamageForWound = stance?.damageForWound?.toString() ?: "4",
+                    preBattleHealthForStance = stance?.healthForStanceChange?.toString() ?: ""
+                )
+            }
+        }
+    }
+
+    fun onPreBattleDifficultySelected(difficulty: Int) {
+        _state.update { it.copy(preBattleDifficulty = difficulty) }
+        resolvePreBattleBoss()
+    }
+
+    fun onPreBattleDfwChanged(value: String) {
+        _state.update { it.copy(preBattleDamageForWound = value) }
+    }
+
+    fun onPreBattleHscChanged(value: String) {
+        _state.update { it.copy(preBattleHealthForStance = value) }
+    }
+
+    fun onPreBattleHunterCountChanged(count: Int) {
+        _state.update { it.copy(preBattleHunterCount = count.coerceIn(1, 6)) }
+    }
+
+    private suspend fun loadBosses() {
+        val bosses = repository.getAllBosses()
+        val sorted = bosses.sortedWith(
+            compareBy<Boss> { it.element == null }
+                .thenBy { it.element?.displayName ?: "" }
+                .thenBy { it.name }
+        )
+        _state.update { it.copy(availableBosses = sorted) }
+    }
+
+    fun getDifficultyForChapter(chapter: Int): Int = when {
+        chapter <= 1 -> 0
+        chapter in 2..4 -> 1
+        chapter in 5..8 -> 2
+        else -> 3
     }
 
     fun onVictoryBossElementChanged(element: Element) {
@@ -311,7 +408,7 @@ class CampaignViewModel(
         val state = _state.value
         val campaignId = state.currentCampaign?.id ?: return
         val element = state.bossElement
-        if (element == null) {
+        if (element == null && !state.bossHasNoElement) {
             _state.update { it.copy(error = "Выберите стихию босса") }
             return
         }
@@ -349,8 +446,10 @@ class CampaignViewModel(
                 nextQuestId = questNumbers.joinToString(",") { it.toString() }
             )
             val hunters = state.hunters
-            hunters.forEach { hunter ->
-                addResourceToAll(hunter.id, "ELEMENT", element.name, 1)
+            if (element != null) {
+                hunters.forEach { hunter ->
+                    addResourceToAll(hunter.id, "ELEMENT", element.name, 1)
+                }
             }
             _state.update { it.copy(showPostVictory = false, error = null, selectedQuestNumbers = emptySet(), isPrologue = false) }
             loadCampaignSheet(campaignId)

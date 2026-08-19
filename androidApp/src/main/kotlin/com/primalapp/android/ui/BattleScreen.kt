@@ -40,7 +40,7 @@ import com.primalapp.viewmodel.BattleScreenState
 import com.primalapp.viewmodel.FightPhase
 
 @Composable
-fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
+fun PreBattleScreen(onStart: (Int, Int?, Int) -> Unit) {
     var hunterCount by remember { mutableStateOf("2") }
     var damageForWound by remember { mutableStateOf("4") }
     var healthForStance by remember { mutableStateOf("7") }
@@ -59,7 +59,7 @@ fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
         OutlinedTextField(
             value = damageForWound,
             onValueChange = { damageForWound = it },
-            label = { Text("Урон для нанесения раны на игрока") },
+            label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -77,7 +77,7 @@ fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
                 val count = hunterCount.toIntOrNull()
                 val wound = damageForWound.toIntOrNull()
                 val stance = healthForStance.toIntOrNull()
-                if (count != null && wound != null && stance != null) {
+                if (count != null && stance != null) {
                     onStart(count, wound, stance)
                 }
             },
@@ -87,13 +87,14 @@ fun PreBattleScreen(onStart: (Int, Int, Int) -> Unit) {
 }
 
 @Composable
-fun SetupScreen(onConfirm: (Int, Int, Int) -> Unit) {
+fun SetupScreen(onConfirm: (Int, Int?, Int) -> Unit) {
     PreBattleScreen(onStart = onConfirm)
 }
 
 @Composable
 fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
     val monster = state.monster
+    var showSurrenderDialog by remember { mutableStateOf(false) }
     val phaseLabel = when (state.phase) {
         FightPhase.PHASE_I -> "I"
         FightPhase.PHASE_II -> "II"
@@ -119,11 +120,11 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Накопленный урон: ${monster.accumulatedDamage}")
-            Text("Прочность: ${monster.damageForWound}")
+            Text("Прочность: ${monster.damageForWound?.toString() ?: "нет"}")
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Статус: ${if (monster.isHardened) "Затвердевший" else "Обычный"}")
-            Text("Стойка сменится при: ${monster.healthForStanceChange} HP")
+            Text("Смена стойки: ${monster.healthForStanceChange?.let { "при $it HP" } ?: "по запросу"}")
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -134,6 +135,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         Text("Нанести урон:", fontWeight = FontWeight.Bold)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             Button(onClick = { viewModel.onQuickButtonPress(1) }) { Text("+1") }
+            Button(onClick = { viewModel.onQuickButtonPress(5) }) { Text("+5") }
             Button(onClick = { viewModel.onQuickButtonPress(10) }) { Text("+10") }
             Button(onClick = { viewModel.onQuickButtonPress(50) }) { Text("+50") }
         }
@@ -183,29 +185,64 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        OutlinedButton(onClick = onBackToMenu, modifier = Modifier.fillMaxWidth()) {
-            Text("Выход в меню")
+        if (monster.healthForStanceChange == null) {
+            Button(onClick = { viewModel.onManualStanceChange() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Сменить стойку")
+            }
+            Spacer(Modifier.height(8.dp))
         }
-        Spacer(Modifier.height(8.dp))
 
         Button(onClick = { viewModel.endRound() }, modifier = Modifier.fillMaxWidth()) {
             Text("Закончить раунд")
+        }
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { showSurrenderDialog = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Сдаться")
+        }
+        Spacer(Modifier.height(8.dp))
+
+        OutlinedButton(onClick = onBackToMenu, modifier = Modifier.fillMaxWidth()) {
+            Text("Выход в меню")
         }
         if (state.message.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text(state.message, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
         }
     }
+
+    if (showSurrenderDialog) {
+        AlertDialog(
+            onDismissRequest = { showSurrenderDialog = false },
+            title = { Text("Сдаться?") },
+            text = { Text("Вы уверены, что хотите сдаться? Бой будет засчитан как поражение.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showSurrenderDialog = false
+                    viewModel.onSurrender()
+                }) { Text("Сдаться") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSurrenderDialog = false }) { Text("Отмена") }
+            }
+        )
+    }
 }
 
 @Composable
 fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
-    var damageForWound by remember { mutableStateOf("") }
-    var healthForStance by remember { mutableStateOf("") }
+    val battleState = viewModel.state.value
+    val initialDfw = battleState.pendingDamageForWound
+    val initialHsc = battleState.pendingHealthForStanceChange
+    var damageForWound by remember(initialDfw) { mutableStateOf(initialDfw) }
+    var healthForStance by remember(initialHsc) { mutableStateOf(initialHsc) }
     var bossHealth by remember { mutableStateOf("") }
 
-    val damageForWoundVal = damageForWound.toIntOrNull() ?: 0
-    val healthForStanceVal = healthForStance.toIntOrNull() ?: 0
+    val damageForWoundVal = damageForWound.toIntOrNull()
+    val healthForStanceVal = healthForStance.toIntOrNull()
     val bossHealthVal = bossHealth.toIntOrNull() ?: 0
 
     AlertDialog(
@@ -215,10 +252,10 @@ fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
             Column {
                 Text("Монстр перешёл на следующую стойку. Укажите новые параметры:")
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = damageForWound, onValueChange = { damageForWound = it }, label = { Text("Урон для нанесения раны на игрока") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = damageForWound, onValueChange = { damageForWound = it }, label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(value = healthForStance, onValueChange = { healthForStance = it }, label = { Text("Здоровье для смены стойки") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                if (healthForStanceVal > 0) {
+                OutlinedTextField(value = healthForStance, onValueChange = { healthForStance = it }, label = { Text("Здоровье для смены стойки (пусто = по запросу)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                if (healthForStanceVal != null && healthForStanceVal > 0) {
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(value = bossHealth, onValueChange = { bossHealth = it }, label = { Text("Здоровье босса в новой стойке") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 }
@@ -226,7 +263,7 @@ fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
         },
         confirmButton = {
             TextButton(onClick = {
-                if (damageForWoundVal > 0 && healthForStanceVal >= 0) {
+                if (damageForWoundVal == null || damageForWoundVal > 0) {
                     viewModel.confirmPhaseChange(damageForWoundVal, healthForStanceVal, bossHealthVal)
                 }
             }) { Text("OK") }

@@ -20,11 +20,23 @@ fun Monster.takeDamage(amount: Int): DamageResult {
     }
 
     accumulatedDamage += amount
+
+    val dfw = damageForWound
+    if (dfw == null) {
+        return DamageResult(
+            woundsInflicted = 0,
+            remainingDamage = accumulatedDamage,
+            phaseChanged = false,
+            newPhase = currentPhase,
+            message = "Урон накоплен, но рана не нанесена (нет порога раны)."
+        )
+    }
+
     var wounds = 0
     var phaseChanged = false
 
-    while (accumulatedDamage >= damageForWound) {
-        accumulatedDamage -= damageForWound
+    while (accumulatedDamage >= dfw) {
+        accumulatedDamage -= dfw
         currentHealth -= 1
         wounds++
 
@@ -40,7 +52,8 @@ fun Monster.takeDamage(amount: Int): DamageResult {
             )
         }
 
-        if (currentHealth <= healthForStanceChange && currentPhase < maxPhases) {
+        val hsc = healthForStanceChange
+        if (hsc != null && currentHealth <= hsc && currentPhase < maxPhases) {
             currentPhase++
             phaseChanged = true
         }
@@ -76,14 +89,17 @@ private fun Monster.healWound(amount: Int): DamageResult {
         healRemaining -= reduceBy
     }
 
-    while (healRemaining >= damageForWound) {
-        currentHealth += 1
-        woundsHealed++
-        healRemaining -= damageForWound
-    }
+    val dfw = damageForWound
+    if (dfw != null) {
+        while (healRemaining >= dfw) {
+            currentHealth += 1
+            woundsHealed++
+            healRemaining -= dfw
+        }
 
-    if (healRemaining > 0) {
-        accumulatedDamage = damageForWound - healRemaining
+        if (healRemaining > 0) {
+            accumulatedDamage = dfw - healRemaining
+        }
     }
 
     return DamageResult(
@@ -123,8 +139,10 @@ fun Monster.toggleHardened(): Boolean {
     return isHardened
 }
 
-fun Monster.resetPhase(damageForWound: Int, healthForStanceChange: Int) {
+fun Monster.resetPhase(damageForWound: Int?, healthForStanceChange: Int?) {
     this.damageForWound = damageForWound
     this.healthForStanceChange = healthForStanceChange
-    this.accumulatedDamage = 0
+    if (this.isHardened) {
+        this.accumulatedDamage = 0
+    }
 }

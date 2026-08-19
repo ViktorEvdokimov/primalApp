@@ -14,6 +14,7 @@ import com.primalapp.domain.ResourceExchangeValidator
 import com.primalapp.domain.ResourceExchangeValidatorImpl
 import com.primalapp.domain.SkillValidatorImpl
 import com.primalapp.model.campaign.Achievement
+import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
 import com.primalapp.model.campaign.Element
@@ -263,6 +264,9 @@ class CampaignRepositoryImpl(
 
     override suspend fun getAvailableQuests(campaignId: Long): List<Quest> =
         questDao.getAvailableQuestsList(campaignId).map { it.toDomain() }
+
+    override suspend fun getAllBosses(): List<Boss> =
+        database.bossDao().getAllBosses().map { it.toDomain() }
 
     private suspend fun initSkillTree(hunterId: Long) {
         val skills = SkillBranch.entries.flatMap { branch ->

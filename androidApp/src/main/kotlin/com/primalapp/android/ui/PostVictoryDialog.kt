@@ -78,35 +78,37 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
-                ExposedDropdownMenuBox(
-                    expanded = elementDropdownExpanded,
-                    onExpandedChange = { elementDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = state.bossElement?.displayName ?: "",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Стихия босса") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = elementDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(
+                if (!state.bossHasNoElement) {
+                    ExposedDropdownMenuBox(
                         expanded = elementDropdownExpanded,
-                        onDismissRequest = { elementDropdownExpanded = false }
+                        onExpandedChange = { elementDropdownExpanded = it },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Element.entries.forEach { elem ->
-                            DropdownMenuItem(
-                                text = { Text(elem.displayName) },
-                                onClick = {
-                                    viewModel.onVictoryBossElementChanged(elem)
-                                    elementDropdownExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = state.bossElement?.displayName ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Стихия босса") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = elementDropdownExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = elementDropdownExpanded,
+                            onDismissRequest = { elementDropdownExpanded = false }
+                        ) {
+                            Element.entries.forEach { elem ->
+                                DropdownMenuItem(
+                                    text = { Text(elem.displayName) },
+                                    onClick = {
+                                        viewModel.onVictoryBossElementChanged(elem)
+                                        elementDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
 
                 Text("Открытые задания:", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))

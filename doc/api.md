@@ -13,7 +13,7 @@ data class Monster(
     var currentPhase: Int = 1,              // Текущая фаза (1, 2, 3)
     var currentHealth: Int = 10,            // Текущее здоровье
     var accumulatedDamage: Int = 0,         // Накопленный (неприменённый) урон
-    var damageForWound: Int = 4,            // Урон, требуемый для 1 раны
+    var damageForWound: Int? = 4,           // Урон, требуемый для 1 раны (null = нет порога раны)
     var healthForStanceChange: Int = 7,     // Порог здоровья для смены стойки
     var rage: Int = 0,                      // Текущая ярость
     var isHardened: Boolean = false,        // Статус "затвердевший"
@@ -90,12 +90,13 @@ data class DamageResult(
 **Алгоритм:**
 1. Если `isDefeated` → возврат `"Монстр уже побеждён."`
 2. `accumulatedDamage += amount`
-3. Цикл `while (accumulatedDamage >= damageForWound)`:
+3. Если `damageForWound == null` → раны не наносятся, возврат `DamageResult(wounds=0, remaining=accumulatedDamage, ...)` (накопление без раны)
+4. Цикл `while (accumulatedDamage >= damageForWound)`:
    - `accumulatedDamage -= damageForWound`, `currentHealth -= 1`
    - Если `currentHealth <= 0` → `isDefeated = true`, возврат
    - Если `!isHardened && health <= healthForStanceChange && phase < maxPhases` → `currentPhase++`
-4. Если `isHardened && wounds > 0` → `accumulatedDamage = 0` (сгорание)
-5. Возврат `DamageResult`
+5. Если `isHardened && wounds > 0` → `accumulatedDamage = 0` (сгорание)
+6. Возврат `DamageResult`
 
 **Пример:**
 ```
@@ -143,13 +144,13 @@ monster(currentHealth=10, damageForWound=4, isHardened=true).takeDamage(9)
 
 ---
 
-#### `resetPhase(damageForWound: Int, healthForStanceChange: Int)`
-**Строка:** `90`
+#### `resetPhase(damageForWound: Int?, healthForStanceChange: Int?)`
+**Строка:** `127`
 
 Сбрасывает параметры фазы:
-- `this.damageForWound = damageForWound`
+- `this.damageForWound = damageForWound` (null = нет порога раны)
 - `this.healthForStanceChange = healthForStanceChange`
-- `this.accumulatedDamage = 0`
+- `if (this.isHardened) this.accumulatedDamage = 0` — остаток урона сгорает только для затвердевшего монстра; для обычного монстра остаток переносится на новую стойку (по правилам «Перенесите на неё все жетоны урона с предыдущей карты стойки»)
 
 Вызывается при подтверждении смены стойки.
 
@@ -249,7 +250,7 @@ data class BattleScreenState(
 enum class InputMode {
     NONE,          // Начальное состояние / после сброса
     MANUAL,        // Пользователь вводит урон с клавиатуры
-    QUICK_BUTTON   // Пользователь нажал кнопку (+1/+10/+50) — активен таймер
+    QUICK_BUTTON   // Пользователь нажал кнопку (+1/+5/+10/+50) — активен таймер
 }
 ```
 
@@ -291,14 +292,14 @@ class BattleViewModel(
 
 ---
 
-#### `startBattle(hunterCount: Int, damageForWound: Int, healthForStanceChange: Int)`
-**Строка:** `65`
+#### `startBattle(hunterCount: Int, damageForWound: Int?, healthForStanceChange: Int?)`
+**Строка:** `88`
 
 Создаёт охотников и монстра, переводит фазу в `PHASE_I`.
 
 **Параметры:**
 - `hunterCount` — количество охотников (1–4)
-- `damageForWound` — урон для одной раны
+- `damageForWound` — урон для одной раны (`null` = нет порога раны, урон накапливается)
 - `healthForStanceChange` — порог здоровья для смены стойки
 
 ---
@@ -320,7 +321,7 @@ class BattleViewModel(
 #### `onQuickButtonPress(amount: Int)`
 **Строка:** `98`
 
-Обработчик нажатия кнопок быстрого добавления (+1/+10/+50).
+Обработчик нажатия кнопок быстрого добавления (+1/+5/+10/+50).
 
 **Логика:**
 - Если режим `MANUAL`: накопление урона **без** запуска таймера
@@ -356,10 +357,10 @@ class BattleViewModel(
 
 ---
 
-#### `confirmPhaseChange(damageForWound: Int, healthForStanceChange: Int)`
-**Строка:** `189`
+#### `confirmPhaseChange(damageForWound: Int?, healthForStanceChange: Int?, bossHealth: Int = 0)`
+**Строка:** `379`
 
-Подтверждает смену стойки: вызывает `monster.resetPhase(...)`, закрывает диалог.
+Подтверждает смену стойки: вызывает `monster.resetPhase(...)`, закрывает диалог. `damageForWound == null` — стойка без порога раны. При переходе со стойки без порога (dfw=null) на стойку с порогом весь `accumulatedDamage` немедленно пересчитывается в раны по прочности новой стойки.
 
 ---
 

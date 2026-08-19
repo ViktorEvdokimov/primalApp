@@ -1,6 +1,7 @@
 package com.primalapp.repository
 
 import com.primalapp.model.campaign.Achievement
+import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
 import com.primalapp.model.campaign.Element
@@ -61,4 +62,5 @@ interface CampaignRepository {
     suspend fun completeQuest(campaignId: Long, questId: String)
     suspend fun getCompletedQuests(campaignId: Long): List<Quest>
     suspend fun getAvailableQuests(campaignId: Long): List<Quest>
+    suspend fun getAllBosses(): List<Boss>
 }

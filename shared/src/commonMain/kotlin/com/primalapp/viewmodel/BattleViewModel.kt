@@ -3,6 +3,8 @@ package com.primalapp.viewmodel
 import com.primalapp.model.ext.DamageResult
 import com.primalapp.model.Hunter
 import com.primalapp.model.Monster
+import com.primalapp.model.campaign.Boss
+import com.primalapp.model.campaign.BossStance
 import com.primalapp.model.ext.addRagePerHunter
 import com.primalapp.model.ext.endRound
 import com.primalapp.model.ext.removeRage
@@ -48,8 +50,8 @@ data class MonsterSnapshot(
     val currentPhase: Int,
     val isDefeated: Boolean,
     val rage: Int,
-    val damageForWound: Int,
-    val healthForStanceChange: Int
+    val damageForWound: Int?,
+    val healthForStanceChange: Int?
 )
 
 data class BattleScreenState(
@@ -69,7 +71,9 @@ data class BattleScreenState(
     val damageInputText: String = "",
     val inputMode: InputMode = InputMode.NONE,
     val canUndo: Boolean = false,
-    val showRageSurgeDialog: Boolean = false
+    val showRageSurgeDialog: Boolean = false,
+    val selectedBoss: Boss? = null,
+    val selectedDifficulty: Int = 0
 )
 
 class BattleViewModel(
@@ -83,8 +87,8 @@ class BattleViewModel(
 
     fun startBattle(
         hunterCount: Int,
-        damageForWound: Int,
-        healthForStanceChange: Int
+        damageForWound: Int?,
+        healthForStanceChange: Int?
     ) {
         val hunters = (1..hunterCount).map { i ->
             Hunter(name = "Охотник $i")
@@ -94,14 +98,18 @@ class BattleViewModel(
 
     fun startBattleWithHunters(
         hunters: List<Hunter>,
-        damageForWound: Int,
-        healthForStanceChange: Int
+        damageForWound: Int?,
+        healthForStanceChange: Int?,
+        boss: Boss? = null,
+        difficulty: Int = 0
     ) {
+        val stance = boss?.getStance(0)
+        val monsterName = boss?.name ?: "Монстр"
         val monster = Monster(
-            name = "Вираксен",
+            name = monsterName,
             currentHealth = 10,
-            damageForWound = hunters.size * damageForWound,
-            healthForStanceChange = healthForStanceChange
+            damageForWound = if (stance != null) stance.damageForWound?.let { hunters.size * it } else damageForWound?.let { hunters.size * it },
+            healthForStanceChange = if (stance != null) stance.healthForStanceChange else healthForStanceChange
         )
         actionHistory.clear()
         _state.update {
@@ -116,7 +124,9 @@ class BattleViewModel(
                 inputMode = InputMode.NONE,
                 canUndo = false,
                 isTimerRunning = false,
-                message = "Бой начался! Фаза I"
+                message = "Бой начался! Фаза I",
+                selectedBoss = boss,
+                selectedDifficulty = difficulty
             )
         }
     }
@@ -131,6 +141,38 @@ class BattleViewModel(
             phase == FightPhase.PHASE_VII ||
             phase == FightPhase.PHASE_VIII ||
             phase == FightPhase.PHASE_IX
+    }
+
+    private fun phaseForNumber(number: Int): FightPhase = when (number) {
+        2 -> FightPhase.PHASE_II
+        3 -> FightPhase.PHASE_III
+        4 -> FightPhase.PHASE_IV
+        5 -> FightPhase.PHASE_V
+        6 -> FightPhase.PHASE_VI
+        7 -> FightPhase.PHASE_VII
+        8 -> FightPhase.PHASE_VIII
+        9 -> FightPhase.PHASE_IX
+        else -> FightPhase.PHASE_I
+    }
+
+    fun onManualStanceChange() {
+        val current = _state.value
+        val monster = current.monster
+        if (monster.healthForStanceChange != null) return
+        if (monster.currentPhase >= monster.maxPhases) return
+
+        monster.currentPhase++
+        val newPhase = phaseForNumber(monster.currentPhase)
+
+        _state.update {
+            it.copy(
+                phase = newPhase,
+                monster = monster,
+                showPhaseChangeDialog = true,
+                pendingDamageForWound = current.selectedBoss?.getStance(monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
+                pendingHealthForStanceChange = current.selectedBoss?.getStance(monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: ""
+            )
+        }
     }
 
     private fun saveSnapshot(actionType: ActionType, description: String) {
@@ -327,24 +369,49 @@ class BattleViewModel(
                 phase = newPhase,
                 monster = monster,
                 showPhaseChangeDialog = result.phaseChanged && newPhase != FightPhase.VICTORY,
+                pendingDamageForWound = current.selectedBoss?.getStance(monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
+                pendingHealthForStanceChange = current.selectedBoss?.getStance(monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: "",
                 canUndo = actionHistory.isNotEmpty()
             )
         }
     }
 
-    fun confirmPhaseChange(damageForWound: Int, healthForStanceChange: Int, bossHealth: Int = 0) {
+    fun confirmPhaseChange(damageForWound: Int?, healthForStanceChange: Int?, bossHealth: Int = 0) {
         val current = _state.value
+        val previousDfw = current.monster.damageForWound
         saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${current.monster.currentPhase + 1}")
-        val totalDamageForWound = damageForWound * current.hunterCount
+        val totalDamageForWound = damageForWound?.let { it * current.hunterCount }
         current.monster.resetPhase(totalDamageForWound, healthForStanceChange)
         if (bossHealth > 0) {
             current.monster.currentHealth = bossHealth
         }
+
+        val immediateResult = if (previousDfw == null && totalDamageForWound != null && current.monster.accumulatedDamage > 0) {
+            current.monster.takeDamage(0)
+        } else {
+            null
+        }
+
+        val newPhase = when {
+            immediateResult?.message?.contains("побеждён") == true -> FightPhase.VICTORY
+            immediateResult?.phaseChanged == true -> phaseForNumber(immediateResult.newPhase)
+            else -> current.phase
+        }
+
+        val hscText = healthForStanceChange?.let { "$it HP" } ?: "по запросу"
+        val dfwText = totalDamageForWound?.let { "Урон для раны: $it" } ?: "Порог раны отсутствует"
+        val message = buildString {
+            if (immediateResult != null) append(immediateResult.message).append(' ')
+            append("Стойка ${current.monster.currentPhase}. ").append(dfwText).append(", смена: ").append(hscText)
+        }
+
         _state.update {
             it.copy(
                 showPhaseChangeDialog = false,
-                message = "Стойка ${current.monster.currentPhase}. " +
-                    "Урон для раны: $totalDamageForWound, смена при: $healthForStanceChange HP",
+                phase = newPhase,
+                monster = current.monster,
+                lastDamageResult = immediateResult,
+                message = message,
                 canUndo = actionHistory.isNotEmpty()
             )
         }
@@ -491,6 +558,8 @@ class BattleViewModel(
                 isTimerRunning = false,
                 canUndo = actionHistory.isNotEmpty(),
                 showPhaseChangeDialog = phaseUpdated && finalPhase != FightPhase.DEFEAT,
+                pendingDamageForWound = current.selectedBoss?.getStance(current.monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
+                pendingHealthForStanceChange = current.selectedBoss?.getStance(current.monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: "",
                 showRageSurgeDialog = finalPhase != FightPhase.DEFEAT &&
                     current.monster.rage >= current.hunterCount * 3,
                 message = if (defeatByRounds) {
@@ -498,6 +567,21 @@ class BattleViewModel(
                 } else {
                     "Раунд $nextRound. Ярость: ${current.monster.rage}"
                 }
+            )
+        }
+    }
+
+    fun onSurrender() {
+        timerJob?.cancel()
+        _state.update {
+            it.copy(
+                phase = FightPhase.DEFEAT,
+                showPhaseChangeDialog = false,
+                showRageSurgeDialog = false,
+                isTimerRunning = false,
+                pendingDamage = 0,
+                damageInputText = "",
+                message = "Поражение! Вы сдались."
             )
         }
     }

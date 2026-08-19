@@ -6,8 +6,8 @@ data class Monster(
     var currentPhase: Int = 1,
     var currentHealth: Int = 10,
     var accumulatedDamage: Int = 0,
-    var damageForWound: Int = 4,
-    var healthForStanceChange: Int = 7,
+    var damageForWound: Int? = 4,
+    var healthForStanceChange: Int? = 7,
     var rage: Int = 0,
     var isHardened: Boolean = false,
     var isDefeated: Boolean = false

@@ -26,7 +26,7 @@ data class TrophyEntity(
     val campaignId: Long,
     @ColumnInfo(name = "boss_name")
     val bossName: String,
-    val element: String,
+    val element: String?,
     val chapter: Int,
     @ColumnInfo(name = "acquired_at")
     val acquiredAt: Long = currentTimeMillis()

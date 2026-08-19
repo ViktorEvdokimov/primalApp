@@ -1,6 +1,7 @@
 package com.primalapp.database.mapper
 
 import com.primalapp.database.entity.AchievementEntity
+import com.primalapp.database.entity.BossEntity
 import com.primalapp.database.entity.CampaignEntity
 import com.primalapp.database.entity.HunterEntity
 import com.primalapp.database.entity.QuestEntity
@@ -8,6 +9,8 @@ import com.primalapp.database.entity.ResourceEntity
 import com.primalapp.database.entity.SkillEntity
 import com.primalapp.database.entity.TrophyEntity
 import com.primalapp.model.campaign.Achievement
+import com.primalapp.model.campaign.Boss
+import com.primalapp.model.campaign.BossStance
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
 import com.primalapp.model.campaign.Element
@@ -103,7 +106,7 @@ fun Achievement.toEntity(campaignId: Long) = AchievementEntity(
 
 fun TrophyEntity.toDomain() = Trophy(
     bossName = bossName,
-    element = Element.valueOf(element),
+    element = element?.let { Element.valueOf(it) },
     chapter = chapter,
     acquiredAt = acquiredAt
 )
@@ -111,7 +114,7 @@ fun TrophyEntity.toDomain() = Trophy(
 fun Trophy.toEntity(campaignId: Long) = TrophyEntity(
     campaignId = campaignId,
     bossName = bossName,
-    element = element.name,
+    element = element?.name,
     chapter = chapter,
     acquiredAt = acquiredAt
 )
@@ -135,4 +138,18 @@ fun Quest.toEntity(campaignId: Long) = QuestEntity(
     questNumber = questNumber,
     isCompleted = isCompleted,
     isAvailable = isAvailable
+)
+
+fun BossEntity.toDomain() = Boss(
+    id = id,
+    name = name,
+    element = element?.let { Element.valueOf(it) },
+    difficulty = difficulty,
+    stances = buildList {
+        add(BossStance(stance1Dfw, stance1Hsc))
+        add(BossStance(stance2Dfw, stance2Hsc))
+        add(BossStance(stance3Dfw, stance3Hsc))
+        if (stance4Dfw > 0) add(BossStance(stance4Dfw, stance4Hsc))
+        if (stance5Dfw > 0) add(BossStance(stance5Dfw, stance5Hsc))
+    }
 )
