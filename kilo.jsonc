@@ -8,13 +8,5 @@
 
   // Project-wide custom rules and instruction files
   "instructions": [
-  ],
-
-  // Example tool auto-approvals often coupled with skill automation
-  "permissions": {
-    "autoApprove": [
-      "read_file",
-      "semantic_search"
-    ]
-  }
+  ]
 }

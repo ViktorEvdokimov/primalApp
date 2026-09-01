@@ -16,7 +16,10 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("campaign_id")]
+    indices = [
+        Index("campaign_id"),
+        Index(value = ["campaign_id", "quest_id"], unique = true)
+    ]
 )
 data class QuestEntity(
     @PrimaryKey(autoGenerate = true)

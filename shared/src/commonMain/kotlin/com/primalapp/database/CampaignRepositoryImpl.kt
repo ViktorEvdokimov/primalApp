@@ -17,6 +17,7 @@ import com.primalapp.model.campaign.Achievement
 import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
+import com.primalapp.model.campaign.ChapterInfo
 import com.primalapp.model.campaign.Element
 import com.primalapp.model.campaign.Material
 import com.primalapp.model.campaign.Plant
@@ -24,6 +25,7 @@ import com.primalapp.model.campaign.Quest
 import com.primalapp.model.campaign.ResourceType
 import com.primalapp.model.campaign.SkillBranch
 import com.primalapp.model.campaign.SkillNode
+import com.primalapp.model.campaign.TaskInfo
 import com.primalapp.model.campaign.Trophy
 import com.primalapp.repository.CampaignRepository
 
@@ -38,6 +40,8 @@ class CampaignRepositoryImpl(
     private val achievementDao get() = database.achievementDao()
     private val trophyDao get() = database.trophyDao()
     private val questDao get() = database.questDao()
+    private val taskInfoDao get() = database.taskInfoDao()
+    private val chapterInfoDao get() = database.chapterInfoDao()
 
     private val skillValidator = SkillValidatorImpl()
     private val exchangeValidator = ResourceExchangeValidatorImpl()
@@ -100,7 +104,12 @@ class CampaignRepositoryImpl(
 
     override suspend fun getMaterials(hunterId: Long): Map<Material, Int> =
         resourceDao.getResourcesByTypeList(hunterId, "MATERIAL")
-            .associate { Material.valueOf(it.resourceName) to it.quantity }
+            .mapNotNull { entry ->
+                val material = runCatching { Material.valueOf(entry.resourceName) }.getOrNull()
+                    ?: return@mapNotNull null
+                material to entry.quantity
+            }
+            .toMap()
 
     override suspend fun getPlants(hunterId: Long): Map<Plant, Int> =
         resourceDao.getResourcesByTypeList(hunterId, "PLANT")
@@ -219,6 +228,20 @@ class CampaignRepositoryImpl(
         )
     }
 
+    override suspend fun updateForgeLevel(campaignId: Long, level: Int) {
+        val campaign = campaignDao.getCampaign(campaignId) ?: return
+        campaignDao.updateCampaign(
+            campaign.copy(forgeLevel = level, updatedAt = currentTimeMillis())
+        )
+    }
+
+    override suspend fun updateLabLevel(campaignId: Long, level: Int) {
+        val campaign = campaignDao.getCampaign(campaignId) ?: return
+        campaignDao.updateCampaign(
+            campaign.copy(labLevel = level, updatedAt = currentTimeMillis())
+        )
+    }
+
     override suspend fun getForgeLevel(campaignId: Long): Int =
         campaignDao.getCampaign(campaignId)?.forgeLevel ?: 1
 
@@ -228,7 +251,6 @@ class CampaignRepositoryImpl(
     override suspend fun saveVictory(campaignId: Long, trophy: Trophy, completedQuestId: String, nextQuestId: String?) {
         saveTrophy(campaignId, trophy)
         completeQuest(campaignId, completedQuestId)
-        advanceChapter(campaignId)
         if (nextQuestId != null) {
             questDao.makeQuestAvailable(campaignId, nextQuestId)
         }
@@ -252,11 +274,29 @@ class CampaignRepositoryImpl(
         questDao.getQuestsList(campaignId).map { it.toDomain() }
 
     override suspend fun saveQuest(campaignId: Long, quest: Quest) {
-        questDao.insertQuest(quest.toEntity(campaignId))
+        val entity = quest.toEntity(campaignId)
+        questDao.upsertQuest(
+            campaignId = entity.campaignId,
+            questId = entity.questId,
+            name = entity.name,
+            chapter = entity.chapter,
+            element = entity.element,
+            questNumber = entity.questNumber,
+            isCompleted = entity.isCompleted,
+            isAvailable = entity.isAvailable
+        )
     }
 
     override suspend fun completeQuest(campaignId: Long, questId: String) {
         questDao.completeQuest(campaignId, questId)
+    }
+
+    override suspend fun uncompleteQuest(campaignId: Long, questId: String) {
+        questDao.uncompleteQuest(campaignId, questId)
+    }
+
+    override suspend fun setQuestUnavailable(campaignId: Long, questId: String) {
+        questDao.setQuestUnavailable(campaignId, questId)
     }
 
     override suspend fun getCompletedQuests(campaignId: Long): List<Quest> =
@@ -267,6 +307,18 @@ class CampaignRepositoryImpl(
 
     override suspend fun getAllBosses(): List<Boss> =
         database.bossDao().getAllBosses().map { it.toDomain() }
+
+    override suspend fun getAllTaskInfo(): List<TaskInfo> =
+        taskInfoDao.getAllTaskInfo().map { it.toDomain() }
+
+    override suspend fun getTaskInfo(questNumber: Int): TaskInfo? =
+        taskInfoDao.getTaskInfo(questNumber)?.toDomain()
+
+    override suspend fun getAllChapterInfo(): List<ChapterInfo> =
+        chapterInfoDao.getAllChapterInfo().map { it.toDomain() }
+
+    override suspend fun getChapterInfo(chapter: Int): ChapterInfo? =
+        chapterInfoDao.getChapterInfo(chapter)?.toDomain()
 
     private suspend fun initSkillTree(hunterId: Long) {
         val skills = SkillBranch.entries.flatMap { branch ->

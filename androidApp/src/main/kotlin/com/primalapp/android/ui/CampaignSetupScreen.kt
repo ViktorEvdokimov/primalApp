@@ -48,16 +48,27 @@ fun CampaignSetupScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
         Text("Выберите классы охотников:", fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(8.dp))
         HunterClass.entries.forEach { cls ->
+            val isSelected = state.selectedClasses.contains(cls)
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(
-                    checked = state.selectedClasses.contains(cls),
+                    checked = isSelected,
                     onCheckedChange = { viewModel.onClassToggled(cls) }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(cls.displayName, fontSize = 16.sp)
+                Text(cls.displayName, fontSize = 16.sp, modifier = Modifier.width(100.dp))
+                if (isSelected) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    OutlinedTextField(
+                        value = state.hunterPlayerNames[cls].orEmpty(),
+                        onValueChange = { viewModel.onHunterPlayerNameChanged(cls, it) },
+                        label = { Text("Имя игрока") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(16.dp))

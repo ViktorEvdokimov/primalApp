@@ -4,6 +4,7 @@ import com.primalapp.model.campaign.Achievement
 import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
+import com.primalapp.model.campaign.ChapterInfo
 import com.primalapp.model.campaign.Element
 import com.primalapp.model.campaign.Material
 import com.primalapp.model.campaign.Plant
@@ -11,6 +12,7 @@ import com.primalapp.model.campaign.Quest
 import com.primalapp.model.campaign.ResourceType
 import com.primalapp.model.campaign.SkillBranch
 import com.primalapp.model.campaign.SkillNode
+import com.primalapp.model.campaign.TaskInfo
 import com.primalapp.model.campaign.Trophy
 import com.primalapp.domain.ExchangeResult
 
@@ -46,6 +48,8 @@ interface CampaignRepository {
 
     suspend fun advanceChapter(campaignId: Long)
     suspend fun updateChapter(campaignId: Long, chapter: Int)
+    suspend fun updateForgeLevel(campaignId: Long, level: Int) {}
+    suspend fun updateLabLevel(campaignId: Long, level: Int) {}
     suspend fun getForgeLevel(campaignId: Long): Int
     suspend fun getLabLevel(campaignId: Long): Int
 
@@ -60,7 +64,15 @@ interface CampaignRepository {
     suspend fun getQuests(campaignId: Long): List<Quest>
     suspend fun saveQuest(campaignId: Long, quest: Quest)
     suspend fun completeQuest(campaignId: Long, questId: String)
+    suspend fun uncompleteQuest(campaignId: Long, questId: String) {}
+    suspend fun setQuestUnavailable(campaignId: Long, questId: String) {}
     suspend fun getCompletedQuests(campaignId: Long): List<Quest>
     suspend fun getAvailableQuests(campaignId: Long): List<Quest>
     suspend fun getAllBosses(): List<Boss>
+
+    suspend fun getAllTaskInfo(): List<TaskInfo> = emptyList()
+    suspend fun getTaskInfo(questNumber: Int): TaskInfo? = null
+
+    suspend fun getAllChapterInfo(): List<ChapterInfo> = emptyList()
+    suspend fun getChapterInfo(chapter: Int): ChapterInfo? = null
 }

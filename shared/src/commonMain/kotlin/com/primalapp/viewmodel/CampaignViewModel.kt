@@ -5,6 +5,9 @@ import com.primalapp.model.campaign.Achievement
 import com.primalapp.model.campaign.Boss
 import com.primalapp.model.campaign.Campaign
 import com.primalapp.model.campaign.CampaignHunter
+import com.primalapp.model.campaign.ChapterInfo
+import com.primalapp.model.campaign.ConditionalMessage
+import com.primalapp.model.campaign.ConditionalQuestOpen
 import com.primalapp.model.campaign.Element
 import com.primalapp.model.campaign.HunterClass
 import com.primalapp.model.campaign.Material
@@ -13,6 +16,9 @@ import com.primalapp.model.campaign.Quest
 import com.primalapp.model.campaign.ResourceType
 import com.primalapp.model.campaign.SkillBranch
 import com.primalapp.model.campaign.SkillNode
+import com.primalapp.model.campaign.TaskCondition
+import com.primalapp.model.campaign.TaskConditionKind
+import com.primalapp.model.campaign.TaskInfo
 import com.primalapp.model.campaign.Trophy
 import com.primalapp.repository.CampaignRepository
 import kotlinx.coroutines.CoroutineScope
@@ -34,11 +40,23 @@ sealed class AppScreen {
     data object QuickBattle : AppScreen()
 }
 
+enum class QuestRewardsMode {
+    VICTORY,
+    DEFEAT
+}
+
+enum class ExchangeMode {
+    SELL,
+    EXCHANGE,
+    GET_FROM_ALLY
+}
+
 data class CampaignUiState(
     val screen: AppScreen = AppScreen.MainMenu,
     val campaigns: List<Campaign> = emptyList(),
     val campaignName: String = "",
     val selectedClasses: List<HunterClass> = emptyList(),
+    val hunterPlayerNames: Map<HunterClass, String> = emptyMap(),
     val currentCampaign: Campaign? = null,
     val hunters: List<CampaignHunter> = emptyList(),
     val selectedHunterIndex: Int = 0,
@@ -46,9 +64,13 @@ data class CampaignUiState(
     val materials: Map<Material, Int> = emptyMap(),
     val plants: Map<Plant, Int> = emptyMap(),
     val elements: Map<Element, Int> = emptyMap(),
+    val victoryMaterials: Map<Material, Int> = emptyMap(),
+    val victoryPlants: Map<Plant, Int> = emptyMap(),
     val notes: String = "",
     val availableSkillBranches: List<SkillBranch> = emptyList(),
     val showExchangeDialog: Boolean = false,
+    val exchangeMode: ExchangeMode? = null,
+    val exchangeMessage: String = "",
     val exchangeResourceType: ResourceType? = null,
     val exchangeResourceName: String = "",
     val exchangeAmount: String = "0",
@@ -58,7 +80,10 @@ data class CampaignUiState(
     val completedQuestId: String = "",
     val availableQuestsForNext: List<Quest> = emptyList(),
     val selectedNextQuestId: String? = null,
+    val showQuestSelectDialog: Boolean = false,
+    val activeQuestId: String? = null,
     val selectedQuestNumbers: Set<Int> = emptySet(),
+    val selectedDefeatQuestNumbers: Set<Int> = emptySet(),
     val isSaving: Boolean = false,
     val saveMessage: String = "",
     val error: String? = null,
@@ -67,6 +92,19 @@ data class CampaignUiState(
     val preBattleHunters: List<Hunter> = emptyList(),
     val isPrologue: Boolean = false,
     val defeatedBosses: List<String> = emptyList(),
+    val campaignQuests: List<Quest> = emptyList(),
+    val taskInfoByQuestNumber: Map<Int, TaskInfo> = emptyMap(),
+    val showQuestRewards: Boolean = false,
+    val questRewardsMode: QuestRewardsMode? = null,
+    val activeQuestNumber: Int? = null,
+    val editDefeatMode: Boolean = false,
+    val showQuestEditDialog: Boolean = false,
+    val editedQuestNumbers: Set<Int> = emptySet(),
+    val showChapterRewards: Boolean = false,
+    val chapterInfoByNumber: Map<Int, ChapterInfo> = emptyMap(),
+    val chapterRewardsMessage: String = "",
+    val campaignTrophies: List<Trophy> = emptyList(),
+    val campaignAchievements: List<Achievement> = emptyList(),
     val availableBosses: List<Boss> = emptyList(),
     val selectedPreBattleBoss: Boss? = null,
     val selectedPreBattleBossName: String? = null,
@@ -135,13 +173,19 @@ class CampaignViewModel(
     fun onClassToggled(cls: HunterClass) {
         _state.update { current ->
             val classes = current.selectedClasses.toMutableList()
+            val names = current.hunterPlayerNames.toMutableMap()
             if (classes.contains(cls)) {
                 classes.remove(cls)
+                names.remove(cls)
             } else {
                 classes.add(cls)
             }
-            current.copy(selectedClasses = classes)
+            current.copy(selectedClasses = classes, hunterPlayerNames = names)
         }
+    }
+
+    fun onHunterPlayerNameChanged(cls: HunterClass, name: String) {
+        _state.update { it.copy(hunterPlayerNames = it.hunterPlayerNames + (cls to name)) }
     }
 
     fun onStartCampaign() {
@@ -156,11 +200,16 @@ class CampaignViewModel(
         }
         scope.launch {
             val campaignId = repository.createCampaign(name)
-            val hunters = classes.map { CampaignHunter(campaignId = campaignId, playerName = it.displayName, className = it) }
+            val names = _state.value.hunterPlayerNames
+            val hunters = classes.map { cls ->
+                val playerName = names[cls]?.takeIf { it.isNotBlank() } ?: cls.displayName
+                CampaignHunter(campaignId = campaignId, playerName = playerName, className = cls)
+            }
             repository.addHunters(campaignId, hunters)
+            val persistedHunters = repository.getHunters(campaignId).ifEmpty { hunters }
             val campaign = repository.getCampaign(campaignId)
-            _state.update { it.copy(currentCampaign = campaign, hunters = hunters, isPrologue = true) }
-            startBattleInternal(campaignId, hunters)
+            _state.update { it.copy(currentCampaign = campaign, hunters = persistedHunters, isPrologue = true) }
+            startBattleInternal(campaignId, persistedHunters)
         }
     }
 
@@ -168,8 +217,21 @@ class CampaignViewModel(
         val battleHunters = hunters.map { Hunter(name = "${it.playerName} (${it.className.displayName})") }
         battleViewModel = BattleViewModel(scope)
         val difficulty = getDifficultyForChapter(_state.value.currentCampaign?.currentChapter ?: 1)
-        _state.update { it.copy(preBattleHunters = battleHunters, screen = AppScreen.CampaignBattle(campaignId), preBattleDifficulty = difficulty) }
-        scope.launch { loadBosses() }
+        val isPrologue = _state.value.isPrologue
+        _state.update {
+            it.copy(
+                preBattleHunters = battleHunters,
+                screen = AppScreen.CampaignBattle(campaignId),
+                preBattleDifficulty = if (isPrologue) 0 else difficulty,
+                selectedPreBattleBossName = if (isPrologue) "Вираксен" else it.selectedPreBattleBossName
+            )
+        }
+        scope.launch {
+            loadBosses()
+            if (_state.value.isPrologue) {
+                resolvePreBattleBoss()
+            }
+        }
         observeBattleForAutoSave(campaignId)
     }
 
@@ -249,19 +311,169 @@ class CampaignViewModel(
     }
 
     fun onCloseExchange() {
-        _state.update { it.copy(showExchangeDialog = false) }
+        _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
+    }
+
+    fun onExchangeModeSelected(mode: ExchangeMode) {
+        val state = _state.value
+        val type = state.exchangeResourceType ?: return
+        when (mode) {
+            ExchangeMode.SELL -> {
+                val message = when (type) {
+                    ResourceType.MATERIAL -> "Верните в коробку любой предмет"
+                    ResourceType.ELEMENT -> "Верните в коробку предмет той же стихии"
+                    ResourceType.PLANT -> "Растения нельзя продать"
+                }
+                _state.update { it.copy(exchangeMode = mode, exchangeMessage = message) }
+            }
+            ExchangeMode.EXCHANGE -> {
+                _state.update { it.copy(exchangeMode = mode) }
+            }
+            ExchangeMode.GET_FROM_ALLY -> {
+                _state.update { it.copy(exchangeMode = mode) }
+            }
+        }
+    }
+
+    fun onSellResource() {
+        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
+        val type = _state.value.exchangeResourceType ?: return
+        val name = _state.value.exchangeResourceName
+        scope.launch {
+            val current = when (type) {
+                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(name)] ?: 0
+                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(name)] ?: 0
+                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(name)] ?: 0
+            }
+            if (current > 0) {
+                repository.updateResource(hunter.id, type, name, current - 1)
+                loadHunterResources(hunter.id)
+            }
+            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
+        }
+    }
+
+    fun onExchangeResource(targetName: String, targetType: ResourceType) {
+        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
+        val srcType = _state.value.exchangeResourceType ?: return
+        val srcName = _state.value.exchangeResourceName
+        scope.launch {
+            val currentHunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return@launch
+            val srcQty = when (srcType) {
+                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(srcName)] ?: 0
+                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(srcName)] ?: 0
+                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(srcName)] ?: 0
+            }
+            if (srcQty < 1 || targetName.isBlank()) return@launch
+            val tgtQty = when (targetType) {
+                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(targetName)] ?: 0
+                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(targetName)] ?: 0
+                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(targetName)] ?: 0
+            }
+            repository.updateResource(currentHunter.id, srcType, srcName, srcQty - 1)
+            repository.updateResource(currentHunter.id, targetType, targetName, tgtQty + 1)
+            loadHunterResources(currentHunter.id)
+            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
+        }
+    }
+
+    fun onGetFromAlly(allyHunterId: Long) {
+        val sourceHunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
+        val type = _state.value.exchangeResourceType ?: return
+        val name = _state.value.exchangeResourceName
+        scope.launch {
+            if (allyHunterId == sourceHunter.id) return@launch
+            // загружаем ресурсы союзника, потому что состояние хранит только текущего охотника
+            val allyResources = when (type) {
+                ResourceType.MATERIAL -> repository.getMaterials(allyHunterId)
+                ResourceType.PLANT -> repository.getPlants(allyHunterId)
+                ResourceType.ELEMENT -> repository.getElements(allyHunterId)
+            }
+            val allyQty = when (type) {
+                ResourceType.MATERIAL -> allyResources[Material.valueOf(name)] ?: 0
+                ResourceType.PLANT -> allyResources[Plant.valueOf(name)] ?: 0
+                ResourceType.ELEMENT -> allyResources[Element.valueOf(name)] ?: 0
+            }
+            val sourceQty = when (type) {
+                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(name)] ?: 0
+                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(name)] ?: 0
+                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(name)] ?: 0
+            }
+            if (allyQty > 0) {
+                repository.updateResource(sourceHunter.id, type, name, sourceQty + 1)
+                repository.updateResource(allyHunterId, type, name, allyQty - 1)
+                loadHunterResources(sourceHunter.id)
+            }
+            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
+        }
     }
 
     fun onExchangeAmountChanged(amount: String) {
         _state.update { it.copy(exchangeAmount = amount) }
     }
 
+    fun onResourceIncrement(type: ResourceType, name: String) {
+        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
+        scope.launch {
+            repository.addResource(hunter.id, type, name, 1)
+            loadHunterResources(hunter.id)
+        }
+    }
+
+    fun onResourceDecrement(type: ResourceType, name: String) {
+        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
+        val current = when (type) {
+            ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(name)] ?: 0
+            ResourceType.PLANT -> _state.value.plants[Plant.valueOf(name)] ?: 0
+            ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(name)] ?: 0
+        }
+        if (current <= 0) return
+        scope.launch {
+            repository.updateResource(hunter.id, type, name, current - 1)
+            loadHunterResources(hunter.id)
+        }
+    }
+
     fun onStartCampaignBattle() {
         val campaignId = _state.value.currentCampaign?.id ?: return
         val hunters = _state.value.hunters
         if (hunters.isEmpty()) return
+        scope.launch {
+            val quests = repository.getAvailableQuests(campaignId).sortedBy { it.questNumber }
+            val taskInfo = repository.getAllTaskInfo().associateBy { it.questNumber }
+            _state.update {
+                it.copy(
+                    showQuestSelectDialog = true,
+                    availableQuestsForNext = quests,
+                    taskInfoByQuestNumber = taskInfo
+                )
+            }
+        }
+    }
+
+    fun onActiveQuestSelected(questId: String?) {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        val hunters = _state.value.hunters
+        if (hunters.isEmpty()) return
         battleCollectJob?.cancel()
+        _state.update { it.copy(activeQuestId = questId, showQuestSelectDialog = false) }
+            // предзаполняем босса из каталога заданий
+            val questNumber = questId?.toIntOrNull()
+            val taskInfo = questNumber?.let { _state.value.taskInfoByQuestNumber[it] }
+            if (taskInfo != null) {
+                _state.update {
+                    it.copy(
+                        selectedPreBattleBossName = taskInfo.bossName,
+                        bossElement = taskInfo.bossElement,
+                        bossHasNoElement = taskInfo.bossElement == null
+                    )
+                }
+            }
         startBattleInternal(campaignId, hunters)
+    }
+
+    fun onCloseQuestSelectDialog() {
+        _state.update { it.copy(showQuestSelectDialog = false) }
     }
 
     fun getBattleViewModel(): BattleViewModel? = battleViewModel
@@ -269,9 +481,37 @@ class CampaignViewModel(
     fun onBattleFinished() {
         battleCollectJob?.cancel()
         val campaignId = _state.value.currentCampaign?.id ?: return
+        val state = _state.value
+        val questNumbers = state.selectedDefeatQuestNumbers
         scope.launch {
-            saveCampaign()
-            _state.update { it.copy(screen = AppScreen.CampaignSheet(campaignId)) }
+            try {
+                saveCampaign()
+                questNumbers.forEach { number ->
+                    val quest = Quest(
+                        id = number.toString(),
+                        name = "Задание $number",
+                        chapter = state.currentCampaign?.currentChapter ?: 1,
+                        questNumber = number,
+                        isAvailable = true
+                    )
+                    repository.saveQuest(campaignId, quest)
+                }
+                _state.update { it.copy(screen = AppScreen.CampaignSheet(campaignId), selectedDefeatQuestNumbers = emptySet()) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка сохранения: ${e.message}") }
+            }
+        }
+    }
+
+    fun onDefeatQuestToggled(number: Int) {
+        _state.update { state ->
+            val current = state.selectedDefeatQuestNumbers.toMutableSet()
+            if (current.contains(number)) {
+                current.remove(number)
+            } else {
+                current.add(number)
+            }
+            state.copy(selectedDefeatQuestNumbers = current)
         }
     }
 
@@ -281,14 +521,21 @@ class CampaignViewModel(
             val trophies = repository.getTrophies(campaignId)
             val isPrologue = _state.value.isPrologue
             val selectedBoss = _state.value.selectedPreBattleBoss
+            val taskInfo = _state.value.activeQuestId?.toIntOrNull()
+                ?.let { repository.getTaskInfo(it) }
             val bossNames = if (isPrologue) {
                 listOf("Вираксен")
             } else {
                 ALL_BOSS_NAMES
             }
+            val allTaskInfo = repository.getAllTaskInfo().associateBy { it.questNumber }
             _state.update {
                 it.copy(
-                    showPostVictory = true,
+                    showQuestRewards = !isPrologue,
+                    questRewardsMode = if (isPrologue) null else QuestRewardsMode.VICTORY,
+                    activeQuestNumber = if (isPrologue) null else it.activeQuestId?.toIntOrNull(),
+                    taskInfoByQuestNumber = allTaskInfo,
+                    showPostVictory = isPrologue,
                     bossName = selectedBoss?.name ?: if (isPrologue) "Вираксен" else "",
                     bossElement = if (selectedBoss != null) selectedBoss.element else if (isPrologue) Element.FIRE else null,
                     bossHasNoElement = selectedBoss != null && selectedBoss.element == null,
@@ -296,8 +543,229 @@ class CampaignViewModel(
                     completedQuestId = "",
                     availableQuestsForNext = emptyList(),
                     selectedQuestNumbers = emptySet(),
+                    victoryMaterials = emptyMap(),
+                    victoryPlants = emptyMap(),
                     error = null
                 )
+            }
+        }
+    }
+
+    fun onDefeat() {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        scope.launch {
+            val allTaskInfo = repository.getAllTaskInfo().associateBy { it.questNumber }
+            _state.update {
+                it.copy(
+                    showQuestRewards = true,
+                    questRewardsMode = QuestRewardsMode.DEFEAT,
+                    activeQuestNumber = it.activeQuestId?.toIntOrNull(),
+                    taskInfoByQuestNumber = allTaskInfo,
+                    selectedDefeatQuestNumbers = emptySet(),
+                    editDefeatMode = false,
+                    error = null
+                )
+            }
+        }
+    }
+
+    fun onQuestRewardsEdit() {
+        val mode = _state.value.questRewardsMode ?: return
+        if (mode == QuestRewardsMode.DEFEAT) {
+            _state.update { it.copy(editDefeatMode = true, showQuestRewards = false) }
+            return
+        }
+        val state = _state.value
+        val campaignId = state.currentCampaign?.id ?: return
+        val taskInfo = state.activeQuestNumber?.let { state.taskInfoByQuestNumber[it] }
+        scope.launch {
+            val openQuestNumbers = repository.getQuests(campaignId)
+                .filter { it.isAvailable }
+                .map { it.questNumber }
+                .toSet()
+            val mergedQuestNumbers = openQuestNumbers + (taskInfo?.victoryOpenQuests?.toSet() ?: emptySet())
+            _state.update {
+                it.copy(
+                    showQuestRewards = false,
+                    showPostVictory = true,
+                    bossName = taskInfo?.bossName ?: it.bossName,
+                    bossElement = taskInfo?.bossElement ?: it.bossElement,
+                    bossHasNoElement = taskInfo?.bossElement == null,
+                    victoryMaterials = taskInfo?.victoryMaterials ?: it.victoryMaterials,
+                    victoryPlants = taskInfo?.victoryPlants ?: it.victoryPlants,
+                    selectedQuestNumbers = mergedQuestNumbers,
+                    error = null
+                )
+            }
+        }
+    }
+
+    fun onQuestRewardsDismiss() {
+        _state.update {
+            it.copy(
+                showQuestRewards = false,
+                questRewardsMode = null,
+                activeQuestNumber = null,
+                editDefeatMode = false
+            )
+        }
+    }
+
+    fun onDefeatRewardsAccept() {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        val state = _state.value
+        val taskInfo = state.activeQuestNumber?.let { state.taskInfoByQuestNumber[it] }
+        val questNumbers = taskInfo?.defeatOpenQuests ?: emptyList()
+        scope.launch {
+            try {
+                saveCampaign()
+                val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+                val currentChapter = state.currentCampaign?.currentChapter ?: 1
+                questNumbers.forEach { number ->
+                    val quest = Quest(
+                        id = number.toString(),
+                        name = "Задание $number",
+                        chapter = currentChapter,
+                        questNumber = number,
+                        isAvailable = true
+                    )
+                    repository.saveQuest(campaignId, quest)
+                }
+                (taskInfo?.defeatOpenQuestConditions ?: emptyList()).forEach { condition ->
+                    val target = resolveConditionTarget(condition, achievements, currentChapter)
+                    if (target != null) {
+                        repository.saveQuest(
+                            campaignId = campaignId,
+                            quest = Quest(
+                                id = target.toString(),
+                                name = "Задание $target",
+                                chapter = currentChapter,
+                                questNumber = target,
+                                isAvailable = true
+                            )
+                        )
+                    }
+                }
+                _state.update {
+                    it.copy(
+                        screen = AppScreen.CampaignSheet(campaignId),
+                        selectedDefeatQuestNumbers = emptySet(),
+                        showQuestRewards = false,
+                        questRewardsMode = null,
+                        activeQuestNumber = null,
+                        editDefeatMode = false
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка сохранения: ${e.message}") }
+            }
+        }
+    }
+
+    fun onQuestRewardsAccept() {
+        if (_state.value.isSaving) return
+        val state = _state.value
+        val campaignId = state.currentCampaign?.id ?: return
+        val taskInfo = state.activeQuestNumber?.let { state.taskInfoByQuestNumber[it] }
+        val element = taskInfo?.bossElement
+        if (element == null && taskInfo != null) {
+            _state.update { it.copy(error = "У задания не указана стихия босса") }
+            return
+        }
+        val bossName = taskInfo?.bossName?.ifBlank { null } ?: run {
+            _state.update { it.copy(error = "У задания не указан босс") }
+            return
+        }
+        val questNumbers = taskInfo?.victoryOpenQuests.orEmpty().toSet()
+        _state.update { it.copy(isSaving = true) }
+        scope.launch {
+            try {
+                val trophy = Trophy(
+                    bossName = bossName,
+                    element = element,
+                    chapter = state.currentCampaign?.currentChapter ?: 1
+                )
+                questNumbers.forEach { number ->
+                    val quest = Quest(
+                        id = number.toString(),
+                        name = "Задание $number",
+                        chapter = state.currentCampaign?.currentChapter ?: 1,
+                        element = element,
+                        questNumber = number,
+                        isAvailable = true
+                    )
+                    repository.saveQuest(campaignId, quest)
+                }
+                val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+                val currentChapter = state.currentCampaign?.currentChapter ?: 1
+                (taskInfo?.victoryOpenQuestConditions ?: emptyList()).forEach { condition ->
+                    val target = resolveConditionTarget(condition, achievements, currentChapter)
+                    if (target != null) {
+                        repository.saveQuest(
+                            campaignId = campaignId,
+                            quest = Quest(
+                                id = target.toString(),
+                                name = "Задание $target",
+                                chapter = currentChapter,
+                                element = element,
+                                questNumber = target,
+                                isAvailable = true
+                            )
+                        )
+                    }
+                }
+                val completedQuestId = state.activeQuestId ?: state.activeQuestNumber?.toString() ?: ""
+                repository.saveVictory(
+                    campaignId = campaignId,
+                    trophy = trophy,
+                    completedQuestId = completedQuestId,
+                    nextQuestId = null
+                )
+                val hunters = state.hunters
+                if (element != null) {
+                    hunters.forEach { hunter ->
+                        addResourceToAll(hunter.id, "ELEMENT", element.name, 2)
+                    }
+                }
+                (taskInfo?.victoryMaterials ?: emptyMap()).forEach { (material, qty) ->
+                    if (qty > 0) {
+                        hunters.forEach { hunter ->
+                            addResourceToAll(hunter.id, "MATERIAL", material.name, qty)
+                        }
+                    }
+                }
+                (taskInfo?.victoryPlants ?: emptyMap()).forEach { (plant, qty) ->
+                    if (qty > 0) {
+                        hunters.forEach { hunter ->
+                            addResourceToAll(hunter.id, "PLANT", plant.name, qty)
+                        }
+                    }
+                }
+                (taskInfo?.victoryAchievements ?: emptyList()).forEach { achievementName ->
+                    repository.saveAchievement(
+                        campaignId = campaignId,
+                        achievement = Achievement(id = achievementName, name = achievementName)
+                    )
+                }
+                _state.update {
+                    it.copy(
+                        showQuestRewards = false,
+                        questRewardsMode = null,
+                        activeQuestNumber = null,
+                        editDefeatMode = false,
+                        error = null,
+                        selectedQuestNumbers = emptySet(),
+                        victoryMaterials = emptyMap(),
+                        victoryPlants = emptyMap(),
+                        isPrologue = false,
+                        activeQuestId = null
+                    )
+                }
+                openChapterRewards(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка сохранения победы: ${e.message}") }
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
         }
     }
@@ -404,7 +872,26 @@ class CampaignViewModel(
         }
     }
 
+    fun onVictoryResourceChanged(type: ResourceType, name: String, delta: Int) {
+        _state.update { state ->
+            when (type) {
+                ResourceType.MATERIAL -> {
+                    val material = Material.valueOf(name)
+                    val current = state.victoryMaterials[material] ?: 0
+                    state.copy(victoryMaterials = state.victoryMaterials + (material to (current + delta).coerceAtLeast(0)))
+                }
+                ResourceType.PLANT -> {
+                    val plant = Plant.valueOf(name)
+                    val current = state.victoryPlants[plant] ?: 0
+                    state.copy(victoryPlants = state.victoryPlants + (plant to (current + delta).coerceAtLeast(0)))
+                }
+                ResourceType.ELEMENT -> state
+            }
+        }
+    }
+
     fun onConfirmVictory() {
+        if (_state.value.isSaving) return
         val state = _state.value
         val campaignId = state.currentCampaign?.id ?: return
         val element = state.bossElement
@@ -417,42 +904,209 @@ class CampaignViewModel(
             return
         }
         val questNumbers = state.selectedQuestNumbers
-        if (questNumbers.isEmpty()) {
-            _state.update { it.copy(error = "Выберите хотя бы одно задание") }
-            return
-        }
+        _state.update { it.copy(isSaving = true) }
         scope.launch {
-            val trophy = Trophy(
-                bossName = bossName,
-                element = element,
-                chapter = state.currentCampaign?.currentChapter ?: 1
-            )
-            questNumbers.forEach { number ->
-                val quest = Quest(
-                    id = number.toString(),
-                    name = "Задание $number",
-                    chapter = state.currentCampaign?.currentChapter ?: 1,
+            try {
+                val trophy = Trophy(
+                    bossName = bossName,
                     element = element,
-                    questNumber = number,
-                    isAvailable = true
+                    chapter = state.currentCampaign?.currentChapter ?: 1
                 )
-                repository.saveQuest(campaignId, quest)
-            }
-            val firstQuestId = questNumbers.first().toString()
-            repository.saveVictory(
-                campaignId = campaignId,
-                trophy = trophy,
-                completedQuestId = firstQuestId,
-                nextQuestId = questNumbers.joinToString(",") { it.toString() }
-            )
-            val hunters = state.hunters
-            if (element != null) {
-                hunters.forEach { hunter ->
-                    addResourceToAll(hunter.id, "ELEMENT", element.name, 1)
+                questNumbers.forEach { number ->
+                    val quest = Quest(
+                        id = number.toString(),
+                        name = "Задание $number",
+                        chapter = state.currentCampaign?.currentChapter ?: 1,
+                        element = element,
+                        questNumber = number,
+                        isAvailable = true
+                    )
+                    repository.saveQuest(campaignId, quest)
                 }
+                val completedQuestId = state.activeQuestId ?: questNumbers.first().toString()
+                repository.saveVictory(
+                    campaignId = campaignId,
+                    trophy = trophy,
+                    completedQuestId = completedQuestId,
+                    nextQuestId = null
+                )
+                val hunters = state.hunters
+                if (element != null) {
+                    hunters.forEach { hunter ->
+                        addResourceToAll(hunter.id, "ELEMENT", element.name, 2)
+                    }
+                }
+                state.victoryMaterials.forEach { (material, qty) ->
+                    if (qty > 0) {
+                        hunters.forEach { hunter ->
+                            addResourceToAll(hunter.id, "MATERIAL", material.name, qty)
+                        }
+                    }
+                }
+                state.victoryPlants.forEach { (plant, qty) ->
+                    if (qty > 0) {
+                        hunters.forEach { hunter ->
+                            addResourceToAll(hunter.id, "PLANT", plant.name, qty)
+                        }
+                    }
+                }
+                _state.update { it.copy(showPostVictory = false, error = null, selectedQuestNumbers = emptySet(), victoryMaterials = emptyMap(), victoryPlants = emptyMap(), isPrologue = false, activeQuestId = null) }
+                openChapterRewards(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка сохранения победы: ${e.message}") }
+            } finally {
+                _state.update { it.copy(isSaving = false) }
             }
-            _state.update { it.copy(showPostVictory = false, error = null, selectedQuestNumbers = emptySet(), isPrologue = false) }
-            loadCampaignSheet(campaignId)
+        }
+    }
+
+    private suspend fun openChapterRewards(campaignId: Long) {
+        val currentChapter = _state.value.currentCampaign?.currentChapter ?: return
+        val chapterInfo = repository.getChapterInfo(currentChapter)
+        val allChapterInfo = repository.getAllChapterInfo().associateBy { it.chapter }
+        val message = buildChapterRewardsMessage(chapterInfo, campaignId)
+        _state.update {
+            it.copy(
+                showChapterRewards = true,
+                chapterInfoByNumber = allChapterInfo,
+                chapterRewardsMessage = message
+            )
+        }
+    }
+
+    private suspend fun buildChapterRewardsMessage(chapterInfo: ChapterInfo?, campaignId: Long): String {
+        if (chapterInfo == null) return ""
+        val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+        val parts = mutableListOf<String>()
+        if (chapterInfo.hunterKitUpgrade) parts.add("Улучшение набора охотника")
+        if (chapterInfo.forgeUpgrade) parts.add("Повышение уровня кузни")
+        if (chapterInfo.labUpgrade) parts.add("Повышение уровня лаборатории")
+        chapterInfo.messages.forEach { parts.add(it) }
+        chapterInfo.conditionalMessages.forEach { cm ->
+            if (cm.achievementName in achievements) parts.add(cm.message)
+        }
+        return parts.joinToString("\n")
+    }
+
+    fun onChapterRewardsAccept() {
+        if (_state.value.isSaving) return
+        val state = _state.value
+        val campaignId = state.currentCampaign?.id ?: return
+        val currentChapter = state.currentCampaign?.currentChapter ?: return
+        val chapterInfo = state.chapterInfoByNumber[currentChapter]
+        _state.update { it.copy(isSaving = true) }
+        scope.launch {
+            try {
+                val campaign = repository.getCampaign(campaignId) ?: return@launch
+                val hunters = state.hunters
+                val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+                if (chapterInfo != null) {
+                    (chapterInfo.rewards).forEach { (material, qty) ->
+                        if (qty > 0) {
+                            hunters.forEach { hunter ->
+                                addResourceToAll(hunter.id, "MATERIAL", material.name, qty)
+                            }
+                        }
+                    }
+                    (chapterInfo.rewardPlants).forEach { (plant, qty) ->
+                        if (qty > 0) {
+                            hunters.forEach { hunter ->
+                                addResourceToAll(hunter.id, "PLANT", plant.name, qty)
+                            }
+                        }
+                    }
+                    chapterInfo.openQuests.forEach { number ->
+                        repository.saveQuest(
+                            campaignId = campaignId,
+                            quest = Quest(
+                                id = number.toString(),
+                                name = "Задание $number",
+                                chapter = currentChapter,
+                                questNumber = number,
+                                isAvailable = true
+                            )
+                        )
+                    }
+                    chapterInfo.conditionalOpenQuests.forEach { condition ->
+                        val matched = if (condition.negated) {
+                            !matchesAchievements(condition.achievements, achievements, condition.requireAll)
+                        } else {
+                            matchesAchievements(condition.achievements, achievements, condition.requireAll)
+                        }
+                        val target = if (matched) condition.questNumber else condition.elseQuestNumber
+                        if (target != null) {
+                            repository.saveQuest(
+                                campaignId = campaignId,
+                                quest = Quest(
+                                    id = target.toString(),
+                                    name = "Задание $target",
+                                    chapter = currentChapter,
+                                    questNumber = target,
+                                    isAvailable = true
+                                )
+                            )
+                        }
+                    }
+                    chapterInfo.expireQuests.forEach { number ->
+                        repository.setQuestUnavailable(campaignId, number.toString())
+                    }
+                    val forgeLevel = repository.getForgeLevel(campaignId)
+                    val labLevel = repository.getLabLevel(campaignId)
+                    if (chapterInfo.forgeUpgrade) repository.updateForgeLevel(campaignId, forgeLevel + 1)
+                    if (chapterInfo.labUpgrade) repository.updateLabLevel(campaignId, labLevel + 1)
+                }
+                repository.updateChapter(campaignId, currentChapter + 1)
+                _state.update { it.copy(showChapterRewards = false, chapterRewardsMessage = "", error = null) }
+                loadCampaignSheet(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка применения наград главы: ${e.message}") }
+            } finally {
+                _state.update { it.copy(isSaving = false) }
+            }
+        }
+    }
+
+    private fun matchesAchievements(
+        required: List<String>,
+        owned: Set<String>,
+        requireAll: Boolean
+    ): Boolean {
+        if (required.isEmpty()) return true
+        return if (requireAll) {
+            required.all { it in owned }
+        } else {
+            required.any { it in owned }
+        }
+    }
+
+    private fun resolveConditionTarget(
+        condition: TaskCondition,
+        achievements: Set<String>,
+        currentChapter: Int
+    ): Int? {
+        val matched = when (condition.kind) {
+            TaskConditionKind.CHAPTER_IN -> currentChapter in condition.chapterSet
+            TaskConditionKind.ACHIEVEMENT_OWNED -> condition.achievementName != null && condition.achievementName in achievements
+            TaskConditionKind.ACHIEVEMENT_NOT_OWNED -> condition.achievementName != null && condition.achievementName !in achievements
+        }
+        return if (matched) condition.questNumber else condition.elseQuestNumber
+    }
+
+    fun onChapterRewardsReject() {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        _state.update { it.copy(showChapterRewards = false, chapterRewardsMessage = "", error = null) }
+        scope.launch { loadCampaignSheet(campaignId) }
+    }
+
+    fun onChapterDecisionSelected(option: String, achievementName: String?) {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        if (achievementName != null && option.isNotEmpty()) {
+            scope.launch {
+                repository.saveAchievement(
+                    campaignId = campaignId,
+                    achievement = Achievement(id = achievementName, name = achievementName)
+                )
+            }
         }
     }
 
@@ -514,19 +1168,101 @@ class CampaignViewModel(
             return
         }
         val hunters = repository.getHunters(campaignId)
+        val quests = repository.getQuests(campaignId)
+        val openQuests = quests.filter { it.isAvailable }.sortedBy { it.questNumber }
+        val taskInfo = repository.getAllTaskInfo().associateBy { it.questNumber }
+        val trophies = repository.getTrophies(campaignId)
+        val achievements = repository.getAchievements(campaignId)
         _state.update {
             it.copy(
                 screen = AppScreen.CampaignSheet(campaignId),
                 currentCampaign = campaign,
                 hunters = hunters,
                 selectedHunterIndex = if (hunters.isNotEmpty()) 0 else it.selectedHunterIndex,
-                notes = campaign.notes
+                notes = campaign.notes,
+                campaignQuests = openQuests,
+                taskInfoByQuestNumber = taskInfo,
+                campaignTrophies = trophies,
+                campaignAchievements = achievements
             )
         }
         if (hunters.isNotEmpty()) {
             loadHunterResources(hunters[0].id)
             loadHunterSkills(hunters[0].id)
         }
+    }
+
+    fun onToggleQuestCompleted(questId: String) {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        val quest = _state.value.campaignQuests.find { it.id == questId } ?: return
+        scope.launch {
+            try {
+                if (quest.isCompleted) {
+                    repository.uncompleteQuest(campaignId, questId)
+                } else {
+                    repository.completeQuest(campaignId, questId)
+                }
+                loadCampaignSheet(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка обновления задания: ${e.message}") }
+            }
+        }
+    }
+
+    fun onOpenQuestEditor() {
+        val questNumbers = _state.value.campaignQuests.map { it.questNumber }.toSet()
+        _state.update { it.copy(showQuestEditDialog = true, editedQuestNumbers = questNumbers) }
+    }
+
+    fun onToggleEditedQuest(questNumber: Int) {
+        val current = _state.value.editedQuestNumbers
+        val updated = if (questNumber in current) current - questNumber else current + questNumber
+        _state.update { it.copy(editedQuestNumbers = updated) }
+    }
+
+    fun onSaveQuestEdits() {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        val edited = _state.value.editedQuestNumbers
+        scope.launch {
+            try {
+                val currentOpen = _state.value.campaignQuests.map { it.questNumber }.toSet()
+                val toOpen = edited - currentOpen
+                val toClose = currentOpen - edited
+                val chapter = _state.value.currentCampaign?.currentChapter ?: 1
+                toOpen.forEach { number ->
+                    repository.saveQuest(
+                        campaignId = campaignId,
+                        quest = Quest(
+                            id = number.toString(),
+                            name = "Задание $number",
+                            chapter = chapter,
+                            questNumber = number,
+                            isAvailable = true
+                        )
+                    )
+                }
+                toClose.forEach { number ->
+                    repository.saveQuest(
+                        campaignId = campaignId,
+                        quest = Quest(
+                            id = number.toString(),
+                            name = "Задание $number",
+                            chapter = chapter,
+                            questNumber = number,
+                            isAvailable = false
+                        )
+                    )
+                }
+                _state.update { it.copy(showQuestEditDialog = false) }
+                loadCampaignSheet(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка сохранения заданий: ${e.message}") }
+            }
+        }
+    }
+
+    fun onCancelQuestEdits() {
+        _state.update { it.copy(showQuestEditDialog = false, editedQuestNumbers = emptySet()) }
     }
 
     private suspend fun loadHunterResources(hunterId: Long) {

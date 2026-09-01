@@ -5,16 +5,21 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -47,12 +52,14 @@ import com.primalapp.android.ui.BattleScreen
 import com.primalapp.android.ui.CampaignListScreen
 import com.primalapp.android.ui.CampaignSetupScreen
 import com.primalapp.android.ui.CampaignSheetScreen
+import com.primalapp.android.ui.ChapterRewardsDialog
 import com.primalapp.android.ui.DefeatScreen
 import com.primalapp.android.ui.ExchangeDialog
 import com.primalapp.android.ui.MainMenuScreen
 import com.primalapp.android.ui.PhaseChangeDialog
 import com.primalapp.android.ui.PostVictoryDialog
 import com.primalapp.android.ui.PreBattleScreen
+import com.primalapp.android.ui.QuestRewardsDialog
 import com.primalapp.android.ui.RageSurgeDialog
 import com.primalapp.android.ui.SetupScreen
 import com.primalapp.android.ui.VictoryScreen
@@ -116,6 +123,12 @@ fun PrimalApp() {
     if (campaignState.showPostVictory) {
         PostVictoryDialog(campaignState, campaignViewModel)
     }
+    if (campaignState.showQuestRewards) {
+        QuestRewardsDialog(campaignState, campaignViewModel)
+    }
+    if (campaignState.showChapterRewards) {
+        ChapterRewardsDialog(campaignState, campaignViewModel)
+    }
     if (campaignState.showExchangeDialog) {
         ExchangeDialog(campaignState, campaignViewModel)
     }
@@ -133,7 +146,7 @@ fun PrimalApp() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun CampaignBattleHost(
     battleState: com.primalapp.viewmodel.BattleScreenState,
@@ -285,21 +298,59 @@ fun CampaignBattleHost(
             }
         }
         FightPhase.DEFEAT -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                Text("Закончились раунды...")
-                Spacer(Modifier.height(32.dp))
-                Button(onClick = { campaignViewModel.onBattleFinished() }) {
-                    Text("К листу кампании")
+            if (campaignState.editDefeatMode) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Закончились раунды...")
+                    Spacer(Modifier.height(16.dp))
+                    Text("Открывшееся задание:", fontWeight = FontWeight.Bold)
+                    FlowRow(modifier = Modifier.fillMaxWidth()) {
+                        (1..49).forEach { number ->
+                            val checked = campaignState.selectedDefeatQuestNumbers.contains(number)
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(52.dp)) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { campaignViewModel.onDefeatQuestToggled(number) }
+                                )
+                                Text("$number", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { campaignViewModel.onBattleFinished() }) {
+                        Text("К листу кампании")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { campaignViewModel.onQuestRewardsDismiss() }) {
+                        Text("Отмена")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                        Text("Выход в меню")
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
-                    Text("Выход в меню")
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(16.dp))
+                    Text("Закончились раунды...")
+                    Spacer(Modifier.height(32.dp))
+                    Button(onClick = { campaignViewModel.onDefeat() }) {
+                        Text("Продолжить")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                        Text("Выход в меню")
+                    }
                 }
             }
         }

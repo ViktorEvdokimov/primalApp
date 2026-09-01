@@ -8,18 +8,22 @@ import androidx.sqlite.execSQL
 import com.primalapp.database.dao.AchievementDao
 import com.primalapp.database.dao.BossDao
 import com.primalapp.database.dao.CampaignDao
+import com.primalapp.database.dao.ChapterInfoDao
 import com.primalapp.database.dao.HunterDao
 import com.primalapp.database.dao.QuestDao
 import com.primalapp.database.dao.ResourceDao
 import com.primalapp.database.dao.SkillDao
+import com.primalapp.database.dao.TaskInfoDao
 import com.primalapp.database.dao.TrophyDao
 import com.primalapp.database.entity.AchievementEntity
 import com.primalapp.database.entity.BossEntity
 import com.primalapp.database.entity.CampaignEntity
+import com.primalapp.database.entity.ChapterInfoEntity
 import com.primalapp.database.entity.HunterEntity
 import com.primalapp.database.entity.QuestEntity
 import com.primalapp.database.entity.ResourceEntity
 import com.primalapp.database.entity.SkillEntity
+import com.primalapp.database.entity.TaskInfoEntity
 import com.primalapp.database.entity.TrophyEntity
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -159,6 +163,69 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
     }
 }
 
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL(
+            "DELETE FROM quests WHERE id NOT IN " +
+                "(SELECT MIN(id) FROM quests GROUP BY campaign_id, quest_id)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS index_quests_campaign_id_quest_id " +
+                "ON quests (campaign_id, quest_id)"
+        )
+    }
+}
+
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS task_info (
+                quest_number INTEGER PRIMARY KEY NOT NULL,
+                name TEXT NOT NULL,
+                boss_name TEXT NOT NULL,
+                boss_element TEXT,
+                victory_materials TEXT NOT NULL DEFAULT '',
+                victory_plants TEXT NOT NULL DEFAULT '',
+                victory_open_quests TEXT NOT NULL DEFAULT '',
+                victory_achievements TEXT NOT NULL DEFAULT '',
+                victory_reward_cards TEXT NOT NULL DEFAULT '',
+                victory_special TEXT NOT NULL DEFAULT '',
+                defeat_open_quests TEXT NOT NULL DEFAULT ''
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL("ALTER TABLE task_info ADD COLUMN victory_open_quest_conditions TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE task_info ADD COLUMN defeat_open_quest_conditions TEXT NOT NULL DEFAULT ''")
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS chapter_info (
+                chapter INTEGER PRIMARY KEY NOT NULL,
+                rewards TEXT NOT NULL DEFAULT '',
+                reward_plants TEXT NOT NULL DEFAULT '',
+                open_quests TEXT NOT NULL DEFAULT '',
+                conditional_open_quests TEXT NOT NULL DEFAULT '',
+                expire_quests TEXT NOT NULL DEFAULT '',
+                forge_upgrade INTEGER NOT NULL DEFAULT 0,
+                lab_upgrade INTEGER NOT NULL DEFAULT 0,
+                hunter_kit_upgrade INTEGER NOT NULL DEFAULT 0,
+                decisions TEXT NOT NULL DEFAULT '',
+                messages TEXT NOT NULL DEFAULT '',
+                conditional_messages TEXT NOT NULL DEFAULT ''
+            )
+            """.trimIndent()
+        )
+        db.execSQL("DELETE FROM task_info")
+        seedTaskInfo(db)
+        seedChapterInfo(db)
+    }
+}
+
 private val CREATE_BOSSES_TABLE = """
     CREATE TABLE IF NOT EXISTS bosses (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -197,29 +264,29 @@ fun seedBosses(db: SQLiteConnection) {
         s3hsc: Int
     ) {
         db.execSQL(
-            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc) " +
-                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, $s2dfw, $s2hsc, $s3dfw, $s3hsc)"
+            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc, stance4_dfw, stance5_dfw) " +
+                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, $s2dfw, $s2hsc, $s3dfw, $s3hsc, 0, 0)"
         )
     }
 
     fun insert3NullHsc(name: String, element: String, difficulty: Int, s1dfw: Int, s2dfw: Int, s3dfw: Int) {
         db.execSQL(
-            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc) " +
-                "VALUES ('$name', '$element', $difficulty, $s1dfw, NULL, $s2dfw, NULL, $s3dfw, NULL)"
+            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc, stance4_dfw, stance5_dfw) " +
+                "VALUES ('$name', '$element', $difficulty, $s1dfw, NULL, $s2dfw, NULL, $s3dfw, NULL, 0, 0)"
         )
     }
 
     fun insert3NullDfw(name: String, element: String, difficulty: Int, s1dfw: Int, s1hsc: Int, s3dfw: Int, s3hsc: Int) {
         db.execSQL(
-            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc) " +
-                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, NULL, NULL, $s3dfw, $s3hsc)"
+            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc, stance4_dfw, stance5_dfw) " +
+                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, NULL, NULL, $s3dfw, $s3hsc, 0, 0)"
         )
     }
 
     fun insert3NullHsc2(name: String, element: String, difficulty: Int, s1dfw: Int, s1hsc: Int, s2dfw: Int, s3dfw: Int, s3hsc: Int) {
         db.execSQL(
-            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc) " +
-                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, $s2dfw, NULL, $s3dfw, $s3hsc)"
+            "INSERT INTO bosses (name, element, difficulty, stance1_dfw, stance1_hsc, stance2_dfw, stance2_hsc, stance3_dfw, stance3_hsc, stance4_dfw, stance5_dfw) " +
+                "VALUES ('$name', '$element', $difficulty, $s1dfw, $s1hsc, $s2dfw, NULL, $s3dfw, $s3hsc, 0, 0)"
         )
     }
 
@@ -347,10 +414,12 @@ fun seedBosses(db: SQLiteConnection) {
         AchievementEntity::class,
         TrophyEntity::class,
         QuestEntity::class,
-        BossEntity::class
+        BossEntity::class,
+        TaskInfoEntity::class,
+        ChapterInfoEntity::class
     ],
-    version = 8,
-    exportSchema = false
+    version = 11,
+    exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {
     abstract fun campaignDao(): CampaignDao
@@ -361,4 +430,6 @@ abstract class PrimalDatabase : RoomDatabase() {
     abstract fun trophyDao(): TrophyDao
     abstract fun questDao(): QuestDao
     abstract fun bossDao(): BossDao
+    abstract fun taskInfoDao(): TaskInfoDao
+    abstract fun chapterInfoDao(): ChapterInfoDao
 }

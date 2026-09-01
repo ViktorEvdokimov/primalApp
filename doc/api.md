@@ -472,9 +472,31 @@ data class CampaignUiState(
     val completedQuestId: String = "",
     val availableQuestsForNext: List<Quest> = emptyList(),
     val selectedNextQuestId: String? = null,
+    val selectedQuestNumbers: Set<Int> = emptySet(),
+    val selectedDefeatQuestNumbers: Set<Int> = emptySet(),
     val isSaving: Boolean = false,
     val saveMessage: String = "",
-    val error: String? = null
+    val error: String? = null,
+    val isPrologue: Boolean = false,
+    val defeatedBosses: List<String> = emptyList(),
+    val campaignQuests: List<Quest> = emptyList(),
+    val taskInfoByQuestNumber: Map<Int, TaskInfo> = emptyMap(),
+    val showQuestRewards: Boolean = false,
+    val questRewardsMode: QuestRewardsMode? = null,
+    val activeQuestNumber: Int? = null,
+    val editDefeatMode: Boolean = false,
+    val showChapterRewards: Boolean = false,
+    val chapterInfoByNumber: Map<Int, ChapterInfo> = emptyMap(),
+    val chapterRewardsMessage: String = "",
+    val campaignTrophies: List<Trophy> = emptyList(),
+    val availableBosses: List<Boss> = emptyList(),
+    val selectedPreBattleBoss: Boss? = null,
+    val selectedPreBattleBossName: String? = null,
+    val preBattleDifficulty: Int = 0,
+    val preBattleDamageForWound: String = "4",
+    val preBattleHealthForStance: String = "7",
+    val preBattleHunterCount: Int = 4,
+    val bossHasNoElement: Boolean = false
 )
 ```
 
@@ -510,11 +532,21 @@ class CampaignViewModel(
 | `onStartCampaignBattle()` | Запуск боя в рамках кампании |
 | `getBattleViewModel()` | Получение BattleViewModel для UI |
 | `onBattleFinished()` | Завершение боя, возврат к листу |
-| `onVictory()` | Открытие пост-победного диалога |
+| `onVictory()` | Открытие окна наград (не-пролог — `QuestRewardsDialog`; пролог — `PostVictoryDialog`) |
+| `onDefeat()` | Открытие окна наград за поражение (`QuestRewardsDialog`, mode=DEFEAT) |
 | `onVictoryBossNameChanged(name)` | Ввод имени босса |
 | `onVictoryBossElementChanged(element)` | Выбор стихии босса |
-| `onVictoryNextQuestSelected(questId)` | Выбор следующего квеста |
-| `onConfirmVictory()` | Сохранение победы (трофей + квест + глава) |
+| `onVictoryQuestToggled(number)` | Выбор открытых заданий в PostVictoryDialog |
+| `onVictoryResourceChanged(type, name, delta)` | Изменение количества ресурсов в PostVictoryDialog |
+| `onDefeatQuestToggled(number)` | Выбор номера задания в форме поражения |
+| `onConfirmVictory()` | Сохранение победы (трофей + задания + ресурсы + 2 стихии) → окно наград главы |
+| `onQuestRewardsAccept()` | «Принять» награды задания из каталога `TaskInfo` → окно наград главы |
+| `onDefeatRewardsAccept()` | «Принять» награды поражения (открыть задания) → лист кампании |
+| `onQuestRewardsEdit()` | «Редактировать»: победа — предзаполнить PostVictoryDialog; поражение — форма чекбоксов |
+| `onQuestRewardsDismiss()` | «Выход» из окна наград задания |
+| `onChapterRewardsAccept()` | «Принять» награды главы: ресурсы, задания, истечение, кузня/лаб, глава += 1 |
+| `onChapterRewardsReject()` | «Отклонить» награды главы (без изменений) |
+| `onChapterDecisionSelected(option, achievementName)` | Выбор варианта решения главы (достижение при «Да») |
 | `onBackToMenu()` | Возврат в главное меню |
 | `onErrorDismissed()` | Сброс сообщения об ошибке |
 
@@ -522,7 +554,7 @@ class CampaignViewModel(
 
 ## 5. Слой данных (Room KMP)
 
-### 5.1 Entity (7 таблиц)
+### 5.1 Entity (9 таблиц)
 
 | Entity | Таблица | Поля |
 |--------|---------|------|
@@ -532,9 +564,12 @@ class CampaignViewModel(
 | `ResourceEntity` | `resources` | id, hunterId (FK→hunters), resourceType, resourceName, quantity |
 | `AchievementEntity` | `achievements` | id, campaignId (FK→campaigns), achievementId, name, description, unlocked |
 | `TrophyEntity` | `trophies` | id, campaignId (FK→campaigns), bossName, element, chapter, acquiredAt |
-| `QuestEntity` | `quests` | id, campaignId (FK→campaigns), questId, name, chapter, element, isCompleted, isAvailable |
+| `QuestEntity` | `quests` | id, campaignId (FK→campaigns), questId, name, chapter, element, questNumber, isCompleted, isAvailable. **Уникальный индекс** `(campaign_id, quest_id)` (миграция 8→9) |
+| `BossEntity` | `bosses` | id, name, element (nullable), difficulty, stance1–5 dfw (nullable)/hsc (nullable). `stance4_dfw`/`stance5_dfw` — `@ColumnInfo(defaultValue = "0")` (совпадает с `CREATE_BOSSES_TABLE`; фикс 30.1) |
+| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `вид|ach|главы|quest|else`) |
+| `ChapterInfoEntity` | `chapter_info` | chapter (PK), rewards, rewardPlants, openQuests, conditionalOpenQuests, expireQuests, forgeUpgrade, labUpgrade, hunterKitUpgrade, decisions, messages, conditionalMessages |
 
-### 5.2 DAO (7 интерфейсов)
+### 5.2 DAO (9 интерфейсов)
 
 | DAO | Основные методы |
 |-----|-----------------|
@@ -544,9 +579,28 @@ class CampaignViewModel(
 | `ResourceDao` | getResources (Flow), getByType, getResource, updateQuantity, getAlliesWithResource |
 | `AchievementDao` | getAchievements (Flow), insert, setUnlocked, deleteByCampaign |
 | `TrophyDao` | getTrophies (Flow), insert, deleteByCampaign |
-| `QuestDao` | getQuests (Flow), getAvailable, getCompleted, insert, completeQuest, makeQuestAvailable |
+| `QuestDao` | getQuests (Flow), getAvailable, getCompleted, **upsertQuest** (`ON CONFLICT(campaign_id, quest_id) DO UPDATE`), completeQuest, uncompleteQuest, makeQuestAvailable, **setQuestUnavailable** |
+| `TaskInfoDao` | getAllTaskInfo, getTaskInfo(questNumber), insertTaskInfo, insertAllTaskInfo |
+| `ChapterInfoDao` | getAllChapterInfo, getChapterInfo(chapter), insertChapterInfo, insertAllChapterInfo |
 
-### 5.3 Platform (expect/actual)
+### 5.3 Миграции и версия БД
+
+**Версия БД:** 11 (`@Database(version = 11)`, `exportSchema = true`, схемы в `shared/schemas/...`)
+
+| Миграция | Действия |
+|----------|----------|
+| `MIGRATION_1_2` | `ALTER TABLE quests ADD COLUMN quest_number` |
+| `MIGRATION_2_3` | Создание таблицы `bosses` + seed (Вираксен, Иекорос) |
+| `MIGRATION_3_4` | Пересоздание `bosses` (element NOT NULL, hsc nullable) |
+| `MIGRATION_4_5` | `bosses` — element nullable; `trophies` — element nullable; босс «Пробуждённый» |
+| `MIGRATION_5_6` | `recreateAndSeedBosses` (dfw nullable) |
+| `MIGRATION_6_7` | `recreateAndSeedBosses` |
+| `MIGRATION_7_8` | `recreateAndSeedBosses` + 19 боссов |
+| `MIGRATION_8_9` | Уникальный индекс `quests(campaign_id, quest_id)` + чистка дубликатов |
+| `MIGRATION_9_10` | Создание таблицы `task_info` (каталог заданий) |
+| `MIGRATION_10_11` | `task_info` — колонки условий; создание `chapter_info` (каталог глав) + seed |
+
+### 5.4 Platform (expect/actual)
 
 | Файл | Назначение |
 |------|-----------|

@@ -126,6 +126,9 @@ systeminfo | findstr /C:"Virtualization"
 # Запуск тестов
 .\gradlew.bat :shared:allTests
 
+# Тесты только для Android-таргета (включая androidUnitTest)
+.\gradlew.bat :shared:testDebugUnitTest
+
 # Полная сборка shared-модуля
 .\gradlew.bat :shared:build
 
@@ -135,6 +138,8 @@ systeminfo | findstr /C:"Virtualization"
 # Просмотр всех доступных задач
 .\gradlew.bat tasks
 ```
+
+**Тесты миграций Room (инфраструктура, задача 27.1):** зависимости `androidx.room:room-testing` (MigrationTestHelper) + Robolectric добавлены в `shared/build.gradle.kts` (source set `androidUnitTest`, `testOptions.unitTests.isIncludeAndroidResources = true`). Тест-класс миграций размещается в `shared/src/androidUnitTest/...` (см. `testTasks.md` 27.2).
 
 **Linux / macOS:**
 

@@ -23,11 +23,11 @@ data class BossEntity(
     val stance3Dfw: Int?,
     @ColumnInfo(name = "stance3_hsc")
     val stance3Hsc: Int? = null,
-    @ColumnInfo(name = "stance4_dfw")
+    @ColumnInfo(name = "stance4_dfw", defaultValue = "0")
     val stance4Dfw: Int = 0,
     @ColumnInfo(name = "stance4_hsc")
     val stance4Hsc: Int? = null,
-    @ColumnInfo(name = "stance5_dfw")
+    @ColumnInfo(name = "stance5_dfw", defaultValue = "0")
     val stance5Dfw: Int = 0,
     @ColumnInfo(name = "stance5_hsc")
     val stance5Hsc: Int? = null

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.primalapp.model.campaign.Element
+import com.primalapp.model.campaign.Material
+import com.primalapp.model.campaign.Plant
+import com.primalapp.model.campaign.ResourceType
 import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.viewmodel.CampaignViewModel
 
@@ -110,6 +114,31 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
+                Text("Ресурсы за победу:", fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Материи:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Material.entries.forEach { mat ->
+                    val qty = state.victoryMaterials[mat] ?: 0
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                        Text("${mat.displayName}: $qty", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Button(onClick = { viewModel.onVictoryResourceChanged(ResourceType.MATERIAL, mat.name, -1) }, modifier = Modifier.height(32.dp)) { Text("-", fontSize = 12.sp) }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Button(onClick = { viewModel.onVictoryResourceChanged(ResourceType.MATERIAL, mat.name, 1) }, modifier = Modifier.height(32.dp)) { Text("+", fontSize = 12.sp) }
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Растения:", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Plant.entries.forEach { plant ->
+                    val qty = state.victoryPlants[plant] ?: 0
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp)) {
+                        Text("${plant.displayName}: $qty", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Button(onClick = { viewModel.onVictoryResourceChanged(ResourceType.PLANT, plant.name, -1) }, modifier = Modifier.height(32.dp)) { Text("-", fontSize = 12.sp) }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Button(onClick = { viewModel.onVictoryResourceChanged(ResourceType.PLANT, plant.name, 1) }, modifier = Modifier.height(32.dp)) { Text("+", fontSize = 12.sp) }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text("Открытые задания:", fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(4.dp))
                 FlowRow(
@@ -139,8 +168,11 @@ fun PostVictoryDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
             }
         },
         confirmButton = {
-            TextButton(onClick = { viewModel.onConfirmVictory() }) {
-                Text("Продолжить")
+            TextButton(
+                onClick = { viewModel.onConfirmVictory() },
+                enabled = !state.isSaving
+            ) {
+                Text(if (state.isSaving) "Сохранение..." else "Продолжить")
             }
         },
         dismissButton = {
