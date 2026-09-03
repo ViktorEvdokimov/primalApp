@@ -54,7 +54,6 @@ import com.primalapp.android.ui.CampaignSetupScreen
 import com.primalapp.android.ui.CampaignSheetScreen
 import com.primalapp.android.ui.ChapterRewardsDialog
 import com.primalapp.android.ui.DefeatScreen
-import com.primalapp.android.ui.ExchangeDialog
 import com.primalapp.android.ui.MainMenuScreen
 import com.primalapp.android.ui.PhaseChangeDialog
 import com.primalapp.android.ui.PostVictoryDialog
@@ -128,9 +127,6 @@ fun PrimalApp() {
     }
     if (campaignState.showChapterRewards) {
         ChapterRewardsDialog(campaignState, campaignViewModel)
-    }
-    if (campaignState.showExchangeDialog) {
-        ExchangeDialog(campaignState, campaignViewModel)
     }
     if (campaignState.fatalError != null) {
         AlertDialog(

@@ -15,8 +15,8 @@ data class Monster(
     var accumulatedDamage: Int = 0,         // Накопленный (неприменённый) урон
     var damageForWound: Int? = 4,           // Урон, требуемый для 1 раны (null = нет порога раны)
     var healthForStanceChange: Int = 7,     // Порог здоровья для смены стойки
-    var rage: Int = 0,                      // Текущая ярость
-    var isHardened: Boolean = false,        // Статус "затвердевший"
+    var rage: Int = 0,                      // Текущая ярость (в начале боя выставляется = числу охотников)
+    var isHardened: Boolean = false,        // Статус "устойчивость" (монстр)
     var isDefeated: Boolean = false         // Флаг победы
 )
 ```
@@ -150,7 +150,7 @@ monster(currentHealth=10, damageForWound=4, isHardened=true).takeDamage(9)
 Сбрасывает параметры фазы:
 - `this.damageForWound = damageForWound` (null = нет порога раны)
 - `this.healthForStanceChange = healthForStanceChange`
-- `if (this.isHardened) this.accumulatedDamage = 0` — остаток урона сгорает только для затвердевшего монстра; для обычного монстра остаток переносится на новую стойку (по правилам «Перенесите на неё все жетоны урона с предыдущей карты стойки»)
+- `if (this.isHardened) this.accumulatedDamage = 0` — остаток урона сгорает только для устойчивого монстра; для обычного монстра остаток переносится на новую стойку (по правилам «Перенесите на неё все жетоны урона с предыдущей карты стойки»)
 
 Вызывается при подтверждении смены стойки.
 
@@ -295,7 +295,7 @@ class BattleViewModel(
 #### `startBattle(hunterCount: Int, damageForWound: Int?, healthForStanceChange: Int?)`
 **Строка:** `88`
 
-Создаёт охотников и монстра, переводит фазу в `PHASE_I`.
+Создаёт охотников и монстра, переводит фазу в `PHASE_I`. Начальная ярость монстра = числу охотников (`startBattleWithHunters` → `rage = hunters.size`; задача 35.2).
 
 **Параметры:**
 - `hunterCount` — количество охотников (1–4)
@@ -402,7 +402,7 @@ class BattleViewModel(
 #### `toggleHardened()`
 **Строка:** `243`
 
-Переключает `monster.isHardened`.
+Переключает `monster.isHardened`. Сообщение в состоянии — «Монстр устойчивый» / «Монстр неустойчивый» (задача 35.1).
 
 ---
 
@@ -453,6 +453,7 @@ data class CampaignUiState(
     val campaigns: List<Campaign> = emptyList(),
     val campaignName: String = "",
     val selectedClasses: List<HunterClass> = emptyList(),
+    val hunterPlayerNames: Map<HunterClass, String> = emptyMap(),
     val currentCampaign: Campaign? = null,
     val hunters: List<CampaignHunter> = emptyList(),
     val selectedHunterIndex: Int = 0,
@@ -460,23 +461,26 @@ data class CampaignUiState(
     val materials: Map<Material, Int> = emptyMap(),
     val plants: Map<Plant, Int> = emptyMap(),
     val elements: Map<Element, Int> = emptyMap(),
+    val victoryMaterials: Map<Material, Int> = emptyMap(),
+    val victoryPlants: Map<Plant, Int> = emptyMap(),
     val notes: String = "",
     val availableSkillBranches: List<SkillBranch> = emptyList(),
-    val showExchangeDialog: Boolean = false,
-    val exchangeResourceType: ResourceType? = null,
-    val exchangeResourceName: String = "",
-    val exchangeAmount: String = "0",
     val showPostVictory: Boolean = false,
     val bossName: String = "",
     val bossElement: Element? = null,
     val completedQuestId: String = "",
     val availableQuestsForNext: List<Quest> = emptyList(),
     val selectedNextQuestId: String? = null,
+    val showQuestSelectDialog: Boolean = false,
+    val activeQuestId: String? = null,
     val selectedQuestNumbers: Set<Int> = emptySet(),
     val selectedDefeatQuestNumbers: Set<Int> = emptySet(),
     val isSaving: Boolean = false,
     val saveMessage: String = "",
     val error: String? = null,
+    val lastActiveBattle: AppScreen? = null,
+    val fatalError: String? = null,
+    val preBattleHunters: List<Hunter> = emptyList(),
     val isPrologue: Boolean = false,
     val defeatedBosses: List<String> = emptyList(),
     val campaignQuests: List<Quest> = emptyList(),
@@ -485,10 +489,15 @@ data class CampaignUiState(
     val questRewardsMode: QuestRewardsMode? = null,
     val activeQuestNumber: Int? = null,
     val editDefeatMode: Boolean = false,
+    val showQuestEditDialog: Boolean = false,
+    val editedQuestNumbers: Set<Int> = emptySet(),
     val showChapterRewards: Boolean = false,
     val chapterInfoByNumber: Map<Int, ChapterInfo> = emptyMap(),
     val chapterRewardsMessage: String = "",
     val campaignTrophies: List<Trophy> = emptyList(),
+    val campaignAchievements: List<Achievement> = emptyList(),
+    val showAchievementEditor: Boolean = false,
+    val newAchievementName: String = "",
     val availableBosses: List<Boss> = emptyList(),
     val selectedPreBattleBoss: Boss? = null,
     val selectedPreBattleBossName: String? = null,
@@ -525,10 +534,12 @@ class CampaignViewModel(
 | `onUnlockSkill(branch, tier)` | Разблокировка навыка |
 | `onNotesChanged(notes)` | Ввод заметок |
 | `onSaveNotes()` | Сохранение заметок |
+| `onOpenAchievementEditor()` | Показать диалог редактирования достижений |
+| `onCloseAchievementEditor()` | Закрыть диалог редактирования достижений |
+| `onNewAchievementNameChanged(name)` | Ввод названия нового достижения |
+| `onAddAchievement()` | Добавить достижение (свободный ввод), сохраняется с `unlocked = true` |
+| `onDeleteAchievement(achievementId)` | Удалить достижение кампании |
 | `onUpdateChapter(chapter)` | Ручное изменение главы |
-| `onOpenExchange(type, name)` | Открытие диалога обмена |
-| `onCloseExchange()` | Закрытие диалога обмена |
-| `onExchangeAmountChanged(amount)` | Ввод количества для обмена |
 | `onStartCampaignBattle()` | Запуск боя в рамках кампании |
 | `getBattleViewModel()` | Получение BattleViewModel для UI |
 | `onBattleFinished()` | Завершение боя, возврат к листу |
@@ -566,7 +577,7 @@ class CampaignViewModel(
 | `TrophyEntity` | `trophies` | id, campaignId (FK→campaigns), bossName, element, chapter, acquiredAt |
 | `QuestEntity` | `quests` | id, campaignId (FK→campaigns), questId, name, chapter, element, questNumber, isCompleted, isAvailable. **Уникальный индекс** `(campaign_id, quest_id)` (миграция 8→9) |
 | `BossEntity` | `bosses` | id, name, element (nullable), difficulty, stance1–5 dfw (nullable)/hsc (nullable). `stance4_dfw`/`stance5_dfw` — `@ColumnInfo(defaultValue = "0")` (совпадает с `CREATE_BOSSES_TABLE`; фикс 30.1) |
-| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `вид|ach|главы|quest|else`) |
+| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `kind|achievement|chapterSet|quest|else|rewardAchievement`, через `;`; виды: `CHAPTER_IN`, `ACHIEVEMENT_OWNED`, `ACHIEVEMENT_NOT_OWNED`, `ACHIEVEMENT_OWNED_IN_CHAPTER`) |
 | `ChapterInfoEntity` | `chapter_info` | chapter (PK), rewards, rewardPlants, openQuests, conditionalOpenQuests, expireQuests, forgeUpgrade, labUpgrade, hunterKitUpgrade, decisions, messages, conditionalMessages |
 
 ### 5.2 DAO (9 интерфейсов)
@@ -577,7 +588,7 @@ class CampaignViewModel(
 | `HunterDao` | getHunters (Flow), getHunter, insert/update/delete, insertReturningId |
 | `SkillDao` | getSkills (Flow), insert, setUnlocked, deleteByHunter |
 | `ResourceDao` | getResources (Flow), getByType, getResource, updateQuantity, getAlliesWithResource |
-| `AchievementDao` | getAchievements (Flow), insert, setUnlocked, deleteByCampaign |
+| `AchievementDao` | getAchievements (Flow), insert, setUnlocked, deleteByCampaign, **deleteAchievement (campaign_id + achievement_id)** |
 | `TrophyDao` | getTrophies (Flow), insert, deleteByCampaign |
 | `QuestDao` | getQuests (Flow), getAvailable, getCompleted, **upsertQuest** (`ON CONFLICT(campaign_id, quest_id) DO UPDATE`), completeQuest, uncompleteQuest, makeQuestAvailable, **setQuestUnavailable** |
 | `TaskInfoDao` | getAllTaskInfo, getTaskInfo(questNumber), insertTaskInfo, insertAllTaskInfo |
@@ -585,7 +596,7 @@ class CampaignViewModel(
 
 ### 5.3 Миграции и версия БД
 
-**Версия БД:** 11 (`@Database(version = 11)`, `exportSchema = true`, схемы в `shared/schemas/...`)
+**Версия БД:** 12 (`@Database(version = 12)`, `exportSchema = true`, схемы в `shared/schemas/...`)
 
 | Миграция | Действия |
 |----------|----------|
@@ -599,6 +610,7 @@ class CampaignViewModel(
 | `MIGRATION_8_9` | Уникальный индекс `quests(campaign_id, quest_id)` + чистка дубликатов |
 | `MIGRATION_9_10` | Создание таблицы `task_info` (каталог заданий) |
 | `MIGRATION_10_11` | `task_info` — колонки условий; создание `chapter_info` (каталог глав) + seed |
+| `MIGRATION_11_12` | Пере-сид `task_info` с расширенной моделью условий (`ACHIEVEMENT_OWNED_IN_CHAPTER`, `rewardAchievement` — зад. 25, 29/40); схема не менялась |
 
 ### 5.4 Platform (expect/actual)
 

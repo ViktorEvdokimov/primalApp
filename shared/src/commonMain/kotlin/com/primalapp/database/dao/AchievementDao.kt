@@ -26,4 +26,7 @@ interface AchievementDao {
 
     @Query("DELETE FROM achievements WHERE campaign_id = :campaignId")
     suspend fun deleteAchievementsByCampaign(campaignId: Long)
+
+    @Query("DELETE FROM achievements WHERE campaign_id = :campaignId AND achievement_id = :achievementId")
+    suspend fun deleteAchievement(campaignId: Long, achievementId: String)
 }

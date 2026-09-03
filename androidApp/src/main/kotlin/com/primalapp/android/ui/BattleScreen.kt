@@ -123,7 +123,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
             Text("Прочность: ${monster.damageForWound?.toString() ?: "нет"}")
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Статус: ${if (monster.isHardened) "Затвердевший" else "Обычный"}")
+            Text("Статус: ${if (monster.isHardened) "Устойчивость" else "Обычный"}")
             Text("Смена стойки: ${monster.healthForStanceChange?.let { "при $it HP" } ?: "по запросу"}")
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -180,7 +180,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Затвердевший:")
+            Text("Устойчивость:")
             Switch(checked = monster.isHardened, onCheckedChange = { viewModel.toggleHardened() })
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))

@@ -108,6 +108,7 @@ class BattleViewModel(
         val monster = Monster(
             name = monsterName,
             currentHealth = 10,
+            rage = hunters.size,
             damageForWound = if (stance != null) stance.damageForWound?.let { hunters.size * it } else damageForWound?.let { hunters.size * it },
             healthForStanceChange = if (stance != null) stance.healthForStanceChange else healthForStanceChange
         )
@@ -494,7 +495,7 @@ class BattleViewModel(
             val hardened = current.monster.toggleHardened()
             current.copy(
                 monster = current.monster,
-                message = if (hardened) "Монстр затвердевший" else "Монстр незатвердевший"
+                message = if (hardened) "Монстр устойчивый" else "Монстр неустойчивый"
             )
         }
     }

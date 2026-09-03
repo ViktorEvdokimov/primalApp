@@ -6,7 +6,9 @@ import androidx.sqlite.execSQL
 /**
  * Каталог заданий из doc/taskInfo.md.
  * Формат колонок: материи/растения "NAME:qty;NAME2:qty", списки номеров через запятую.
- * Очевидные опечатки исправлены (см. doc/qa.md); условные правила (главы/достижения) — TODO для задачи 31.2.
+ * Формат условий: `kind|achievement|chapterSet|quest|else|rewardAchievement` через ';' между условиями.
+ * Очевидные опечатки исправлены (см. doc/qa.md). Составное условие зад. 25 —
+ * `ACHIEVEMENT_OWNED_IN_CHAPTER` (достижение И глава), условные достижения зад. 29/40 — поле rewardAchievement.
  */
 private val TASK_INFO_ROWS = listOf(
     // 1 Память пустыни
@@ -182,7 +184,7 @@ private val TASK_INFO_ROWS = listOf(
         "25", "Горящее солнце", "Харджа", "FIRE",
         "BONES:1;BLOOD:2;IRIDIA:1",
         "NILLEA:2;ALBALACEA:1;MELLIS:2",
-        "", "ACHIEVEMENT_OWNED|Горящий уголёк||27|34;CHAPTER_IN||8|34|", "", "17", "", "", ""
+        "", "ACHIEVEMENT_OWNED_IN_CHAPTER|Горящий уголёк|8|34|;ACHIEVEMENT_OWNED|Горящий уголёк||27|", "", "17", "", "", ""
     ),
     // 26 Голос гор
     arrayOf(
@@ -210,7 +212,7 @@ private val TASK_INFO_ROWS = listOf(
         "29", "Пещеры эха", "Иекорос", "LIGHTNING",
         "SCALES:1;BLOOD:1;ZIMIA:1;IRIDIA:1",
         "TARMARET:1;ALBALACEA:1;MELLIS:1;ANTHEMON:1;SELICORNIA:1",
-        "", "ACHIEVEMENT_OWNED|Голос Волтьяра|||", "", "", "", "", ""
+        "", "ACHIEVEMENT_OWNED|Голос Волтьяра||||Уробборос", "", "", "", "", ""
     ),
     // 30 Голос бури
     arrayOf(
@@ -287,7 +289,7 @@ private val TASK_INFO_ROWS = listOf(
         "40", "Бездна под водопадом", "Иекорос", "LIGHTNING",
         "SCALES:1;BLOOD:1;ZIMIA:1;IRIDIA:1",
         "TARMARET:2;ALBALACEA:1;ANTHEMON:1;SELICORNIA:1",
-        "", "ACHIEVEMENT_OWNED|Голос Волтьяра|||", "", "", "", "", ""
+        "", "ACHIEVEMENT_OWNED|Голос Волтьяра||||Уробборос", "", "", "", "", ""
     )
 )
 

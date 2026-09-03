@@ -45,12 +45,6 @@ enum class QuestRewardsMode {
     DEFEAT
 }
 
-enum class ExchangeMode {
-    SELL,
-    EXCHANGE,
-    GET_FROM_ALLY
-}
-
 data class CampaignUiState(
     val screen: AppScreen = AppScreen.MainMenu,
     val campaigns: List<Campaign> = emptyList(),
@@ -68,12 +62,6 @@ data class CampaignUiState(
     val victoryPlants: Map<Plant, Int> = emptyMap(),
     val notes: String = "",
     val availableSkillBranches: List<SkillBranch> = emptyList(),
-    val showExchangeDialog: Boolean = false,
-    val exchangeMode: ExchangeMode? = null,
-    val exchangeMessage: String = "",
-    val exchangeResourceType: ResourceType? = null,
-    val exchangeResourceName: String = "",
-    val exchangeAmount: String = "0",
     val showPostVictory: Boolean = false,
     val bossName: String = "",
     val bossElement: Element? = null,
@@ -105,6 +93,8 @@ data class CampaignUiState(
     val chapterRewardsMessage: String = "",
     val campaignTrophies: List<Trophy> = emptyList(),
     val campaignAchievements: List<Achievement> = emptyList(),
+    val showAchievementEditor: Boolean = false,
+    val newAchievementName: String = "",
     val availableBosses: List<Boss> = emptyList(),
     val selectedPreBattleBoss: Boss? = null,
     val selectedPreBattleBossName: String? = null,
@@ -297,119 +287,6 @@ class CampaignViewModel(
             val updated = repository.getCampaign(campaign.id) ?: return@launch
             _state.update { it.copy(currentCampaign = updated) }
         }
-    }
-
-    fun onOpenExchange(resourceType: ResourceType, resourceName: String) {
-        _state.update {
-            it.copy(
-                showExchangeDialog = true,
-                exchangeResourceType = resourceType,
-                exchangeResourceName = resourceName,
-                exchangeAmount = "0"
-            )
-        }
-    }
-
-    fun onCloseExchange() {
-        _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
-    }
-
-    fun onExchangeModeSelected(mode: ExchangeMode) {
-        val state = _state.value
-        val type = state.exchangeResourceType ?: return
-        when (mode) {
-            ExchangeMode.SELL -> {
-                val message = when (type) {
-                    ResourceType.MATERIAL -> "Верните в коробку любой предмет"
-                    ResourceType.ELEMENT -> "Верните в коробку предмет той же стихии"
-                    ResourceType.PLANT -> "Растения нельзя продать"
-                }
-                _state.update { it.copy(exchangeMode = mode, exchangeMessage = message) }
-            }
-            ExchangeMode.EXCHANGE -> {
-                _state.update { it.copy(exchangeMode = mode) }
-            }
-            ExchangeMode.GET_FROM_ALLY -> {
-                _state.update { it.copy(exchangeMode = mode) }
-            }
-        }
-    }
-
-    fun onSellResource() {
-        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
-        val type = _state.value.exchangeResourceType ?: return
-        val name = _state.value.exchangeResourceName
-        scope.launch {
-            val current = when (type) {
-                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(name)] ?: 0
-                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(name)] ?: 0
-                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(name)] ?: 0
-            }
-            if (current > 0) {
-                repository.updateResource(hunter.id, type, name, current - 1)
-                loadHunterResources(hunter.id)
-            }
-            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
-        }
-    }
-
-    fun onExchangeResource(targetName: String, targetType: ResourceType) {
-        val hunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
-        val srcType = _state.value.exchangeResourceType ?: return
-        val srcName = _state.value.exchangeResourceName
-        scope.launch {
-            val currentHunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return@launch
-            val srcQty = when (srcType) {
-                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(srcName)] ?: 0
-                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(srcName)] ?: 0
-                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(srcName)] ?: 0
-            }
-            if (srcQty < 1 || targetName.isBlank()) return@launch
-            val tgtQty = when (targetType) {
-                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(targetName)] ?: 0
-                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(targetName)] ?: 0
-                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(targetName)] ?: 0
-            }
-            repository.updateResource(currentHunter.id, srcType, srcName, srcQty - 1)
-            repository.updateResource(currentHunter.id, targetType, targetName, tgtQty + 1)
-            loadHunterResources(currentHunter.id)
-            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
-        }
-    }
-
-    fun onGetFromAlly(allyHunterId: Long) {
-        val sourceHunter = _state.value.hunters.getOrNull(_state.value.selectedHunterIndex) ?: return
-        val type = _state.value.exchangeResourceType ?: return
-        val name = _state.value.exchangeResourceName
-        scope.launch {
-            if (allyHunterId == sourceHunter.id) return@launch
-            // загружаем ресурсы союзника, потому что состояние хранит только текущего охотника
-            val allyResources = when (type) {
-                ResourceType.MATERIAL -> repository.getMaterials(allyHunterId)
-                ResourceType.PLANT -> repository.getPlants(allyHunterId)
-                ResourceType.ELEMENT -> repository.getElements(allyHunterId)
-            }
-            val allyQty = when (type) {
-                ResourceType.MATERIAL -> allyResources[Material.valueOf(name)] ?: 0
-                ResourceType.PLANT -> allyResources[Plant.valueOf(name)] ?: 0
-                ResourceType.ELEMENT -> allyResources[Element.valueOf(name)] ?: 0
-            }
-            val sourceQty = when (type) {
-                ResourceType.MATERIAL -> _state.value.materials[Material.valueOf(name)] ?: 0
-                ResourceType.PLANT -> _state.value.plants[Plant.valueOf(name)] ?: 0
-                ResourceType.ELEMENT -> _state.value.elements[Element.valueOf(name)] ?: 0
-            }
-            if (allyQty > 0) {
-                repository.updateResource(sourceHunter.id, type, name, sourceQty + 1)
-                repository.updateResource(allyHunterId, type, name, allyQty - 1)
-                loadHunterResources(sourceHunter.id)
-            }
-            _state.update { it.copy(showExchangeDialog = false, exchangeMode = null, exchangeMessage = "") }
-        }
-    }
-
-    fun onExchangeAmountChanged(amount: String) {
-        _state.update { it.copy(exchangeAmount = amount) }
     }
 
     fun onResourceIncrement(type: ResourceType, name: String) {
@@ -631,19 +508,9 @@ class CampaignViewModel(
                     )
                     repository.saveQuest(campaignId, quest)
                 }
-                (taskInfo?.defeatOpenQuestConditions ?: emptyList()).forEach { condition ->
-                    val target = resolveConditionTarget(condition, achievements, currentChapter)
-                    if (target != null) {
-                        repository.saveQuest(
-                            campaignId = campaignId,
-                            quest = Quest(
-                                id = target.toString(),
-                                name = "Задание $target",
-                                chapter = currentChapter,
-                                questNumber = target,
-                                isAvailable = true
-                            )
-                        )
+                (taskInfo?.defeatOpenQuestConditions ?: emptyList()).let { conditions ->
+                    if (conditions.isNotEmpty()) {
+                        applyQuestOpenConditions(campaignId, conditions, achievements, currentChapter)
                     }
                 }
                 _state.update {
@@ -698,20 +565,9 @@ class CampaignViewModel(
                 }
                 val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
                 val currentChapter = state.currentCampaign?.currentChapter ?: 1
-                (taskInfo?.victoryOpenQuestConditions ?: emptyList()).forEach { condition ->
-                    val target = resolveConditionTarget(condition, achievements, currentChapter)
-                    if (target != null) {
-                        repository.saveQuest(
-                            campaignId = campaignId,
-                            quest = Quest(
-                                id = target.toString(),
-                                name = "Задание $target",
-                                chapter = currentChapter,
-                                element = element,
-                                questNumber = target,
-                                isAvailable = true
-                            )
-                        )
+                (taskInfo?.victoryOpenQuestConditions ?: emptyList()).let { conditions ->
+                    if (conditions.isNotEmpty()) {
+                        applyQuestOpenConditions(campaignId, conditions, achievements, currentChapter, element)
                     }
                 }
                 val completedQuestId = state.activeQuestId ?: state.activeQuestNumber?.toString() ?: ""
@@ -744,7 +600,7 @@ class CampaignViewModel(
                 (taskInfo?.victoryAchievements ?: emptyList()).forEach { achievementName ->
                     repository.saveAchievement(
                         campaignId = campaignId,
-                        achievement = Achievement(id = achievementName, name = achievementName)
+                        achievement = Achievement(id = achievementName, name = achievementName, unlocked = true)
                     )
                 }
                 _state.update {
@@ -1088,8 +944,57 @@ class CampaignViewModel(
             TaskConditionKind.CHAPTER_IN -> currentChapter in condition.chapterSet
             TaskConditionKind.ACHIEVEMENT_OWNED -> condition.achievementName != null && condition.achievementName in achievements
             TaskConditionKind.ACHIEVEMENT_NOT_OWNED -> condition.achievementName != null && condition.achievementName !in achievements
+            TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER ->
+                condition.achievementName != null &&
+                    condition.achievementName in achievements &&
+                    currentChapter in condition.chapterSet
         }
         return if (matched) condition.questNumber else condition.elseQuestNumber
+    }
+
+    /**
+     * Применяет условные правила задания (зад. 34.3/34.4):
+     * - условия с [TaskCondition.rewardAchievement] выдают достижение при его выполнении;
+     * - условия открытия заданий вычисляются по очереди; открывается ПЕРВОЕ условие, давшее целевое
+     *   задание (для составного условия зад. 25: задание 34 вместо 27 при главе 8).
+     */
+    private suspend fun applyQuestOpenConditions(
+        campaignId: Long,
+        conditions: List<TaskCondition>,
+        achievements: Set<String>,
+        currentChapter: Int,
+        element: Element? = null
+    ) {
+        var questOpened = false
+        for (condition in conditions) {
+            val reward = condition.rewardAchievement
+            if (reward != null) {
+                val hasRewardSource = condition.achievementName != null && condition.achievementName in achievements
+                if (hasRewardSource) {
+                    repository.saveAchievement(
+                        campaignId = campaignId,
+                        achievement = Achievement(id = reward, name = reward, unlocked = true)
+                    )
+                }
+                continue
+            }
+            if (questOpened) continue
+            val target = resolveConditionTarget(condition, achievements, currentChapter)
+            if (target != null) {
+                repository.saveQuest(
+                    campaignId = campaignId,
+                    quest = Quest(
+                        id = target.toString(),
+                        name = "Задание $target",
+                        chapter = currentChapter,
+                        element = element,
+                        questNumber = target,
+                        isAvailable = true
+                    )
+                )
+                questOpened = true
+            }
+        }
     }
 
     fun onChapterRewardsReject() {
@@ -1104,7 +1009,7 @@ class CampaignViewModel(
             scope.launch {
                 repository.saveAchievement(
                     campaignId = campaignId,
-                    achievement = Achievement(id = achievementName, name = achievementName)
+                    achievement = Achievement(id = achievementName, name = achievementName, unlocked = true)
                 )
             }
         }
@@ -1201,11 +1106,49 @@ class CampaignViewModel(
                     repository.uncompleteQuest(campaignId, questId)
                 } else {
                     repository.completeQuest(campaignId, questId)
+                    if (quest.questNumber > 0) {
+                        openDependentQuests(campaignId, quest.questNumber)
+                    }
                 }
                 loadCampaignSheet(campaignId)
             } catch (e: Exception) {
                 _state.update { it.copy(error = "Ошибка обновления задания: ${e.message}") }
             }
+        }
+    }
+
+    /**
+     * Открывает задания, зависимые от завершённого задания (зад. 34.4):
+     * безусловный список [TaskInfo.victoryOpenQuests] + условные правила
+     * [TaskInfo.victoryOpenQuestConditions] (глава/достижения). Материи/растения/достижения
+     * при ручном «Выполнено» не начисляются (решение пользователя, qa 70).
+     */
+    private suspend fun openDependentQuests(campaignId: Long, questNumber: Int) {
+        val taskInfo = _state.value.taskInfoByQuestNumber[questNumber] ?: return
+        val currentChapter = _state.value.currentCampaign?.currentChapter ?: 1
+        val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+        val element = taskInfo.bossElement
+        taskInfo.victoryOpenQuests.forEach { number ->
+            repository.saveQuest(
+                campaignId = campaignId,
+                quest = Quest(
+                    id = number.toString(),
+                    name = "Задание $number",
+                    chapter = currentChapter,
+                    element = element,
+                    questNumber = number,
+                    isAvailable = true
+                )
+            )
+        }
+        if (taskInfo.victoryOpenQuestConditions.isNotEmpty()) {
+            applyQuestOpenConditions(
+                campaignId = campaignId,
+                conditions = taskInfo.victoryOpenQuestConditions,
+                achievements = achievements,
+                currentChapter = currentChapter,
+                element = element
+            )
         }
     }
 
@@ -1263,6 +1206,57 @@ class CampaignViewModel(
 
     fun onCancelQuestEdits() {
         _state.update { it.copy(showQuestEditDialog = false, editedQuestNumbers = emptySet()) }
+    }
+
+    fun onOpenAchievementEditor() {
+        _state.update { it.copy(showAchievementEditor = true, newAchievementName = "") }
+    }
+
+    fun onCloseAchievementEditor() {
+        _state.update { it.copy(showAchievementEditor = false, newAchievementName = "", error = null) }
+    }
+
+    fun onNewAchievementNameChanged(name: String) {
+        _state.update { it.copy(newAchievementName = name) }
+    }
+
+    fun onAddAchievement() {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        val name = _state.value.newAchievementName.trim()
+        if (name.isEmpty()) {
+            _state.update { it.copy(error = "Введите название достижения") }
+            return
+        }
+        scope.launch {
+            try {
+                repository.deleteAchievement(campaignId, name)
+                repository.saveAchievement(
+                    campaignId = campaignId,
+                    achievement = Achievement(id = name, name = name, unlocked = true)
+                )
+                reloadAchievements(campaignId)
+                _state.update { it.copy(newAchievementName = "", error = null) }
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка добавления достижения: ${e.message}") }
+            }
+        }
+    }
+
+    fun onDeleteAchievement(achievementId: String) {
+        val campaignId = _state.value.currentCampaign?.id ?: return
+        scope.launch {
+            try {
+                repository.deleteAchievement(campaignId, achievementId)
+                reloadAchievements(campaignId)
+            } catch (e: Exception) {
+                _state.update { it.copy(error = "Ошибка удаления достижения: ${e.message}") }
+            }
+        }
+    }
+
+    private suspend fun reloadAchievements(campaignId: Long) {
+        val achievements = repository.getAchievements(campaignId)
+        _state.update { it.copy(campaignAchievements = achievements) }
     }
 
     private suspend fun loadHunterResources(hunterId: Long) {

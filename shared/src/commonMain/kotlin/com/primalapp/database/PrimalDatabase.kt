@@ -226,6 +226,15 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
     }
 }
 
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SQLiteConnection) {
+        // Схема не меняется; пере-сид каталога заданий с расширенной моделью условий
+        // (составное условие зад. 25, условные достижения зад. 29/40).
+        db.execSQL("DELETE FROM task_info")
+        seedTaskInfo(db)
+    }
+}
+
 private val CREATE_BOSSES_TABLE = """
     CREATE TABLE IF NOT EXISTS bosses (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -418,7 +427,7 @@ fun seedBosses(db: SQLiteConnection) {
         TaskInfoEntity::class,
         ChapterInfoEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {

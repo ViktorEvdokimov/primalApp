@@ -263,6 +263,10 @@ class CampaignRepositoryImpl(
         achievementDao.insertAchievement(achievement.toEntity(campaignId))
     }
 
+    override suspend fun deleteAchievement(campaignId: Long, achievementId: String) {
+        achievementDao.deleteAchievement(campaignId, achievementId)
+    }
+
     override suspend fun getTrophies(campaignId: Long): List<Trophy> =
         trophyDao.getTrophiesList(campaignId).map { it.toDomain() }
 

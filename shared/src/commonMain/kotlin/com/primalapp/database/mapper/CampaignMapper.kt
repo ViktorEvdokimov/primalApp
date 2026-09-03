@@ -209,7 +209,8 @@ private fun TaskCondition.encode(): String {
         achievementName.orEmpty(),
         chapterSet.joinToString(LIST_SEPARATOR),
         questNumber?.toString().orEmpty(),
-        elseQuestNumber?.toString().orEmpty()
+        elseQuestNumber?.toString().orEmpty(),
+        rewardAchievement.orEmpty()
     )
     return parts.joinToString(CONDITION_SEPARATOR)
 }
@@ -221,14 +222,15 @@ private fun parseConditions(value: String): List<TaskCondition> {
     if (value.isBlank()) return emptyList()
     return value.split(RESOURCE_SEPARATOR).mapNotNull { raw ->
         val parts = raw.split(CONDITION_SEPARATOR)
-        if (parts.size != 5) return@mapNotNull null
+        if (parts.size < 5 || parts.size > 6) return@mapNotNull null
         runCatching {
             TaskCondition(
                 kind = TaskConditionKind.valueOf(parts[0]),
                 achievementName = parts[1].ifBlank { null },
                 chapterSet = parts[2].let { if (it.isBlank()) emptyList() else it.split(LIST_SEPARATOR).map(String::toInt) },
                 questNumber = parts[3].toIntOrNull(),
-                elseQuestNumber = parts[4].toIntOrNull()
+                elseQuestNumber = parts[4].toIntOrNull(),
+                rewardAchievement = parts.getOrNull(5)?.ifBlank { null }
             )
         }.getOrNull()
     }

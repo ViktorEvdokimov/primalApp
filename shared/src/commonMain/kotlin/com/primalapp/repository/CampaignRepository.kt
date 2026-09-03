@@ -57,6 +57,7 @@ interface CampaignRepository {
 
     suspend fun getAchievements(campaignId: Long): List<Achievement>
     suspend fun saveAchievement(campaignId: Long, achievement: Achievement)
+    suspend fun deleteAchievement(campaignId: Long, achievementId: String) {}
 
     suspend fun getTrophies(campaignId: Long): List<Trophy>
     suspend fun saveTrophy(campaignId: Long, trophy: Trophy)

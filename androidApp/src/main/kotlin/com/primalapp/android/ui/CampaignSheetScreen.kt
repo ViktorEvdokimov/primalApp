@@ -1,5 +1,6 @@
 package com.primalapp.android.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,9 +30,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.primalapp.android.R
 import com.primalapp.model.campaign.Element
 import com.primalapp.model.campaign.Material
 import com.primalapp.model.campaign.Plant
@@ -149,6 +153,13 @@ fun CampaignSheetScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
 
         Text("Достижения:", fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(4.dp))
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Полученные:", fontSize = 14.sp, modifier = Modifier.weight(1f))
+            OutlinedButton(onClick = { viewModel.onOpenAchievementEditor() }, modifier = Modifier.height(32.dp)) {
+                Text("Редактировать", fontSize = 12.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
         if (state.campaignAchievements.isEmpty()) {
             Text("Нет достижений.", fontSize = 14.sp)
         } else {
@@ -156,7 +167,7 @@ fun CampaignSheetScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
                 Text(
                     "${achievement.name}",
                     fontSize = 14.sp,
-                    color = if (achievement.unlocked) androidx.compose.ui.graphics.Color.Green else androidx.compose.ui.graphics.Color.Gray
+                    color = androidx.compose.ui.graphics.Color.Green
                 )
             }
         }
@@ -222,6 +233,9 @@ fun CampaignSheetScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
     if (state.showQuestEditDialog) {
         QuestEditDialog(state, viewModel)
     }
+    if (state.showAchievementEditor) {
+        AchievementEditDialog(state, viewModel)
+    }
 }
 
 @Composable
@@ -250,6 +264,55 @@ private fun QuestEditDialog(state: CampaignUiState, viewModel: CampaignViewModel
         },
         confirmButton = { Button(onClick = { viewModel.onSaveQuestEdits() }) { Text("Сохранить") } },
         dismissButton = { OutlinedButton(onClick = { viewModel.onCancelQuestEdits() }) { Text("Отмена") } }
+    )
+}
+
+@Composable
+private fun AchievementEditDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
+    AlertDialog(
+        onDismissRequest = { viewModel.onCloseAchievementEditor() },
+        title = { Text("Редактирование достижений") },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                if (state.campaignAchievements.isEmpty()) {
+                    Text("Нет достижений.", fontSize = 14.sp)
+                } else {
+                    state.campaignAchievements.forEach { achievement ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(achievement.name, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                            OutlinedButton(
+                                onClick = { viewModel.onDeleteAchievement(achievement.id) },
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("Удалить", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = state.newAchievementName,
+                    onValueChange = { viewModel.onNewAchievementNameChanged(it) },
+                    label = { Text("Название достижения") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Button(
+                    onClick = { viewModel.onAddAchievement() },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    Text("Добавить")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { viewModel.onCloseAchievementEditor() }) { Text("Готово") }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = { viewModel.onCloseAchievementEditor() }) { Text("Отмена") }
+        }
     )
 }
 
@@ -335,9 +398,9 @@ private fun ResourcesSection(state: CampaignUiState, viewModel: CampaignViewMode
         val qty = state.materials[mat] ?: 0
         ResourceRow(
             label = "${mat.displayName}: $qty",
+            iconRes = mat.iconRes(),
             onDecrement = { viewModel.onResourceDecrement(ResourceType.MATERIAL, mat.name) },
-            onIncrement = { viewModel.onResourceIncrement(ResourceType.MATERIAL, mat.name) },
-            onExchange = { viewModel.onOpenExchange(ResourceType.MATERIAL, mat.name) }
+            onIncrement = { viewModel.onResourceIncrement(ResourceType.MATERIAL, mat.name) }
         )
     }
 
@@ -347,9 +410,9 @@ private fun ResourcesSection(state: CampaignUiState, viewModel: CampaignViewMode
         val qty = state.plants[plant] ?: 0
         ResourceRow(
             label = "${plant.displayName}: $qty",
+            iconRes = plant.iconRes(),
             onDecrement = { viewModel.onResourceDecrement(ResourceType.PLANT, plant.name) },
-            onIncrement = { viewModel.onResourceIncrement(ResourceType.PLANT, plant.name) },
-            onExchange = { viewModel.onOpenExchange(ResourceType.PLANT, plant.name) }
+            onIncrement = { viewModel.onResourceIncrement(ResourceType.PLANT, plant.name) }
         )
     }
 
@@ -359,9 +422,9 @@ private fun ResourcesSection(state: CampaignUiState, viewModel: CampaignViewMode
         val qty = state.elements[elem] ?: 0
         ResourceRow(
             label = "${elem.displayName}: $qty",
+            iconRes = elem.iconRes(),
             onDecrement = { viewModel.onResourceDecrement(ResourceType.ELEMENT, elem.name) },
-            onIncrement = { viewModel.onResourceIncrement(ResourceType.ELEMENT, elem.name) },
-            onExchange = { viewModel.onOpenExchange(ResourceType.ELEMENT, elem.name) }
+            onIncrement = { viewModel.onResourceIncrement(ResourceType.ELEMENT, elem.name) }
         )
     }
 }
@@ -369,14 +432,20 @@ private fun ResourcesSection(state: CampaignUiState, viewModel: CampaignViewMode
 @Composable
 private fun ResourceRow(
     label: String,
+    iconRes: Int,
     onDecrement: () -> Unit,
-    onIncrement: () -> Unit,
-    onExchange: () -> Unit
+    onIncrement: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 1.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Image(
+            painter = painterResource(iconRes),
+            contentDescription = label,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
         Text(label, fontSize = 14.sp, modifier = Modifier.weight(1f))
         Button(onClick = onDecrement, modifier = Modifier.height(32.dp)) {
             Text("-", fontSize = 12.sp)
@@ -385,9 +454,35 @@ private fun ResourceRow(
         Button(onClick = onIncrement, modifier = Modifier.height(32.dp)) {
             Text("+", fontSize = 12.sp)
         }
-        Spacer(modifier = Modifier.width(4.dp))
-        Button(onClick = onExchange, modifier = Modifier.height(32.dp)) {
-            Text("Обмен", fontSize = 12.sp)
-        }
     }
+}
+
+private fun Material.iconRes(): Int = when (this) {
+    Material.SCALES -> R.drawable.scales
+    Material.BONES -> R.drawable.bones
+    Material.BLOOD -> R.drawable.blood
+    Material.ZIMIA -> R.drawable.zimia
+    Material.IRIDIA -> R.drawable.iridia
+    Material.ZLATIA -> R.drawable.zlatia
+}
+
+private fun Plant.iconRes(): Int = when (this) {
+    Plant.NILLEA -> R.drawable.nillea
+    Plant.TARMARET -> R.drawable.tarmaret
+    Plant.ALBALACEA -> R.drawable.albalacea
+    Plant.MELLIS -> R.drawable.mellis
+    Plant.ANTHEMON -> R.drawable.anthemon
+    Plant.SELICORNIA -> R.drawable.selicornia
+}
+
+private fun Element.iconRes(): Int = when (this) {
+    Element.FIRE -> R.drawable.fire
+    Element.HORN -> R.drawable.horn
+    Element.CORAL -> R.drawable.coral
+    Element.CRYSTAL -> R.drawable.crystal
+    Element.LIGHTNING -> R.drawable.lightning
+    Element.METAL -> R.drawable.metal
+    Element.FEATHER -> R.drawable.feather
+    Element.POISON -> R.drawable.poison
+    Element.ICE -> R.drawable.ice
 }

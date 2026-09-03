@@ -308,9 +308,14 @@ primalApp/
 │   │   └── depends on :shared (Room KMP — транзитивно)
 │   └── src/main/
 │       ├── AndroidManifest.xml                    # MainActivity как LAUNCHER
-│       ├── res/values/
-│       │   ├── strings.xml                        # app_name = "Primal App"
-│       │   └── themes.xml                         # Material Light NoActionBar
+│       ├── res/
+│       │   ├── values/
+│       │   │   ├── strings.xml                        # app_name = "Primal App"
+│       │   │   └── themes.xml                         # Material Light NoActionBar
+│       │   └── drawable/                              # Иконки ресурсов (21 PNG, нижний регистр, имена enum)
+│       │       ├── scales.png, bones.png, blood.png, zimia.png, iridia.png, zlatia.png   # Материи
+│       │       ├── nillea.png, tarmaret.png, albalacea.png, mellis.png, anthemon.png, selicornia.png  # Растения
+│       │       └── fire.png, horn.png, coral.png, crystal.png, lightning.png, metal.png, feather.png, poison.png, ice.png  # Стихии
 │       └── kotlin/com/primalapp/android/
 │           ├── MainActivity.kt                    # Compose UI + БД-фабрика через shared
 │           └── ui/
@@ -319,7 +324,6 @@ primalApp/
 │               ├── CampaignListScreen.kt          # Список кампаний
 │               ├── CampaignSheetScreen.kt         # Лист кампании
 │               ├── BattleScreen.kt                # Боевой экран
-│               ├── ExchangeDialog.kt              # Диалог обмена ресурсов
 │               ├── PostVictoryDialog.kt           # Пост-победный диалог
 │               └── PhaseChangeDialog.kt           # Диалог смены стойки
 │
