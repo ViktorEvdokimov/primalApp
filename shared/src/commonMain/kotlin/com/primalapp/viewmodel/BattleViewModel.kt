@@ -16,8 +16,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -42,6 +45,22 @@ enum class InputMode {
     NONE,
     MANUAL,
     QUICK_BUTTON
+}
+
+enum class BattleParam {
+    PHASE,
+    ROUND,
+    HEALTH,
+    RAGE,
+    ACCUMULATED_DAMAGE,
+    DAMAGE_FOR_WOUND,
+    HEALTH_FOR_STANCE_CHANGE,
+    HARDENED
+}
+
+enum class BattleVibrationEvent {
+    SHORT,
+    DOUBLE
 }
 
 data class MonsterSnapshot(
@@ -73,7 +92,8 @@ data class BattleScreenState(
     val canUndo: Boolean = false,
     val showRageSurgeDialog: Boolean = false,
     val selectedBoss: Boss? = null,
-    val selectedDifficulty: Int = 0
+    val selectedDifficulty: Int = 0,
+    val highlightedParams: Set<BattleParam> = emptySet()
 )
 
 class BattleViewModel(
@@ -81,6 +101,21 @@ class BattleViewModel(
 ) {
     private val _state = MutableStateFlow(BattleScreenState())
     val state: StateFlow<BattleScreenState> = _state.asStateFlow()
+
+    private val _vibrationEvents = MutableSharedFlow<BattleVibrationEvent>(extraBufferCapacity = 8)
+    val vibrationEvents: SharedFlow<BattleVibrationEvent> = _vibrationEvents.asSharedFlow()
+
+    private fun emitVibration(event: BattleVibrationEvent) {
+        _vibrationEvents.tryEmit(event)
+    }
+
+    private fun emitDamageVibration(result: DamageResult?) {
+        if (result != null && result.woundsInflicted > 0) {
+            emitVibration(BattleVibrationEvent.DOUBLE)
+        } else {
+            emitVibration(BattleVibrationEvent.SHORT)
+        }
+    }
 
     private var timerJob: Job? = null
     private val actionHistory = mutableListOf<ActionSnapshot>()
@@ -127,7 +162,8 @@ class BattleViewModel(
                 isTimerRunning = false,
                 message = "Бой начался! Фаза I",
                 selectedBoss = boss,
-                selectedDifficulty = difficulty
+                selectedDifficulty = difficulty,
+                highlightedParams = emptySet()
             )
         }
     }
@@ -158,6 +194,7 @@ class BattleViewModel(
 
     fun onManualStanceChange() {
         val current = _state.value
+        val before = current.toBattleValues()
         val monster = current.monster
         if (monster.healthForStanceChange != null) return
         if (monster.currentPhase >= monster.maxPhases) return
@@ -174,6 +211,8 @@ class BattleViewModel(
                 pendingHealthForStanceChange = current.selectedBoss?.getStance(monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: ""
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     private fun saveSnapshot(actionType: ActionType, description: String) {
@@ -192,6 +231,60 @@ class BattleViewModel(
         if (actionHistory.size > 10) {
             actionHistory.removeAt(actionHistory.lastIndex)
         }
+    }
+
+    private data class BattleValues(
+        val phase: FightPhase,
+        val round: Int,
+        val health: Int,
+        val rage: Int,
+        val accumulatedDamage: Int,
+        val damageForWound: Int?,
+        val healthForStanceChange: Int?,
+        val hardened: Boolean
+    )
+
+    private fun BattleScreenState.toBattleValues(): BattleValues = BattleValues(
+        phase = phase,
+        round = currentRound,
+        health = monster.currentHealth,
+        rage = monster.rage,
+        accumulatedDamage = monster.accumulatedDamage,
+        damageForWound = monster.damageForWound,
+        healthForStanceChange = monster.healthForStanceChange,
+        hardened = monster.isHardened
+    )
+
+    private fun changedParams(before: BattleValues, after: BattleScreenState): Set<BattleParam> {
+        val changed = mutableSetOf<BattleParam>()
+        if (before.phase != after.phase) changed += BattleParam.PHASE
+        if (before.round != after.currentRound) changed += BattleParam.ROUND
+        if (before.health != after.monster.currentHealth) changed += BattleParam.HEALTH
+        if (before.rage != after.monster.rage) changed += BattleParam.RAGE
+        if (before.accumulatedDamage != after.monster.accumulatedDamage) changed += BattleParam.ACCUMULATED_DAMAGE
+        if (before.damageForWound != after.monster.damageForWound) changed += BattleParam.DAMAGE_FOR_WOUND
+        if (before.healthForStanceChange != after.monster.healthForStanceChange) changed += BattleParam.HEALTH_FOR_STANCE_CHANGE
+        if (before.hardened != after.monster.isHardened) changed += BattleParam.HARDENED
+        return changed
+    }
+
+    private val highlightJobs = mutableMapOf<BattleParam, Job>()
+
+    private fun highlightParams(params: Set<BattleParam>) {
+        if (params.isEmpty()) return
+        _state.update { it.copy(highlightedParams = it.highlightedParams + params) }
+        params.forEach { param ->
+            highlightJobs[param]?.cancel()
+            highlightJobs[param] = scope.launch {
+                delay(1000)
+                _state.update { it.copy(highlightedParams = it.highlightedParams - param) }
+                highlightJobs.remove(param)
+            }
+        }
+    }
+
+    private fun highlightChanged(before: BattleValues) {
+        highlightParams(changedParams(before, _state.value))
     }
 
     fun onInputFieldFocused() {
@@ -236,6 +329,7 @@ class BattleViewModel(
         }
 
         timerJob?.cancel()
+        emitVibration(BattleVibrationEvent.SHORT)
 
         if (newMode == InputMode.QUICK_BUTTON) {
             _state.update {
@@ -275,12 +369,14 @@ class BattleViewModel(
                 isTimerRunning = false
             )
         }
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun onUndoPress() {
         if (actionHistory.isEmpty()) return
         val snapshot = actionHistory.removeAt(0)
         val current = _state.value
+        val before = current.toBattleValues()
 
         current.monster.currentHealth = snapshot.monster.currentHealth
         current.monster.accumulatedDamage = snapshot.monster.accumulatedDamage
@@ -315,11 +411,14 @@ class BattleViewModel(
                 phase = newPhase
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun commitDamage() {
         timerJob?.cancel()
         val current = _state.value
+        val before = current.toBattleValues()
         if (current.pendingDamage == 0) {
             _state.update {
                 it.copy(
@@ -375,10 +474,13 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitDamageVibration(result)
     }
 
     fun confirmPhaseChange(damageForWound: Int?, healthForStanceChange: Int?, bossHealth: Int = 0) {
         val current = _state.value
+        val before = current.toBattleValues()
         val previousDfw = current.monster.damageForWound
         saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${current.monster.currentPhase + 1}")
         val totalDamageForWound = damageForWound?.let { it * current.hunterCount }
@@ -416,6 +518,8 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun dismissPhaseChangeDialog() {
@@ -425,6 +529,7 @@ class BattleViewModel(
 
     fun confirmRageSurge() {
         val current = _state.value
+        val before = current.toBattleValues()
         current.monster.rage = current.hunterCount
         _state.update {
             it.copy(
@@ -433,10 +538,13 @@ class BattleViewModel(
                 message = "Всплеск ярости! Ярость сброшена до ${current.hunterCount}"
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun addRage(amount: Int) {
         val sign = if (amount >= 0) "+" else ""
+        val before = _state.value.toBattleValues()
         saveSnapshot(ActionType.RAGE, "ярость $sign$amount")
         _state.update { current ->
             val monster = current.monster
@@ -448,9 +556,12 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun removeRage(amount: Int) {
+        val before = _state.value.toBattleValues()
         saveSnapshot(ActionType.RAGE, "ярость -$amount")
         _state.update { current ->
             current.copy(
@@ -459,9 +570,12 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun addRagePerHunter() {
+        val before = _state.value.toBattleValues()
         saveSnapshot(ActionType.RAGE, "ярость +1/охот")
         _state.update { current ->
             current.copy(
@@ -473,9 +587,12 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun addRagePerHunterMinusOne() {
+        val before = _state.value.toBattleValues()
         saveSnapshot(ActionType.RAGE, "ярость +1/охот-1")
         _state.update { current ->
             val count = (current.hunterCount - 1).coerceAtLeast(0)
@@ -488,9 +605,12 @@ class BattleViewModel(
                 canUndo = actionHistory.isNotEmpty()
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun toggleHardened() {
+        val before = _state.value.toBattleValues()
         _state.update { current ->
             val hardened = current.monster.toggleHardened()
             current.copy(
@@ -498,14 +618,18 @@ class BattleViewModel(
                 message = if (hardened) "Монстр устойчивый" else "Монстр неустойчивый"
             )
         }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun endRound() {
         val current = _state.value
+        val before = current.toBattleValues()
         saveSnapshot(ActionType.ROUND_END, "завершение раунда ${current.currentRound}")
         var phaseUpdated = false
         var newFightPhase = current.phase
         var defeatMessage: String? = null
+        var appliedDamageResult: DamageResult? = null
 
         if (current.pendingDamage > 0) {
             val result = current.monster.takeDamage(current.pendingDamage)
@@ -523,6 +647,8 @@ class BattleViewModel(
                         canUndo = actionHistory.isNotEmpty()
                     )
                 }
+                highlightChanged(before)
+                emitDamageVibration(result)
                 return
             }
 
@@ -540,6 +666,7 @@ class BattleViewModel(
                 }
                 phaseUpdated = true
             }
+            appliedDamageResult = result
         }
 
         current.monster.endRound(current.hunterCount)
@@ -570,6 +697,12 @@ class BattleViewModel(
                 }
             )
         }
+        highlightChanged(before)
+        if (appliedDamageResult != null) {
+            emitDamageVibration(appliedDamageResult)
+        } else {
+            emitVibration(BattleVibrationEvent.SHORT)
+        }
     }
 
     fun onSurrender() {
@@ -585,6 +718,7 @@ class BattleViewModel(
                 message = "Поражение! Вы сдались."
             )
         }
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
     fun resetBattle() {

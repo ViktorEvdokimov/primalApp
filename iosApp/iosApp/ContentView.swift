@@ -6,7 +6,7 @@ struct ContentView: View {
             Image(systemName: "globe")
                 .imageScale(.large)
                 .foregroundStyle(.tint)
-            Text("Primal: Пробуждение")
+            Text("Компаньон в игре «Primal: Пробуждение»")
                 .font(.title)
                 .fontWeight(.bold)
         }

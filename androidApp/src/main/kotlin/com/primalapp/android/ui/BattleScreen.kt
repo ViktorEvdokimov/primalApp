@@ -23,6 +23,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,11 +31,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import com.primalapp.viewmodel.BattleParam
+import com.primalapp.viewmodel.BattleVibrationEvent
 import com.primalapp.viewmodel.BattleViewModel
 import com.primalapp.viewmodel.BattleScreenState
 import com.primalapp.viewmodel.FightPhase
@@ -95,6 +104,10 @@ fun SetupScreen(onConfirm: (Int, Int?, Int) -> Unit) {
 fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
     val monster = state.monster
     var showSurrenderDialog by remember { mutableStateOf(false) }
+    val vibrate = rememberBattleVibrator()
+    LaunchedEffect(viewModel) {
+        viewModel.vibrationEvents.collect { vibrate(it) }
+    }
     val phaseLabel = when (state.phase) {
         FightPhase.PHASE_I -> "I"
         FightPhase.PHASE_II -> "II"
@@ -110,21 +123,21 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
 
     Column {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Фаза $phaseLabel", fontWeight = FontWeight.Bold)
-            Text("Раунд ${state.currentRound}/${state.maxRounds}")
+            ParamText("Фаза $phaseLabel", state.highlightedParams.contains(BattleParam.PHASE), baseBold = true)
+            ParamText("Раунд ${state.currentRound}/${state.maxRounds}", state.highlightedParams.contains(BattleParam.ROUND))
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Здоровье: ${monster.currentHealth}")
-            Text("Ярость: ${monster.rage}")
+            ParamText("Здоровье: ${monster.currentHealth}", state.highlightedParams.contains(BattleParam.HEALTH))
+            ParamText("Ярость: ${monster.rage}", state.highlightedParams.contains(BattleParam.RAGE))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Накопленный урон: ${monster.accumulatedDamage}")
-            Text("Прочность: ${monster.damageForWound?.toString() ?: "нет"}")
+            ParamText("Накопленный урон: ${monster.accumulatedDamage}", state.highlightedParams.contains(BattleParam.ACCUMULATED_DAMAGE))
+            ParamText("Прочность: ${monster.damageForWound?.toString() ?: "нет"}", state.highlightedParams.contains(BattleParam.DAMAGE_FOR_WOUND))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Статус: ${if (monster.isHardened) "Устойчивость" else "Обычный"}")
-            Text("Смена стойки: ${monster.healthForStanceChange?.let { "при $it HP" } ?: "по запросу"}")
+            ParamText("Статус: ${if (monster.isHardened) "Устойчивость" else "Обычный"}", state.highlightedParams.contains(BattleParam.HARDENED))
+            ParamText("Смена стойки: ${monster.healthForStanceChange?.let { "при $it HP" } ?: "по запросу"}", state.highlightedParams.contains(BattleParam.HEALTH_FOR_STANCE_CHANGE))
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -198,14 +211,20 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         Spacer(Modifier.height(8.dp))
 
         OutlinedButton(
-            onClick = { showSurrenderDialog = true },
+            onClick = {
+                vibrate(BattleVibrationEvent.SHORT)
+                showSurrenderDialog = true
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Сдаться")
         }
         Spacer(Modifier.height(8.dp))
 
-        OutlinedButton(onClick = onBackToMenu, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = {
+            vibrate(BattleVibrationEvent.SHORT)
+            onBackToMenu()
+        }, modifier = Modifier.fillMaxWidth()) {
             Text("Выход в меню")
         }
         if (state.message.isNotEmpty()) {
@@ -226,9 +245,48 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
                 }) { Text("Сдаться") }
             },
             dismissButton = {
-                TextButton(onClick = { showSurrenderDialog = false }) { Text("Отмена") }
+                TextButton(onClick = {
+                    vibrate(BattleVibrationEvent.SHORT)
+                    showSurrenderDialog = false
+                }) { Text("Отмена") }
             }
         )
+    }
+}
+
+@Composable
+private fun ParamText(text: String, highlighted: Boolean, baseBold: Boolean = false) {
+    Text(
+        text = text,
+        color = if (highlighted) MaterialTheme.colorScheme.error else Color.Unspecified,
+        fontWeight = if (highlighted || baseBold) FontWeight.Bold else FontWeight.Normal
+    )
+}
+
+@Composable
+private fun rememberBattleVibrator(): (BattleVibrationEvent) -> Unit {
+    val context = LocalContext.current
+    val vibrator = remember {
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
+    return { event ->
+        val effect = when (event) {
+            BattleVibrationEvent.SHORT ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)
+                } else {
+                    null
+                }
+            BattleVibrationEvent.DOUBLE ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    VibrationEffect.createWaveform(longArrayOf(0, 30, 40, 30), -1)
+                } else {
+                    null
+                }
+        }
+        if (effect != null) {
+            runCatching { vibrator?.vibrate(effect) }
+        }
     }
 }
 

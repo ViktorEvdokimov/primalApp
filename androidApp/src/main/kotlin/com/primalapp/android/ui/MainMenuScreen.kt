@@ -31,7 +31,7 @@ fun MainMenuScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Primal: Пробуждение",
+            text = "Компаньон в игре «Primal: Пробуждение»",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
