@@ -543,14 +543,15 @@ class CampaignViewModel(
 | `onStartCampaignBattle()` | Запуск боя в рамках кампании |
 | `getBattleViewModel()` | Получение BattleViewModel для UI |
 | `onBattleFinished()` | Завершение боя, возврат к листу |
-| `onVictory()` | Открытие окна наград (не-пролог — `QuestRewardsDialog`; пролог — `PostVictoryDialog`) |
+| `onVictory()` | Открытие окна наград: не-пролог — `QuestRewardsDialog`; пролог (первый бой) — окно «Задание выполнено!» НЕ показывается, победные эффекты применяются молча (`applyPrologueVictory`), сразу открывается окно наград главы (36.1) |
 | `onDefeat()` | Открытие окна наград за поражение (`QuestRewardsDialog`, mode=DEFEAT) |
 | `onVictoryBossNameChanged(name)` | Ввод имени босса |
 | `onVictoryBossElementChanged(element)` | Выбор стихии босса |
 | `onVictoryQuestToggled(number)` | Выбор открытых заданий в PostVictoryDialog |
 | `onVictoryResourceChanged(type, name, delta)` | Изменение количества ресурсов в PostVictoryDialog |
 | `onDefeatQuestToggled(number)` | Выбор номера задания в форме поражения |
-| `onConfirmVictory()` | Сохранение победы (трофей + задания + ресурсы + 2 стихии) → окно наград главы |
+| `onConfirmVictory()` | Сохранение победы (трофей + задания + ресурсы + 2 стихии) → окно наград главы. Для пролога не используется — применяется `applyPrologueVictory` |
+| `applyPrologueVictory(campaignId)` | (приватный, задача 36.1) Молча сохраняет трофей босса пролога, начисляет по 2 стихии каждому охотнику, сбрасывает `isPrologue = false` и открывает окно наград главы |
 | `onQuestRewardsAccept()` | «Принять» награды задания из каталога `TaskInfo` → окно наград главы |
 | `onDefeatRewardsAccept()` | «Принять» награды поражения (открыть задания) → лист кампании |
 | `onQuestRewardsEdit()` | «Редактировать»: победа — предзаполнить PostVictoryDialog; поражение — форма чекбоксов |

@@ -395,37 +395,96 @@ class CampaignViewModel(
     fun onVictory() {
         val campaignId = _state.value.currentCampaign?.id ?: return
         scope.launch {
-            val trophies = repository.getTrophies(campaignId)
             val isPrologue = _state.value.isPrologue
             val selectedBoss = _state.value.selectedPreBattleBoss
-            val taskInfo = _state.value.activeQuestId?.toIntOrNull()
-                ?.let { repository.getTaskInfo(it) }
-            val bossNames = if (isPrologue) {
-                listOf("Вираксен")
-            } else {
-                ALL_BOSS_NAMES
-            }
             val allTaskInfo = repository.getAllTaskInfo().associateBy { it.questNumber }
-            _state.update {
-                it.copy(
-                    showQuestRewards = !isPrologue,
-                    questRewardsMode = if (isPrologue) null else QuestRewardsMode.VICTORY,
-                    activeQuestNumber = if (isPrologue) null else it.activeQuestId?.toIntOrNull(),
-                    taskInfoByQuestNumber = allTaskInfo,
-                    showPostVictory = isPrologue,
-                    bossName = selectedBoss?.name ?: if (isPrologue) "Вираксен" else "",
-                    bossElement = if (selectedBoss != null) selectedBoss.element else if (isPrologue) Element.FIRE else null,
-                    bossHasNoElement = selectedBoss != null && selectedBoss.element == null,
-                    defeatedBosses = bossNames,
-                    completedQuestId = "",
-                    availableQuestsForNext = emptyList(),
-                    selectedQuestNumbers = emptySet(),
-                    victoryMaterials = emptyMap(),
-                    victoryPlants = emptyMap(),
-                    error = null
-                )
+            if (isPrologue) {
+                // Пролог (первый бой кампании, Вираксен): окно «Задание выполнено!» (PostVictoryDialog)
+                // не показываем; победные эффекты применяются молча, сразу открывается окно наград главы (36.1).
+                _state.update {
+                    it.copy(
+                        taskInfoByQuestNumber = allTaskInfo,
+                        showQuestRewards = false,
+                        questRewardsMode = null,
+                        activeQuestNumber = null,
+                        showPostVictory = false,
+                        bossName = selectedBoss?.name ?: "Вираксен",
+                        bossElement = if (selectedBoss != null) selectedBoss.element else Element.FIRE,
+                        bossHasNoElement = selectedBoss != null && selectedBoss.element == null,
+                        defeatedBosses = listOf("Вираксен"),
+                        completedQuestId = "",
+                        availableQuestsForNext = emptyList(),
+                        selectedQuestNumbers = emptySet(),
+                        victoryMaterials = emptyMap(),
+                        victoryPlants = emptyMap(),
+                        error = null
+                    )
+                }
+                applyPrologueVictory(campaignId)
+            } else {
+                val taskInfo = _state.value.activeQuestId?.toIntOrNull()
+                    ?.let { repository.getTaskInfo(it) }
+                _state.update {
+                    it.copy(
+                        showQuestRewards = true,
+                        questRewardsMode = QuestRewardsMode.VICTORY,
+                        activeQuestNumber = it.activeQuestId?.toIntOrNull(),
+                        taskInfoByQuestNumber = allTaskInfo,
+                        showPostVictory = false,
+                        bossName = selectedBoss?.name ?: "",
+                        bossElement = selectedBoss?.element,
+                        bossHasNoElement = selectedBoss != null && selectedBoss.element == null,
+                        defeatedBosses = ALL_BOSS_NAMES,
+                        completedQuestId = "",
+                        availableQuestsForNext = emptyList(),
+                        selectedQuestNumbers = emptySet(),
+                        victoryMaterials = emptyMap(),
+                        victoryPlants = emptyMap(),
+                        error = null
+                    )
+                }
             }
         }
+    }
+
+    /**
+     * Молча применяет победные эффекты пролога (задача 36.1): сохраняет трофей босса
+     * (Вираксен / выбранный босс пролога), начисляет по 2 стихии каждому охотнику и открывает
+     * окно наград главы. Окно «Задание выполнено!» в прологе не показывается.
+     */
+    private suspend fun applyPrologueVictory(campaignId: Long) {
+        val state = _state.value
+        val element = if (state.bossHasNoElement) null else state.bossElement
+        val bossName = state.bossName.ifBlank { "Вираксен" }
+        val trophy = Trophy(
+            bossName = bossName,
+            element = element,
+            chapter = state.currentCampaign?.currentChapter ?: 1
+        )
+        repository.saveVictory(
+            campaignId = campaignId,
+            trophy = trophy,
+            completedQuestId = "",
+            nextQuestId = null
+        )
+        if (element != null) {
+            state.hunters.forEach { hunter ->
+                addResourceToAll(hunter.id, "ELEMENT", element.name, 2)
+            }
+        }
+        _state.update {
+            it.copy(
+                showPostVictory = false,
+                error = null,
+                selectedQuestNumbers = emptySet(),
+                victoryMaterials = emptyMap(),
+                victoryPlants = emptyMap(),
+                isPrologue = false,
+                activeQuestId = null,
+                activeQuestNumber = null
+            )
+        }
+        openChapterRewards(campaignId)
     }
 
     fun onDefeat() {
