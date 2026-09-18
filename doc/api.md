@@ -230,16 +230,32 @@ data class BattleScreenState(
     val damageInputText: String = "",
     val inputMode: InputMode = InputMode.NONE,
     val canUndo: Boolean = false,
-    val showRageSurgeDialog: Boolean = false
+    val showRageSurgeDialog: Boolean = false,
+    val highlightedParams: Set<BattleParam> = emptySet()
 )
 ```
 
-**Новые поля (v1.1):**
+**Новые поля (задачи 37.x):**
 
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `damageInputText` | `String` | Текст в поле ввода урона (управляется ViewModel) |
-| `inputMode` | `InputMode` | Режим ввода: `NONE`, `MANUAL`, `QUICK_BUTTON` |
+| `highlightedParams` | `Set<BattleParam>` | Параметры, подсвечиваемые красным/жирным 1 с после изменения (37.1) |
+
+**Параметры подсветки:**
+
+```kotlin
+enum class BattleParam {
+    PHASE, ROUND, HEALTH, RAGE, ACCUMULATED_DAMAGE,
+    DAMAGE_FOR_WOUND, HEALTH_FOR_STANCE_CHANGE, HARDENED
+}
+```
+
+**События вибрации (37.2):**
+
+```kotlin
+enum class BattleVibrationEvent { SHORT, DOUBLE }
+```
+- `BattleViewModel.vibrationEvents: SharedFlow<BattleVibrationEvent>` — `SHORT` при нажатии кнопки/управления и при применении урона; `DOUBLE` (вместо `SHORT`) при нанесении раны (`DamageResult.woundsInflicted > 0`). Android: `Vibrator` + `VIBRATE` (манифест), сбор в `BattleScreen`.
 | `canUndo` | `Boolean` | Доступна ли отмена последнего действия |
 
 ### 3.2a InputMode

@@ -5,6 +5,8 @@ build/
 .idea/shelf/
 .idea/tasks.xml
 local.properties
+keystore.properties
+keystore/
 captures/
 .externalNativeBuild/
 .cxx/

@@ -150,6 +150,34 @@ systeminfo | findstr /C:"Virtualization"
 
 ---
 
+## Релизная сборка и цифровая подпись
+
+**Сборка релизного APK:**
+
+```powershell
+.\gradlew.bat :androidApp:assembleRelease
+```
+
+Результат: `androidApp/build/outputs/apk/release/androidApp-release.apk` (подписан, если настроен keystore).
+
+**Подпись (release signing):** конфигурация в `androidApp/build.gradle.kts`:
+- при сборке читается файл `keystore.properties` в корне проекта (в `.gitignore`, не хранится в репозитории);
+- если файл есть, создаётся `signingConfigs.release` и подключается к `buildTypes.release`;
+- ключи файла: `storeFile` (путь к keystore относительно корня), `storePassword`, `keyAlias`, `keyPassword`;
+- если `keystore.properties` отсутствует — релизная сборка выполняется без подписи.
+
+**Keystore:** лежит в `keystore/release.jks` (в `.gitignore` через `*.jks` / `keystore/`). Пример генерации:
+
+```powershell
+keytool -genkeypair -v -keystore keystore/release.jks -alias release `
+  -keyalg RSA -keysize 2048 -validity 10000 -storetype JKS `
+  -dname "CN=Companion PA, OU=PrimalApp, O=PrimalApp, C=RU"
+```
+
+> Keystore и пароли храните в надёжном месте; при потере keystore обновление уже опубликованного приложения с той же подписью станет невозможным.
+
+---
+
 ## Как запускать задачи в Gradle-панели Android Studio
 
 После успешной синхронизации все задачи доступны в панели **Gradle** (View → Tool Windows → Gradle).
@@ -310,8 +338,9 @@ primalApp/
 │       ├── AndroidManifest.xml                    # MainActivity как LAUNCHER
 │       ├── res/
 │       │   ├── values/
-│       │   │   ├── strings.xml                        # app_name = "Primal App"
+│       │   │   ├── strings.xml                        # app_name = "Companion PA"
 │       │   │   └── themes.xml                         # Material Light NoActionBar
+│       │   ├── mipmap-mdpi…xxxhdpi/ic_launcher.png    # Иконка приложения (48/72/96/144/192), legacy PNG
 │       │   └── drawable/                              # Иконки ресурсов (21 PNG, нижний регистр, имена enum)
 │       │       ├── scales.png, bones.png, blood.png, zimia.png, iridia.png, zlatia.png   # Материи
 │       │       ├── nillea.png, tarmaret.png, albalacea.png, mellis.png, anthemon.png, selicornia.png  # Растения

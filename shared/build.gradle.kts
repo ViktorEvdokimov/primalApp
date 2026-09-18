@@ -31,6 +31,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.room.runtime)
+        }
+        androidMain.dependencies {
             implementation(libs.androidx.room.ktx)
         }
         commonTest.dependencies {
