@@ -1,0 +1,15 @@
+{
+  "appium_url": "http://127.0.0.1:4723",
+  "capabilities": {
+    "platformName": "Android",
+    "automationName": "UiAutomator2",
+    "deviceName": "Android Emulator",
+    "appPackage": "com.primalapp.android",
+    "appActivity": ".MainActivity",
+    "noReset": false,
+
+    "appium:forceAppLaunch": true,
+    "appium:shouldTerminateApp": true,
+    "appium:setAllowExtensionAutomator": true
+  }
+}

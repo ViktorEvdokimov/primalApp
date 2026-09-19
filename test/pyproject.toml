@@ -1,0 +1,19 @@
+[project]
+name = "test"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Viktor",email = "evdokimov.viktor.91@mail.ru"}
+]
+requires-python = ">=3.14"
+dependencies = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "appium-python-client (>=6.0.6,<7.0.0)",
+    "allure-pytest (>=2.16.0,<3.0.0)",
+    "allure-python-commons (>=2.16.0,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
