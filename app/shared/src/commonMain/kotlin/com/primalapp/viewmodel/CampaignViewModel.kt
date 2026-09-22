@@ -124,7 +124,8 @@ class CampaignViewModel(
         val ALL_BOSS_NAMES = listOf(
             "Вираксен", "Торамат", "Коровон", "Харджа", "Дигоракс", "Оруксен",
             "Фелаксир", "Юром", "Таррагуа", "Моркраас", "Озев", "Иекорос", "Пробуждённый",
-            "Тараск", "Кситерос", "Зекат", "Зекалит", "Пазис", "Нагарджас"
+            "Тараск", "Кситерос", "Зекат", "Зекалит", "Пазис", "Нагарджас",
+            "Гидар", "Рейкал", "Сиркаадж", "Мумараак"
         )
     }
 
@@ -572,6 +573,12 @@ class CampaignViewModel(
                         applyQuestOpenConditions(campaignId, conditions, achievements, currentChapter)
                     }
                 }
+                (taskInfo?.defeatAchievements ?: emptyList()).forEach { achievementName ->
+                    repository.saveAchievement(
+                        campaignId = campaignId,
+                        achievement = Achievement(id = achievementName, name = achievementName, unlocked = true)
+                    )
+                }
                 _state.update {
                     it.copy(
                         screen = AppScreen.CampaignSheet(campaignId),
@@ -624,9 +631,10 @@ class CampaignViewModel(
                 }
                 val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
                 val currentChapter = state.currentCampaign?.currentChapter ?: 1
+                val availableQuestNumbers = repository.getQuests(campaignId).filter { it.isAvailable }.map { it.questNumber }.toSet()
                 (taskInfo?.victoryOpenQuestConditions ?: emptyList()).let { conditions ->
                     if (conditions.isNotEmpty()) {
-                        applyQuestOpenConditions(campaignId, conditions, achievements, currentChapter, element)
+                        applyQuestOpenConditions(campaignId, conditions, achievements, currentChapter, element, availableQuestNumbers)
                     }
                 }
                 val completedQuestId = state.activeQuestId ?: state.activeQuestNumber?.toString() ?: ""
@@ -997,7 +1005,8 @@ class CampaignViewModel(
     private fun resolveConditionTarget(
         condition: TaskCondition,
         achievements: Set<String>,
-        currentChapter: Int
+        currentChapter: Int,
+        availableQuestNumbers: Set<Int> = emptySet()
     ): Int? {
         val matched = when (condition.kind) {
             TaskConditionKind.CHAPTER_IN -> currentChapter in condition.chapterSet
@@ -1007,6 +1016,10 @@ class CampaignViewModel(
                 condition.achievementName != null &&
                     condition.achievementName in achievements &&
                     currentChapter in condition.chapterSet
+            TaskConditionKind.QUEST_NOT_AVAILABLE -> {
+                val checkQuest = condition.chapterSet.firstOrNull()
+                checkQuest != null && checkQuest !in availableQuestNumbers
+            }
         }
         return if (matched) condition.questNumber else condition.elseQuestNumber
     }
@@ -1022,7 +1035,8 @@ class CampaignViewModel(
         conditions: List<TaskCondition>,
         achievements: Set<String>,
         currentChapter: Int,
-        element: Element? = null
+        element: Element? = null,
+        availableQuestNumbers: Set<Int> = emptySet()
     ) {
         var questOpened = false
         for (condition in conditions) {
@@ -1038,7 +1052,7 @@ class CampaignViewModel(
                 continue
             }
             if (questOpened) continue
-            val target = resolveConditionTarget(condition, achievements, currentChapter)
+            val target = resolveConditionTarget(condition, achievements, currentChapter, availableQuestNumbers)
             if (target != null) {
                 repository.saveQuest(
                     campaignId = campaignId,
@@ -1186,6 +1200,7 @@ class CampaignViewModel(
         val taskInfo = _state.value.taskInfoByQuestNumber[questNumber] ?: return
         val currentChapter = _state.value.currentCampaign?.currentChapter ?: 1
         val achievements = repository.getAchievements(campaignId).map { it.name }.toSet()
+        val availableQuestNumbers = repository.getQuests(campaignId).filter { it.isAvailable }.map { it.questNumber }.toSet()
         val element = taskInfo.bossElement
         taskInfo.victoryOpenQuests.forEach { number ->
             repository.saveQuest(
@@ -1206,7 +1221,8 @@ class CampaignViewModel(
                 conditions = taskInfo.victoryOpenQuestConditions,
                 achievements = achievements,
                 currentChapter = currentChapter,
-                element = element
+                element = element,
+                availableQuestNumbers = availableQuestNumbers
             )
         }
     }

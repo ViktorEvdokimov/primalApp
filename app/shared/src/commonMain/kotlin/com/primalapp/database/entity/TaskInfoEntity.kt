@@ -31,5 +31,7 @@ data class TaskInfoEntity(
     @ColumnInfo(name = "defeat_open_quests")
     val defeatOpenQuests: String = "",
     @ColumnInfo(name = "defeat_open_quest_conditions")
-    val defeatOpenQuestConditions: String = ""
+    val defeatOpenQuestConditions: String = "",
+    @ColumnInfo(name = "defeat_achievements")
+    val defeatAchievements: String = ""
 )

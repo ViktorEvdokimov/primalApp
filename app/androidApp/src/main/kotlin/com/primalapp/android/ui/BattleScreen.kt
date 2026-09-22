@@ -121,7 +121,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         else -> ""
     }
 
-    Column {
+    Column(modifier = Modifier.fillMaxSize().padding((160f / 25.4f).dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ParamText("Фаза $phaseLabel", state.highlightedParams.contains(BattleParam.PHASE), baseBold = true)
             ParamText("Раунд ${state.currentRound}/${state.maxRounds}", state.highlightedParams.contains(BattleParam.ROUND))

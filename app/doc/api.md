@@ -594,7 +594,7 @@ class CampaignViewModel(
 | `TrophyEntity` | `trophies` | id, campaignId (FK→campaigns), bossName, element, chapter, acquiredAt |
 | `QuestEntity` | `quests` | id, campaignId (FK→campaigns), questId, name, chapter, element, questNumber, isCompleted, isAvailable. **Уникальный индекс** `(campaign_id, quest_id)` (миграция 8→9) |
 | `BossEntity` | `bosses` | id, name, element (nullable), difficulty, stance1–5 dfw (nullable)/hsc (nullable). `stance4_dfw`/`stance5_dfw` — `@ColumnInfo(defaultValue = "0")` (совпадает с `CREATE_BOSSES_TABLE`; фикс 30.1) |
-| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `kind|achievement|chapterSet|quest|else|rewardAchievement`, через `;`; виды: `CHAPTER_IN`, `ACHIEVEMENT_OWNED`, `ACHIEVEMENT_NOT_OWNED`, `ACHIEVEMENT_OWNED_IN_CHAPTER`) |
+| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `kind|achievement|chapterSet|quest|else|rewardAchievement`, через `;`; виды: `CHAPTER_IN`, `ACHIEVEMENT_OWNED`, `ACHIEVEMENT_NOT_OWNED`, `ACHIEVEMENT_OWNED_IN_CHAPTER`, `QUEST_NOT_AVAILABLE`), **defeatAchievements** (колонка, миграция 12→13) |
 | `ChapterInfoEntity` | `chapter_info` | chapter (PK), rewards, rewardPlants, openQuests, conditionalOpenQuests, expireQuests, forgeUpgrade, labUpgrade, hunterKitUpgrade, decisions, messages, conditionalMessages |
 
 ### 5.2 DAO (9 интерфейсов)
@@ -613,7 +613,7 @@ class CampaignViewModel(
 
 ### 5.3 Миграции и версия БД
 
-**Версия БД:** 12 (`@Database(version = 12)`, `exportSchema = true`, схемы в `shared/schemas/...`)
+**Версия БД:** 13 (`@Database(version = 13)`, `exportSchema = true`, схемы в `shared/schemas/...`)
 
 | Миграция | Действия |
 |----------|----------|
@@ -628,6 +628,7 @@ class CampaignViewModel(
 | `MIGRATION_9_10` | Создание таблицы `task_info` (каталог заданий) |
 | `MIGRATION_10_11` | `task_info` — колонки условий; создание `chapter_info` (каталог глав) + seed |
 | `MIGRATION_11_12` | Пере-сид `task_info` с расширенной моделью условий (`ACHIEVEMENT_OWNED_IN_CHAPTER`, `rewardAchievement` — зад. 25, 29/40); схема не менялась |
+| `MIGRATION_12_13` | `task_info` — колонка `defeat_achievements`; пересев `task_info` (задания 41-49), `chapter_info` (условия 42-49) и `bosses` (4 босса: Гидар, Рейкал — Яд; Сиркаадж, Мумараак — Лёд). Версия БД 13. |
 
 ### 5.4 Platform (expect/actual)
 

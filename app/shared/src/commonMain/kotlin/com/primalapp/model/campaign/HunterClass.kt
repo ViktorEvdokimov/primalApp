@@ -6,5 +6,7 @@ enum class HunterClass(val displayName: String) {
     TOREG("Торег"),
     LIONAR("Льонар"),
     KARA("Кара"),
-    HELEREN("Хелерен")
+    HELEREN("Хелерен"),
+    DRUSK("Друск"),
+    ZARAIA("Зарайа")
 }

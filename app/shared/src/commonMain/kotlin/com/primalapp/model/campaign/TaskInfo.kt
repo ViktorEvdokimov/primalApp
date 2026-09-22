@@ -13,5 +13,6 @@ data class TaskInfo(
     val victoryRewardCards: List<String> = emptyList(),
     val victorySpecial: String = "",
     val defeatOpenQuests: List<Int> = emptyList(),
-    val defeatOpenQuestConditions: List<TaskCondition> = emptyList()
+    val defeatOpenQuestConditions: List<TaskCondition> = emptyList(),
+    val defeatAchievements: List<String> = emptyList()
 )
