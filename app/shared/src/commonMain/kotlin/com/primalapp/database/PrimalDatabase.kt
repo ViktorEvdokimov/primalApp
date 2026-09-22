@@ -235,6 +235,17 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
     }
 }
 
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL("ALTER TABLE task_info ADD COLUMN defeat_achievements TEXT NOT NULL DEFAULT ''")
+        db.execSQL("DELETE FROM task_info")
+        seedTaskInfo(db)
+        db.execSQL("DELETE FROM chapter_info")
+        seedChapterInfo(db)
+        recreateAndSeedBosses(db)
+    }
+}
+
 private val CREATE_BOSSES_TABLE = """
     CREATE TABLE IF NOT EXISTS bosses (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -412,6 +423,30 @@ fun seedBosses(db: SQLiteConnection) {
     insert3NullHsc2("Кситерос", "FEATHER", 1, 7, 7, 8, 12, 0)
     insert3NullHsc2("Кситерос", "FEATHER", 2, 15, 7, 20, 25, 0)
     insert3NullHsc2("Кситерос", "FEATHER", 3, 20, 7, 25, 35, 0)
+
+    // Гидар (Яд)
+    insert3("Гидар", "POISON", 0, 2, 7, 3, 4, 3, 0)
+    insert3("Гидар", "POISON", 1, 4, 7, 6, 4, 8, 0)
+    insert3("Гидар", "POISON", 2, 12, 7, 15, 4, 18, 0)
+    insert3("Гидар", "POISON", 3, 18, 7, 22, 4, 28, 0)
+
+    // Рейкал (Яд)
+    insert3("Рейкал", "POISON", 0, 2, 7, 3, 3, 5, 0)
+    insert3("Рейкал", "POISON", 1, 6, 7, 8, 3, 10, 0)
+    insert3("Рейкал", "POISON", 2, 12, 7, 16, 3, 20, 0)
+    insert3("Рейкал", "POISON", 3, 18, 7, 22, 4, 30, 0)
+
+    // Сиркаадж (Лёд)
+    insert3("Сиркаадж", "ICE", 0, 2, 7, 3, 2, 3, 0)
+    insert3("Сиркаадж", "ICE", 1, 5, 7, 6, 2, 9, 0)
+    insert3("Сиркаадж", "ICE", 2, 13, 7, 16, 3, 20, 0)
+    insert3("Сиркаадж", "ICE", 3, 22, 7, 25, 3, 28, 0)
+
+    // Мумараак (Лёд)
+    insert3("Мумараак", "ICE", 0, 3, 7, 4, 4, 5, 0)
+    insert3("Мумараак", "ICE", 1, 6, 7, 8, 4, 10, 0)
+    insert3("Мумараак", "ICE", 2, 12, 7, 18, 4, 20, 0)
+    insert3("Мумараак", "ICE", 3, 20, 7, 25, 4, 30, 0)
 }
 
 @Database(
@@ -427,7 +462,7 @@ fun seedBosses(db: SQLiteConnection) {
         TaskInfoEntity::class,
         ChapterInfoEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {

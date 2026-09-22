@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -1174,6 +1175,120 @@ class BattleViewModelTest {
         val state = viewModel.state.value
         assertEquals(10, state.pendingDamage, "pendingDamage должен быть 10 после двух нажатий")
         assertEquals("10", state.damageInputText, "Поле ввода должно содержать 10")
+    }
+
+    //endregion
+
+    //region 37.1T. Подсветка изменённых параметров боя (highlightedParams)
+
+    @Test
+    fun `addRage добавляет RAGE в highlightedParams`() {
+        // Подготовка: ViewModel после старта боя
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.addRage(1)
+
+        // Проверка: RAGE подсвечен, HEALTH не подсвечен
+        val state = viewModel.state.value
+        assertTrue(BattleParam.RAGE in state.highlightedParams,
+            "После addRage RAGE должен быть в highlightedParams")
+        assertFalse(BattleParam.HEALTH in state.highlightedParams,
+            "HEALTH не должен подсвечиваться при addRage")
+    }
+
+    @Test
+    fun `toggleHardened добавляет HARDENED в highlightedParams`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов
+        viewModel.toggleHardened()
+
+        // Проверка: HARDENED подсвечен
+        val state = viewModel.state.value
+        assertTrue(BattleParam.HARDENED in state.highlightedParams,
+            "После toggleHardened HARDENED должен быть в highlightedParams")
+    }
+
+    @Test
+    fun `commitDamage с раной обновляет highlightedParams`() {
+        // Подготовка: dfw=1, урон 4 = рана
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 1)
+        viewModel.onDamageInputChanged("4")
+        val beforeCount = viewModel.state.value.highlightedParams.size
+
+        // Вызов
+        viewModel.commitDamage()
+
+        // Проверка: хотя бы один параметр подсвечен (изменились HEALTH/ACCUMULATED_DAMAGE)
+        val state = viewModel.state.value
+        assertTrue(state.highlightedParams.size > beforeCount,
+            "После commitDamage с раной должны появиться подсвеченные параметры")
+    }
+
+    @Test
+    fun `endRound добавляет ROUND и RAGE в highlightedParams`() {
+        // Подготовка: ViewModel с pendingDamage
+        val viewModel = createViewModel()
+        viewModel.onQuickButtonPress(3)
+
+        // Вызов
+        viewModel.endRound()
+
+        // Проверка: ROUND + RAGE подсвечены (ярость растёт за раунд)
+        val state = viewModel.state.value
+        assertTrue(BattleParam.ROUND in state.highlightedParams,
+            "После endRound ROUND должен быть подсвечен")
+        assertTrue(BattleParam.RAGE in state.highlightedParams,
+            "После endRound RAGE должен быть подсвечен (ярость за охотников)")
+    }
+
+    //endregion
+
+    //region 37.2T. Эмиссия событий вибрации (vibrationEvents)
+
+    @Test
+    fun `addRage эмитирует SHORT в vibrationEvents`() = runBlocking {
+        // Подготовка: ViewModel
+        val viewModel = createViewModel()
+
+        // Вызов: запускаем коллектор ДО действия
+        val events = mutableListOf<BattleVibrationEvent>()
+        val collectJob = launch {
+            viewModel.vibrationEvents.collect { event: BattleVibrationEvent -> events.add(event) }
+        }
+        delay(30)
+        viewModel.addRage(1)
+        delay(30)
+
+        // Проверка: событие SHORT получено
+        assertTrue(events.any { it == BattleVibrationEvent.SHORT },
+            "addRage должен эмитить SHORT")
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun `commitDamage с раной эмитирует DOUBLE в vibrationEvents`() = runBlocking {
+        // Подготовка: dfw=1, урон 4 — рана
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 1)
+        viewModel.onDamageInputChanged("4")
+
+        // Вызов: запускаем коллектор ДО действия
+        val events = mutableListOf<BattleVibrationEvent>()
+        val collectJob = launch {
+            viewModel.vibrationEvents.collect { event: BattleVibrationEvent -> events.add(event) }
+        }
+        delay(30)
+        viewModel.commitDamage()
+        delay(30)
+
+        // Проверка: событие DOUBLE получено
+        assertTrue(events.any { it == BattleVibrationEvent.DOUBLE },
+            "commitDamage с раной должен эмитить DOUBLE")
+
+        collectJob.cancel()
     }
 
     //endregion

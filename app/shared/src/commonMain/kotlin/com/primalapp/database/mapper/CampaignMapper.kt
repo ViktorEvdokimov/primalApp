@@ -312,7 +312,7 @@ fun TaskInfoEntity.toDomain(): TaskInfo {
         .mapKeys { it.key as Material }
     val plants = parseResourceMap(victoryPlants) { Plant.valueOf(it) }
         .mapKeys { it.key as Plant }
-    return TaskInfo(
+return TaskInfo(
         questNumber = questNumber,
         name = name,
         bossName = bossName,
@@ -322,10 +322,11 @@ fun TaskInfoEntity.toDomain(): TaskInfo {
         victoryOpenQuests = parseIntList(victoryOpenQuests),
         victoryOpenQuestConditions = parseConditions(victoryOpenQuestConditions),
         victoryAchievements = parseStringList(victoryAchievements),
-        victoryRewardCards = parseStringList(victoryRewardCards),
+        victoryRewardCards = parseIntList(victoryRewardCards).map { it.toString() },
         victorySpecial = victorySpecial,
         defeatOpenQuests = parseIntList(defeatOpenQuests),
-        defeatOpenQuestConditions = parseConditions(defeatOpenQuestConditions)
+        defeatOpenQuestConditions = parseConditions(defeatOpenQuestConditions),
+        defeatAchievements = parseStringList(defeatAchievements)
     )
 }
 
@@ -342,7 +343,8 @@ fun TaskInfo.toEntity() = TaskInfoEntity(
     victoryRewardCards = encodeStringList(victoryRewardCards),
     victorySpecial = victorySpecial,
     defeatOpenQuests = encodeIntList(defeatOpenQuests),
-    defeatOpenQuestConditions = encodeConditions(defeatOpenQuestConditions)
+    defeatOpenQuestConditions = encodeConditions(defeatOpenQuestConditions),
+    defeatAchievements = encodeStringList(defeatAchievements)
 )
 
 fun ChapterInfoEntity.toDomain(): ChapterInfo {

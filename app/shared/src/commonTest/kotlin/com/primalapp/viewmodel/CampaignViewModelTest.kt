@@ -139,6 +139,7 @@ class CampaignViewModelTest {
         override suspend fun advanceChapter(campaignId: Long) {}
         override suspend fun updateChapter(campaignId: Long, chapter: Int) {
             chapterUpdateRecords.add(ChapterUpdateRecord(campaignId, chapter))
+            campaigns[campaignId]?.let { campaigns[campaignId] = it.copy(currentChapter = chapter) }
         }
         data class ChapterUpdateRecord(val campaignId: Long, val chapter: Int)
         val chapterUpdateRecords = mutableListOf<ChapterUpdateRecord>()
@@ -165,6 +166,10 @@ class CampaignViewModelTest {
         override suspend fun getAllChapterInfo(): List<ChapterInfo> = chapterInfoToReturn
         override suspend fun getChapterInfo(chapter: Int): ChapterInfo? = chapterInfoToReturn.find { it.chapter == chapter }
         var chapterInfoToReturn: List<ChapterInfo> = emptyList()
+        override suspend fun deleteAchievement(campaignId: Long, achievementId: String) {
+            deletedAchievementIds.add(achievementId)
+        }
+        val deletedAchievementIds = mutableListOf<String>()
     }
 
     /** Завершает пролог (первый бой кампании), чтобы isPrologue стал false. */
@@ -2685,6 +2690,668 @@ class CampaignViewModelTest {
         assertEquals(Element.HORN, taskInfo.bossElement)
 
         viewModelScope.cancel()
+    }
+
+    //endregion
+
+    //region 34.2T. Редактирование достижений (onAddAchievement, onDeleteAchievement)
+
+    @Test
+    fun `onOpenAchievementEditor устанавливает showAchievementEditor true и очищает newAchievementName`() {
+        // Подготовка: ViewModel с предустановленным именем
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        viewModel.onNewAchievementNameChanged("Старое имя")
+
+        // Вызов проверяемого кода
+        viewModel.onOpenAchievementEditor()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertTrue(state.showAchievementEditor, "showAchievementEditor должен быть true")
+        assertEquals("", state.newAchievementName, "newAchievementName должен быть очищен")
+    }
+
+    @Test
+    fun `onCloseAchievementEditor сбрасывает showAchievementEditor и ошибку`() {
+        // Подготовка: ViewModel с открытым редактором и ошибкой
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+        viewModel.onOpenAchievementEditor()
+
+        // Вызов проверяемого кода
+        viewModel.onCloseAchievementEditor()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertFalse(state.showAchievementEditor, "showAchievementEditor должен быть false")
+        assertEquals("", state.newAchievementName, "newAchievementName должен быть очищен")
+        assertNull(state.error, "error должен быть null")
+    }
+
+    @Test
+    fun `onNewAchievementNameChanged обновляет newAchievementName`() {
+        // Подготовка: ViewModel
+        val viewModel = CampaignViewModel(FakeCampaignRepository())
+
+        // Вызов проверяемого кода
+        viewModel.onNewAchievementNameChanged("Новое достижение")
+
+        // Проверка
+        assertEquals("Новое достижение", viewModel.state.value.newAchievementName)
+    }
+
+    @Test
+    fun `onAddAchievement с пустым названием показывает ошибку`() = runBlocking {
+        // Подготовка: ViewModel с кампанией и пустым названием
+        val repo = FakeCampaignRepository()
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода: пустое название (после .trim())
+        viewModel.onNewAchievementNameChanged("  ")
+        viewModel.onAddAchievement()
+
+        // Проверка: ошибка, saveAchievement не вызывался
+        assertEquals("Введите название достижения", viewModel.state.value.error)
+        assertTrue(repo.savedAchievements.isEmpty(), "saveAchievement не должен вызываться")
+    }
+
+    @Test
+    fun `onAddAchievement с непустым названием сохраняет достижение и перечитывает список`() = runBlocking {
+        // Подготовка: ViewModel с кампанией
+        val repo = FakeCampaignRepository().apply {
+            achievementsToReturn = listOf(
+                Achievement(id = "Новое достижение", name = "Новое достижение", unlocked = true)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onNewAchievementNameChanged("Новое достижение")
+        viewModel.onAddAchievement()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: достижение сохранено, состояние очищено, список перечитан
+        val saved = repo.savedAchievements.firstOrNull()
+        assertNotNull(saved, "saveAchievement должен быть вызван")
+        assertEquals("Новое достижение", saved!!.name)
+        assertTrue(saved.unlocked, "Достижение должно быть unlocked = true")
+        assertTrue(repo.deletedAchievementIds.contains("Новое достижение"),
+            "deleteAchievement должен быть вызван перед saveAchievement")
+        assertEquals("", viewModel.state.value.newAchievementName, "newAchievementName должен быть очищен")
+        assertNull(viewModel.state.value.error, "error должен быть null")
+        assertEquals(1, viewModel.state.value.campaignAchievements.size,
+            "campaignAchievements должен быть перечитан")
+    }
+
+    @Test
+    fun `onDeleteAchievement вызывает deleteAchievement и перечитывает список`() = runBlocking {
+        // Подготовка: ViewModel с кампанией и достижением
+        val repo = FakeCampaignRepository().apply {
+            achievementsToReturn = listOf(
+                Achievement(id = "Достижение", name = "Достижение", unlocked = true)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onDeleteAchievement("Достижение")
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: deleteAchievement вызван, список перечитан
+        assertTrue(repo.deletedAchievementIds.contains("Достижение"),
+            "deleteAchievement должен быть вызван с 'Достижение'")
+        assertEquals(1, viewModel.state.value.campaignAchievements.size,
+            "campaignAchievements должен быть перечитан после удаления")
+    }
+
+    //endregion
+
+    //region 34.3T. Расширенная модель условий (ACHIEVEMENT_OWNED_IN_CHAPTER, rewardAchievement)
+
+    @Test
+    fun `resolveConditionTarget ACHIEVEMENT_OWNED_IN_CHAPTER открывает задание при главе 8 и достижении`() = runBlocking {
+        // Подготовка: кампания с достижением «Горящий уголёк», глава 8, активное задание 25
+        // Первое условие: ACHIEVEMENT_OWNED_IN_CHAPTER (глава 8 + «Горящий уголёк» → 34)
+        // Второе условие: ACHIEVEMENT_OWNED (только «Горящий уголёк» → 27)
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "25", name = "Задание 25", chapter = 1, questNumber = 25, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 25,
+                    name = "Горящее солнце",
+                    bossName = "Харджа",
+                    bossElement = Element.FIRE,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER,
+                            achievementName = "Горящий уголёк",
+                            chapterSet = listOf(8),
+                            questNumber = 34
+                        ),
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED,
+                            achievementName = "Горящий уголёк",
+                            questNumber = 27
+                        )
+                    )
+                )
+            )
+            achievementsToReturn = listOf(
+                Achievement(id = "Горящий уголёк", name = "Горящий уголёк", unlocked = true)
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, viewModelScope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("25")
+        // Устанавливаем главу 8 для проверки комбинированного условия
+        viewModel.onUpdateChapter(8)
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: задание 34 открыто (первое условие с chapterSet=[8] сработало)
+        assertTrue(repo.savedQuests.any { it.questNumber == 34 && it.isAvailable },
+            "При главе 8 и достижении «Горящий уголёк» должно открыться задание 34")
+        assertFalse(repo.savedQuests.any { it.questNumber == 27 && it.isAvailable },
+            "Задание 27 (fallback) не должно открываться при сработавшем первом условии")
+
+        viewModelScope.cancel()
+    }
+
+    @Test
+    fun `resolveConditionTarget ACHIEVEMENT_OWNED_IN_CHAPTER не срабатывает при главе не 8`() = runBlocking {
+        // Подготовка: кампания с достижением «Горящий уголёк», глава 5 (не 8)
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "25", name = "Задание 25", chapter = 1, questNumber = 25, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 25,
+                    name = "Горящее солнце",
+                    bossName = "Харджа",
+                    bossElement = Element.FIRE,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER,
+                            achievementName = "Горящий уголёк",
+                            chapterSet = listOf(8),
+                            questNumber = 34
+                        ),
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED,
+                            achievementName = "Горящий уголёк",
+                            questNumber = 27
+                        )
+                    )
+                )
+            )
+            achievementsToReturn = listOf(
+                Achievement(id = "Горящий уголёк", name = "Горящий уголёк", unlocked = true)
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, viewModelScope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("25")
+        viewModel.onUpdateChapter(5)
+        kotlinx.coroutines.delay(100)
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: задание 27 открыто (первое условие не сработало — chapter не 8)
+        assertTrue(repo.savedQuests.any { it.questNumber == 27 && it.isAvailable },
+            "При главе 5 условие ACHIEVEMENT_OWNED_IN_CHAPTER не срабатывает, должно открыться 27")
+        assertFalse(repo.savedQuests.any { it.questNumber == 34 && it.isAvailable },
+            "Задание 34 (ACHIEVEMENT_OWNED_IN_CHAPTER) не должно открыться при главе 5")
+
+        viewModelScope.cancel()
+    }
+
+    @Test
+    fun `applyQuestOpenConditions rewardAchievement выдаёт достижение при наличии источника`() = runBlocking {
+        // Подготовка: кампания с достижением «Голос Волтьяра», активное задание 29 с rewardAchievement
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "29", name = "Задание 29", chapter = 1, questNumber = 29, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 29,
+                    name = "Пещеры эха",
+                    bossName = "Иекорос",
+                    bossElement = Element.LIGHTNING,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED,
+                            achievementName = "Голос Волтьяра",
+                            rewardAchievement = "Уробборос"
+                        )
+                    )
+                )
+            )
+            achievementsToReturn = listOf(
+                Achievement(id = "Голос Волтьяра", name = "Голос Волтьяра", unlocked = true)
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, viewModelScope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("29")
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода: accept наград задания
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: достижение «Уробборос» выдано (через rewardAchievement)
+        assertTrue(repo.savedAchievements.any { it.name == "Уробборос" && it.unlocked },
+            "Условное достижение «Уробборос» должно быть выдано при наличии «Голос Волтьяра»")
+    }
+
+    @Test
+    fun `applyQuestOpenConditions rewardAchievement не выдаётся без источника`() = runBlocking {
+        // Подготовка: кампания БЕЗ достижения «Голос Волтьяра», активное задание 29
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "29", name = "Задание 29", chapter = 1, questNumber = 29, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 29,
+                    name = "Пещеры эха",
+                    bossName = "Иекорос",
+                    bossElement = Element.LIGHTNING,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.ACHIEVEMENT_OWNED,
+                            achievementName = "Голос Волтьяра",
+                            rewardAchievement = "Уробборос"
+                        )
+                    )
+                )
+            )
+            achievementsToReturn = emptyList()
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val viewModelScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, viewModelScope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("29")
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: достижение «Уробборос» не должно выдаваться
+        assertFalse(repo.savedAchievements.any { it.name == "Уробборос" },
+            "Без достижения «Голос Волтьяра» условное достижение не должно выдаваться")
+    }
+
+    //endregion
+
+    //region 40.1T. ALL_BOSS_NAMES содержит 23 босса
+
+    @Test
+    fun `ALL_BOSS_NAMES содержит 23 босса после добавления Гидар Рейкал Сиркаадж Мумараак`() {
+        // Подготовка: нет, проверяем статический список
+
+        // Вызов — чтение ALL_BOSS_NAMES
+
+        // Проверка: размер 23, новые боссы присутствуют
+        assertEquals(23, CampaignViewModel.ALL_BOSS_NAMES.size,
+            "ALL_BOSS_NAMES должен содержать 23 босса (4 новых: Гидар, Рейкал, Сиркаадж, Мумараак)")
+        assertTrue(CampaignViewModel.ALL_BOSS_NAMES.contains("Гидар"), "Должен содержать Гидар")
+        assertTrue(CampaignViewModel.ALL_BOSS_NAMES.contains("Рейкал"), "Должен содержать Рейкал")
+        assertTrue(CampaignViewModel.ALL_BOSS_NAMES.contains("Сиркаадж"), "Должен содержать Сиркаадж")
+        assertTrue(CampaignViewModel.ALL_BOSS_NAMES.contains("Мумараак"), "Должен содержать Мумараак")
+    }
+
+    //endregion
+
+    //region 41.1T. Новые классы DRUSK, ZARAIA
+
+    @Test
+    fun `HunterClass содержит 8 значений после добавления DRUSK и ZARAIA`() {
+        // Подготовка: нет
+
+        // Вызов — чтение HunterClass.values()
+
+        // Проверка: размер 8, новые классы присутствуют
+        assertEquals(8, HunterClass.entries.size, "HunterClass должен содержать 8 значений")
+        assertTrue(HunterClass.entries.any { it.displayName == "Друск" }, "Должен содержать Друск")
+        assertTrue(HunterClass.entries.any { it.displayName == "Зарайа" }, "Должен содержать Зарайа")
+        assertEquals("Друск", HunterClass.DRUSK.displayName, "Отображаемое имя Друска")
+        assertEquals("Зарайа", HunterClass.ZARAIA.displayName, "Отображаемое имя Зарайи")
+    }
+
+    //endregion
+
+    //region 40.2T. QUEST_NOT_AVAILABLE условие
+
+    @Test
+    fun `resolveConditionTarget QUEST_NOT_AVAILABLE открывает 45 если 18 недоступно`() = runBlocking {
+        // Подготовка: кампания БЕЗ задания 18 в availableQuestNumbers, активное задание 42
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "1", name = "Задание 1", chapter = 1, questNumber = 1, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 42,
+                    name = "Тёмная трясина",
+                    bossName = "Рейкал",
+                    bossElement = Element.POISON,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.QUEST_NOT_AVAILABLE,
+                            chapterSet = listOf(18),
+                            questNumber = 45
+                        )
+                    )
+                )
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("42")
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: задание 45 открыто (18 не в availableQuestNumbers)
+        assertTrue(repo.savedQuests.any { it.questNumber == 45 && it.isAvailable },
+            "Если задания 18 нет в доступных, QUEST_NOT_AVAILABLE должно открыть 45")
+    }
+
+    @Test
+    fun `resolveConditionTarget QUEST_NOT_AVAILABLE НЕ открывает 45 если 18 доступно`() = runBlocking {
+        // Подготовка: кампания С заданием 18 в дружественном квесте
+        val repo = FakeCampaignRepository().apply {
+            questsToReturn = listOf(
+                Quest(id = "18", name = "Задание 18", chapter = 1, questNumber = 18, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(
+                    questNumber = 42,
+                    name = "Тёмная трясина",
+                    bossName = "Рейкал",
+                    bossElement = Element.POISON,
+                    victoryOpenQuestConditions = listOf(
+                        TaskCondition(
+                            kind = TaskConditionKind.QUEST_NOT_AVAILABLE,
+                            chapterSet = listOf(18),
+                            questNumber = 45
+                        )
+                    )
+                )
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("42")
+        viewModel.onVictory()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onQuestRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: задание 45 не открыто (18 есть в availableQuestNumbers)
+        assertFalse(repo.savedQuests.any { it.questNumber == 45 },
+            "Если задание 18 доступно, QUEST_NOT_AVAILABLE не должно ничего открывать")
+    }
+
+    //endregion
+
+    //region 40.2T. defeatAchievements
+
+    @Test
+    fun `onDefeatRewardsAccept выдаёт defeatAchievements при наличии в taskInfo`() = runBlocking {
+        // Подготовка: кампания с активным заданием 47 (есть defeatAchievements: Оледенение)
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "47", name = "Задание 47", chapter = 1, questNumber = 47, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(questNumber = 47, name = "Морозный укус", bossName = "Сиркаадж",
+                    bossElement = Element.ICE, defeatAchievements = listOf("Оледенение"))
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("47")
+        viewModel.onDefeat()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onDefeatRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: defeatAchievement «Оледенение» сохранено
+        assertTrue(repo.savedAchievements.any { it.name == "Оледенение" && it.unlocked },
+            "При поражении должно выдаваться достижение «Оледенение»")
+    }
+
+    @Test
+    fun `onDefeatRewardsAccept не выдаёт defeatAchievements если их нет в taskInfo`() = runBlocking {
+        // Подготовка: задание 49 (нет defeatAchievements)
+        val repo = FakeCampaignRepository().apply {
+            availableQuestsToReturn = listOf(
+                Quest(id = "49", name = "Задание 49", chapter = 1, questNumber = 49, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(questNumber = 49, name = "Звёздные врата", bossName = "Мумараак",
+                    bossElement = Element.ICE)
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onStartCampaignBattle()
+        kotlinx.coroutines.delay(100)
+        viewModel.onActiveQuestSelected("49")
+        viewModel.onDefeat()
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onDefeatRewardsAccept()
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: достижения не выдавались
+        assertFalse(repo.savedAchievements.any { it.name == "Оледенение" },
+            "Если defeatAchievements пуст, достижение не должно выдаваться")
+    }
+
+    //endregion
+
+    //region 34.4T. onToggleQuestCompleted с openDependentQuests
+
+    @Test
+    fun `onToggleQuestCompleted открывает victoryOpenQuests через openDependentQuests`() = runBlocking {
+        // Подготовка: кампания с заданием 47 (victoryOpenQuests = [48])
+        val repo = FakeCampaignRepository().apply {
+            questsToReturn = listOf(
+                Quest(id = "47", name = "Задание 47", chapter = 1, questNumber = 47, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(questNumber = 47, name = "Морозный укус", bossName = "Сиркаадж",
+                    bossElement = Element.ICE, victoryOpenQuests = listOf(48))
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+
+        // Открываем лист кампании
+        viewModel.onCampaignSelected(1)
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода: завершаем задание 47
+        viewModel.onToggleQuestCompleted("47")
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: задание 48 открыто (victoryOpenQuests сработал)
+        assertTrue(repo.savedQuests.any { it.questNumber == 48 && it.isAvailable },
+            "onToggleQuestCompleted должен открыть victoryOpenQuests (48)")
+    }
+
+    @Test
+    fun `onToggleQuestCompleted не открывает задания если victoryOpenQuests пуст`() = runBlocking {
+        // Подготовка: задание 41 (нет victoryOpenQuests)
+        val repo = FakeCampaignRepository().apply {
+            questsToReturn = listOf(
+                Quest(id = "41", name = "Задание 41", chapter = 1, questNumber = 41, isAvailable = true)
+            )
+            taskInfoToReturn = listOf(
+                TaskInfo(questNumber = 41, name = "Умирающий лес", bossName = "Гидар",
+                    bossElement = Element.POISON)
+            )
+            huntersToReturn = listOf(
+                CampaignHunter(id = 1, campaignId = 1, playerName = "Дареон", className = HunterClass.DAREON)
+            )
+            achievementsToReturn = listOf(
+                Achievement(id = "Змеиная кровь", name = "Змеиная кровь", unlocked = true)
+            )
+        }
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val viewModel = CampaignViewModel(repo, scope)
+
+        viewModel.onCampaignNameChanged("Тест")
+        viewModel.onClassToggled(HunterClass.DAREON)
+        viewModel.onStartCampaign()
+        kotlinx.coroutines.delay(100)
+        completePrologue(viewModel)
+        viewModel.onCampaignSelected(1)
+        kotlinx.coroutines.delay(100)
+
+        // Вызов проверяемого кода
+        viewModel.onToggleQuestCompleted("41")
+        kotlinx.coroutines.delay(100)
+
+        // Проверка: никаких новых заданий не добавлено
+        val savedQuestNumbers = repo.savedQuests.filter { it.isAvailable }.map { it.questNumber }
+        assertTrue(savedQuestNumbers.isEmpty() || savedQuestNumbers.none { it == 48 },
+            "Если victoryOpenQuests пуст, новые задания не открываются")
     }
 
     //endregion

@@ -220,5 +220,103 @@ class ChapterInfoTest {
         assertTrue(domain.conditionalMessages.isEmpty())
     }
 
+    @Test
+    fun `TaskCondition ACHIEVEMENT_OWNED_IN_CHAPTER кодируется и декодируется с chapterSet`() {
+        // Подготовка: условие «достижение И глава» с chapterSet
+        val condition = TaskCondition(
+            kind = TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER,
+            achievementName = "Горящий уголёк",
+            chapterSet = listOf(8),
+            questNumber = 34
+        )
+        val entity = TaskInfo(
+            questNumber = 25,
+            name = "Горящее солнце",
+            bossName = "Харджа",
+            bossElement = Element.FIRE,
+            victoryOpenQuestConditions = listOf(condition)
+        ).toEntity()
+
+        // Вызов проверяемого кода
+        val decoded = entity.toDomain().victoryOpenQuestConditions
+
+        // Проверка: вид, достижение, chapterSet и questNumber декодированы
+        assertEquals(1, decoded.size)
+        assertEquals(TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER, decoded[0].kind)
+        assertEquals("Горящий уголёк", decoded[0].achievementName)
+        assertEquals(listOf(8), decoded[0].chapterSet)
+        assertEquals(34, decoded[0].questNumber)
+        assertEquals(null, decoded[0].elseQuestNumber)
+    }
+
+    @Test
+    fun `TaskCondition rewardAchievement кодируется и декодируется c 6 сегментами`() {
+        // Подготовка: условное достижение с rewardAchievement
+        val condition = TaskCondition(
+            kind = TaskConditionKind.ACHIEVEMENT_OWNED,
+            achievementName = "Голос Волтьяра",
+            rewardAchievement = "Уробборос"
+        )
+        val entity = TaskInfo(
+            questNumber = 29,
+            name = "Пещеры эха",
+            bossName = "Иекорос",
+            bossElement = Element.LIGHTNING,
+            victoryOpenQuestConditions = listOf(condition)
+        ).toEntity()
+
+        // Вызов проверяемого кода
+        val decoded = entity.toDomain().victoryOpenQuestConditions
+
+        // Проверка: rewardAchievement декодирован, quest/else null
+        assertEquals(1, decoded.size)
+        assertEquals(TaskConditionKind.ACHIEVEMENT_OWNED, decoded[0].kind)
+        assertEquals("Голос Волтьяра", decoded[0].achievementName)
+        assertEquals("Уробборос", decoded[0].rewardAchievement)
+        assertEquals(null, decoded[0].questNumber)
+        assertEquals(null, decoded[0].elseQuestNumber)
+    }
+
+    @Test
+    fun `TaskCondition 4 сегмента игнорируются`() {
+        // Подготовка: сущность с 4-сегментной строкой (невалидной)
+        val entity = TaskInfoEntity(
+            questNumber = 99,
+            name = "Тест",
+            bossName = "Тест",
+            bossElement = "FIRE",
+            victoryOpenQuestConditions = "BAD:FORMAT:WITH:4"
+        )
+
+        // Вызов проверяемого кода
+        val decoded = entity.toDomain().victoryOpenQuestConditions
+
+        // Проверка: некорректная запись отброшена
+        assertEquals(0, decoded.size, "4-сегментная строка должна игнорироваться")
+    }
+
+    @Test
+    fun `TaskCondition пустой rewardAchievement декодируется как null`() {
+        // Подготовка: условие с пустым rewardAchievement в 6 сегментах
+        val entity = TaskInfoEntity(
+            questNumber = 25,
+            name = "Горящее солнце",
+            bossName = "Харджа",
+            bossElement = "FIRE",
+            victoryOpenQuestConditions = "ACHIEVEMENT_OWNED_IN_CHAPTER|Горящий уголёк|8|34||"
+        )
+
+        // Вызов проверяемого кода
+        val decoded = entity.toDomain().victoryOpenQuestConditions
+
+        // Проверка: условие декодировано, rewardAchievement = null
+        assertEquals(1, decoded.size)
+        assertEquals(TaskConditionKind.ACHIEVEMENT_OWNED_IN_CHAPTER, decoded[0].kind)
+        assertEquals("Горящий уголёк", decoded[0].achievementName)
+        assertEquals(listOf(8), decoded[0].chapterSet)
+        assertEquals(34, decoded[0].questNumber)
+        assertEquals(null, decoded[0].rewardAchievement)
+    }
+
     //endregion
 }

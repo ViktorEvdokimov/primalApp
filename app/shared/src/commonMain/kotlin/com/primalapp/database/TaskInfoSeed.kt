@@ -290,14 +290,77 @@ private val TASK_INFO_ROWS = listOf(
         "SCALES:1;BLOOD:1;ZIMIA:1;IRIDIA:1",
         "TARMARET:2;ALBALACEA:1;ANTHEMON:1;SELICORNIA:1",
         "", "ACHIEVEMENT_OWNED|Голос Волтьяра||||Уробборос", "", "", "", "", ""
+    ),
+    // 41 Умирающий лес
+    arrayOf(
+        "41", "Умирающий лес", "Гидар", "POISON",
+        "SCALES:1;BLOOD:2;IRIDIA:1",
+        "NILLEA:1;TARMARET:1;MELLIS:2;ANTHEMON:1",
+        "", "", "Змеиная кровь", "", "", "", ""
+    ),
+    // 42 Тёмная трясина
+    arrayOf(
+        "42", "Тёмная трясина", "Рейкал", "POISON",
+        "SCALES:1;BLOOD:2;IRIDIA:1",
+        "TARMARET:1;MELLIS:1;ANTHEMON:2;SELICORNIA:1",
+        "", "QUEST_NOT_AVAILABLE||18|45||", "", "30,31", "", "", ""
+    ),
+    // 43 Воплощение ночи
+    arrayOf(
+        "43", "Воплощение ночи", "Рейкал", "POISON",
+        "SCALES:2;BLOOD:2",
+        "TARMARET:1;MELLIS:2;ANTHEMON:1;SELICORNIA:1",
+        "", "", "", "32", "", "", ""
+    ),
+    // 44 Луноцвет
+    arrayOf(
+        "44", "Луноцвет", "Гидар", "POISON",
+        "SCALES:1;BLOOD:1;ZIMIA:1;IRIDIA:1",
+        "NILLEA:1;TARMARET:1;MELLIS:2;ANTHEMON:1",
+        "", "", "", "33", "", "", ""
+    ),
+    // 45 Залы памяти
+    arrayOf(
+        "45", "Залы памяти", "Торамат", "HORN",
+        "BONES:2;ZLATIA:2",
+        "NILLEA:2;TARMARET:1;ALBALACEA:1;SELICORNIA:1",
+        "", "", "Копьё драконоборца", "8", "", "", ""
+    ),
+    // 46 Ненасытная зима
+    arrayOf(
+        "46", "Ненасытная зима", "Сиркаадж", "ICE",
+        "BONES:1;IRIDIA:1;ZLATIA:2",
+        "TARMARET:1;ALBALACEA:2;SELICORNIA:2",
+        "", "", "Упавшая звезда", "", "", "", ""
+    ),
+    // 47 Морозный укус
+    arrayOf(
+        "47", "Морозный укус", "Сиркаадж", "ICE",
+        "BONES:1;BLOOD:1;IRIDIA:1;ZLATIA:1",
+        "TARMARET:1;ALBALACEA:2;SELICORNIA:2",
+        "48", "", "", "35", "", "", "", "Оледенение"
+    ),
+    // 48 Ледяная гробница
+    arrayOf(
+        "48", "Ледяная гробница", "Мумараак", "ICE",
+        "BONES:1;IRIDIA:1;ZLATIA:2",
+        "TARMARET:1;ALBALACEA:2;SELICORNIA:2",
+        "", "", "", "36,37", "", "", "", "Оледенение"
+    ),
+    // 49 Звёздные врата
+    arrayOf(
+        "49", "Звёздные врата", "Мумараак", "ICE",
+        "BONES:1;BLOOD:1;IRIDIA:1;ZLATIA:1",
+        "TARMARET:1;ALBALACEA:2;SELICORNIA:2",
+        "", "", "Озеро Небесного", "34", "", "", ""
     )
 )
 
 fun seedTaskInfo(db: SQLiteConnection) {
     TASK_INFO_ROWS.forEach { row ->
         db.execSQL(
-            "INSERT INTO task_info (quest_number, name, boss_name, boss_element, victory_materials, victory_plants, victory_open_quests, victory_open_quest_conditions, victory_achievements, victory_reward_cards, victory_special, defeat_open_quests, defeat_open_quest_conditions) " +
-                "VALUES (${row[0]}, '${row[1]}', '${row[2]}', '${row[3]}', '${row[4]}', '${row[5]}', '${row[6]}', '${row[7]}', '${row[8]}', '${row[9]}', '${row[10]}', '${row[11]}', '${row[12]}')"
+            "INSERT INTO task_info (quest_number, name, boss_name, boss_element, victory_materials, victory_plants, victory_open_quests, victory_open_quest_conditions, victory_achievements, victory_reward_cards, victory_special, defeat_open_quests, defeat_open_quest_conditions, defeat_achievements) " +
+                "VALUES (${row[0]}, '${row[1]}', '${row[2]}', '${row[3]}', '${row[4]}', '${row[5]}', '${row[6]}', '${row[7]}', '${row[8]}', '${row[9]}', '${row[10]}', '${row[11]}', '${row[12]}', '${row.getOrNull(13).orEmpty()}')"
         )
     }
 }

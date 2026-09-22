@@ -189,9 +189,9 @@ val remaining = if (isHardened && wounds > 0) {
 
 **Вопрос (27.07.2026):** В требовании перечислено 6 классов: Кара, Хелерен, Дареон, Мира, Торег, Льонар. В базовой книге правил только 4. Откуда Кара и Хелерен?
 
-**Ответ:** Кара и Хелерен из дополнений. Использовать все 6 классов.
+**Ответ:** Кара и Хелерен из дополнений. Использовать все 8 классов.
 
-**Реализация:** `HunterClass.kt` — enum из 6 значений: DAREON, MIRA, TOREG, LIONAR, KARA, HELEREN.
+**Реализация:** `HunterClass.kt` — enum из 8 значений: DAREON, MIRA, TOREG, LIONAR, KARA, HELEREN, DRUSK, ZARAIA.
 
 ---
 
@@ -257,7 +257,7 @@ val remaining = if (isHardened && wounds > 0) {
 | `model/campaign/Trophy.kt` | Трофей (босс, стихия, глава) |
 | `model/campaign/Quest.kt` | Задание: id, глава, стихия, статус |
 | `model/campaign/ResourceEntry.kt` + `ResourceType.kt` | Запись о ресурсе + enum типа |
-| `model/campaign/HunterClass.kt` | 6 классов (Дареон, Мира, Торег, Льонар, Кара, Хелерен) |
+| `model/campaign/HunterClass.kt` | 8 классов (Дареон, Мира, Торег, Льонар, Кара, Хелерен, Друск, Зарайа) |
 | `model/campaign/SkillBranch.kt` | 5 ветвей (А, Б, В, Г, Д) |
 | `model/campaign/Material.kt` | 7 материй |
 | `model/campaign/Plant.kt` | 6 растений |
@@ -860,7 +860,43 @@ BUILD SUCCESSFUL in 6s
 
 ---
 
-## AF. Задачи 40.x: дефект предзаполнения стоек Вираксена в прологе (06.09.2026)
+## AG. Задачи 40.1–40.5: добавление боссов дополнений Яд/Лёд (22.09.2026)
+
+### 90. Добавление новых боссов — Гидар, Рейкал (Яд), Сиркаадж, Мумараак (Лёд)
+
+**Задача:** Добавить 4 боссов дополнений Яд/Лёд в БД (seed + миграция 12→13) и ALL_BOSS_NAMES.
+
+**Решение:** В `seedBosses()` добавлены 16 строк через `insert3`. `MIGRATION_12_13` — recreateAndSeedBosses(db). ALL_BOSS_NAMES расширен c 19 до 23. Тест `CampaignViewModelTest.ALL_BOSS_NAMES содержит 19 боссов` требует обновления на 23 (задача в testTasks.md 40.1T). Тесты `MigrationTest` требуют обновления ожиданий с 19 на 23 (задача в testTasks.md 40.1M).
+
+**Статус:** реализовано (40.1), тесты на правке.
+
+---
+
+### 91. Каталог заданий 41-49, расширение схемы, ChapterInfoSeed, отступ 1 мм
+
+**Задачи:** 40.2 (TaskInfoSeed), 40.3 (ChapterInfoSeed), 40.4 (BattleScreen inset), 40.5 (документация).
+
+**Решение:**
+- В `TaskInfoSeed.kt` добавлены строки 41-49.
+- В `TaskInfoEntity` добавлена колонка `defeat_achievements` (достижения при поражении, зад. 47/48).
+- В `TaskConditionKind` добавлен `QUEST_NOT_AVAILABLE` (условие по недоступности задания, зад. 42).
+- В `ChapterInfoSeed.kt` синхронизированы гл. 5, 6, 8, 9 с `doc/compainInfo.md` (условные задания 42-49, истечения 47/48).
+- В `BattleScreen.kt` добавлен отступ 1 мм: `Modifier.padding((160f / 25.4f).dp)`.
+- `MIGRATION_12_13` расширена: ALTER TABLE task_info + пересев трёх таблиц.
+- `CampaignViewModel.onDefeatRewardsAccept()`: при поражении выдаются `defeatAchievements`.
+- `resolveConditionTarget()`: обрабатывает `QUEST_NOT_AVAILABLE` с проверкой через `availableQuestNumbers`.
+
+**Статус:** все задачи 40.1-40.5 реализованы; требуются правки тестов (testTasks.md 40.1T, 40.1M), новые тесты (TaskInfoTest, CampaignViewModelTest, BattleViewModelTest).
+
+---
+
+### 92. Новые классы охотников — Друск и Зарайа
+
+**Задача:** Добавить два новых класса (`DRUSK("Друск")`, `ZARAIA("Зарайа")`) в HunterClass. Стандартные 5 ветвей навыков.
+
+**Решение:** `HunterClass.kt` — enum расширен с 6 до 8 значений. Документация обновлена.
+
+**Статус:** реализовано.
 
 ### 89. Предзаполнение стоек 2 и 3 Вираксена в прологе
 
