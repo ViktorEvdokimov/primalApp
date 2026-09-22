@@ -1,0 +1,4 @@
+# Allure test results and reports
+**/allure-results/
+**/.idea/
+**/__pycache__/
