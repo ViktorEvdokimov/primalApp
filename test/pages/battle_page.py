@@ -1,11 +1,23 @@
+from enum import Enum
+
 import allure
 from appium.webdriver.common.appiumby import AppiumBy
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from pages.base_page import BasePage
 
 
+class BattleSource(Enum):
+    EXPEDITION = "expedition"
+    CAMPAIGN = "campaign"
+
+
 class BattlePage(BasePage):
+    def __init__(self, driver, source: BattleSource = BattleSource.EXPEDITION):
+        super().__init__(driver)
+        self.source = source
+
     PHASE = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Фаза")]')
     ROUND = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Раунд")]')
     HEALTH = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Здоровье:")]')
@@ -34,6 +46,27 @@ class BattlePage(BasePage):
     CHANGE_STANCE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Сменить стойку"]')
     SURRENDER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Сдаться"]')
     EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
+    PENDING_DAMAGE = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Ожидание... ")]')
+    APPLY_NOW = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Применить урон сейчас")]')
+    UNDO = (AppiumBy.XPATH, '//android.widget.TextView[@text="Отменить действие"]')
+
+    @allure.step("Получить урон, ожидающий применения (быстрые кнопки)")
+    def get_pending_damage_value(self) -> int | None:
+        """Число из «Ожидание... N урона» или None, если ожидающего урона нет."""
+        elements = self.driver.find_elements(*self.PENDING_DAMAGE)
+        return int(elements[0].text.split()[1]) if elements else None
+
+    @allure.step("Дождаться автоприменения урона по таймеру быстрых кнопок")
+    def wait_pending_damage_applied(self, timeout: int = 5) -> None:
+        WebDriverWait(self.driver, timeout).until(EC.invisibility_of_element_located(self.PENDING_DAMAGE))
+
+    @allure.step("Нажать «Применить урон сейчас»")
+    def apply_pending_now(self) -> None:
+        self.click(self.APPLY_NOW)
+
+    @allure.step("Нажать «Отменить действие»")
+    def undo(self) -> None:
+        self.click(self.UNDO)
 
     @allure.step("Получить текущую фазу")
     def get_phase(self) -> str:
@@ -169,16 +202,30 @@ class BattlePage(BasePage):
     def end_round(self) -> None:
         self.click(self.END_ROUND)
 
+    def _reveal_bottom_button(self, text: str) -> None:
+        """Кнопки внизу экрана боя: после ручного ввода их закрывает клавиатура, ниже — прокрутка."""
+        if self.driver.is_keyboard_shown():
+            self.driver.hide_keyboard()
+        self.scroll_into_view(text)
+
     @allure.step("Сдаться")
     def surrender(self) -> "SurrenderDialog":
+        self._reveal_bottom_button("Сдаться")
         self.click(self.SURRENDER)
         return SurrenderDialog(self.driver)
 
     @allure.step("Выйти в меню")
     def exit_to_menu(self) -> "MainPage":
         from pages.main_page import MainPage
+        self._reveal_bottom_button("Выход в меню")
         self.click(self.EXIT_TO_MENU)
         return MainPage(self.driver)
+
+    @allure.step("Получить диалог победы в зависимости от источника боя")
+    def get_victory_dialog(self) -> "VictoryDialog | CampaignVictoryDialog":
+        if self.source == BattleSource.CAMPAIGN:
+            return CampaignVictoryDialog(self.driver)
+        return VictoryDialog(self.driver)
 
 
 class RageSurgeDialog(BasePage):
@@ -188,6 +235,13 @@ class RageSurgeDialog(BasePage):
     @allure.step("Проверить, что окно Всплеск ярости отображается")
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.MESSAGE)
+
+    @allure.step("Закрыть окно Всплеск ярости, если оно появилось")
+    def dismiss_if_shown(self, timeout: int = 2) -> bool:
+        if self.is_element_visible_quick(self.MESSAGE, timeout=timeout):
+            self.click_ok()
+            return True
+        return False
 
     @allure.step("Нажать OK в окне Всплеск ярости")
     def click_ok(self) -> None:
@@ -216,11 +270,18 @@ class SurrenderDialog(BasePage):
 class DefeatDialog(BasePage):
     MESSAGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="ПОРАЖЕНИЕ"]')
     NEW_BATTLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Новый бой"]')
+    CONTINUE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Продолжить"]')
     EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
 
     @allure.step("Проверить, что окно поражения отображается")
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.MESSAGE)
+
+    @allure.step("Нажать Продолжить (поражение в кампании)")
+    def click_continue(self) -> "QuestRewardsPage":
+        from pages.campaign_rewards_page import QuestRewardsPage
+        self.click(self.CONTINUE)
+        return QuestRewardsPage(self.driver)
 
     @allure.step("Нажать Новый бой")
     def click_new_battle(self) -> "BattlePreparation":
@@ -249,6 +310,37 @@ class VictoryDialog(BasePage):
         from pages.battle_preparation import BattlePreparation
         self.click(self.NEW_BATTLE)
         return BattlePreparation(self.driver)
+
+    @allure.step("Нажать Выход в меню")
+    def click_exit_to_menu(self) -> "MainPage":
+        from pages.main_page import MainPage
+        self.click(self.EXIT_TO_MENU)
+        return MainPage(self.driver)
+
+
+class CampaignVictoryDialog(BasePage):
+    TITLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="ПОБЕДА!"]')
+    MONSTER_DEFEATED = (AppiumBy.XPATH, '//android.widget.TextView[@text="Монстр повержен!"]')
+    CONTINUE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Продолжить"]')
+    EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
+
+    @allure.step("Проверить, что экран победы отображается")
+    def is_displayed(self) -> bool:
+        return self.is_element_visible(self.TITLE)
+
+    @allure.step("Проверить надпись «Монстр повержен!»")
+    def is_monster_defeated_displayed(self) -> bool:
+        return self.is_element_visible(self.MONSTER_DEFEATED)
+
+    @allure.step("Нажать Продолжить — перейти к наградам главы (пролог) или наградам задания")
+    def click_continue(self) -> "CampaignRewardsPage | QuestRewardsPage":
+        from pages.campaign_rewards_page import CampaignRewardsPage, QuestRewardsPage
+        self.click(self.CONTINUE)
+        self.wait.until(lambda _: self.driver.find_elements(*CampaignRewardsPage.TITLE)
+                        or self.driver.find_elements(*QuestRewardsPage.TITLE))
+        if self.driver.find_elements(*CampaignRewardsPage.TITLE):
+            return CampaignRewardsPage(self.driver)
+        return QuestRewardsPage(self.driver)
 
     @allure.step("Нажать Выход в меню")
     def click_exit_to_menu(self) -> "MainPage":

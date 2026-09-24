@@ -345,6 +345,25 @@ pygments = ">=2.7.2"
 dev = ["argcomplete", "attrs (>=19.2)", "hypothesis (>=3.56)", "mock", "requests", "setuptools", "xmlschema"]
 
 [[package]]
+name = "pytest-check"
+version = "2.9.1"
+description = "A pytest plugin that allows multiple failures per test."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pytest_check-2.9.1-py3-none-any.whl", hash = "sha256:9c745f50532c2f650f3d0afab78810aa9e0ca25b8ac60986e1590d8819c04562"},
+    {file = "pytest_check-2.9.1.tar.gz", hash = "sha256:2d8c9f1fe5cceb0b41c480e1454e95e9ed6a3a534bf2c7e3e0f39167b11cf88b"},
+]
+
+[package.dependencies]
+packaging = "*"
+pytest = ">=7.0.0"
+
+[package.extras]
+dev = ["build", "tox", "tox-uv"]
+
+[[package]]
 name = "selenium"
 version = "4.49.0"
 description = "Official Python bindings for Selenium WebDriver"
@@ -493,4 +512,4 @@ h11 = ">=0.16.0,<1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14"
-content-hash = "1ec2a3069fd3ee5ab337c27f266a46863019ab45c2660a8301e52e049b306458"
+content-hash = "5229219716a304bf8c107a0bd8d330d658ee8e8340ac2d98eda2f9ee4d8f1c83"

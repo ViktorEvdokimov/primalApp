@@ -3,9 +3,14 @@ from appium.webdriver.common.appiumby import AppiumBy
 from selenium.common import TimeoutException
 
 from pages.base_page import BasePage
-from pages.battle_page import BattlePage
+from pages.battle_page import BattlePage, BattleSource
+
 
 class BattlePreparation(BasePage):
+    def __init__(self, driver, source: BattleSource = BattleSource.EXPEDITION):
+        super().__init__(driver)
+        self.source = source
+
     BOSS_LABEL = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выберите босса"]')
     BOSS_VALUE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выберите босса"]/parent::android.widget.EditText')
     COMPLEXITY = (AppiumBy.XPATH, '//android.widget.TextView[@text="Сложность"]')
@@ -13,17 +18,21 @@ class BattlePreparation(BasePage):
     DAMAGE_TO_WOUND = (AppiumBy.XPATH, '//android.widget.TextView[@text="Урон для нанесения раны на игрока (пусто = нет порога раны)"]/..')
     STANCE_CHANGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Здоровье для смены стойки (пусто = по запросу)"]/..')
     START_BATTLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Начать бой"]')
+    TITLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Подготовка к бою"]')
+    EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
 
     def select_boss(self, name: str) -> None:
         with allure.step(f"Выбор босса {name}"):
             self.click(self.BOSS_LABEL)
-            self.scroll_to_text(name)
+            # scroll_into_view, а не scroll_to_text: UiScrollable считает найденными пункты за нижним краем
+            # списка (23 босса в версии 1.1) и не докручивает до них
+            self.scroll_into_view(name)
 
             boss_item = (AppiumBy.XPATH, f'//android.widget.TextView[@text="{name}"]/..')
             self.click(boss_item)
 
             if not self.is_element_visible_quick(self.START_BATTLE):
-                self.scroll_to_text(name)
+                self.scroll_into_view(name)
                 self.click(boss_item)
                 if not self.is_element_visible_quick(self.START_BATTLE):
                     raise TimeoutException(
@@ -95,7 +104,17 @@ class BattlePreparation(BasePage):
     @allure.step("Нажать кнопку Начать бой")
     def start_battle(self) -> BattlePage:
         self.click(self.START_BATTLE)
-        return BattlePage(self.driver)
+        return BattlePage(self.driver, source=self.source)
+
+    @allure.step("Проверить, что экран подготовки к бою отображается")
+    def is_displayed(self) -> bool:
+        return self.is_element_visible(self.TITLE)
+
+    @allure.step("Выйти в меню с экрана подготовки к бою")
+    def exit_to_menu(self) -> "MainPage":
+        from pages.main_page import MainPage
+        self.click(self.EXIT_TO_MENU)
+        return MainPage(self.driver)
 
     @allure.step("Нажать кнопку Начать бой (ожидается ошибка — поле обязательно)")
     def click_start_battle_expecting_error(self) -> "BattlePreparation":

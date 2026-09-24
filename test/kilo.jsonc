@@ -1,24 +1,26 @@
 {
-  "$schema": "https://app.kilo.ai/config.json", // Schema validation
-  
-  // Custom Agent Skills Configuration
+  "$schema": "https://app.kilo.ai/config.json",
+
   "skills": {
     "paths": [".kilo/skills"]
   },
 
-  // Project-wide custom rules and instruction files
-  "instructions": [
-  ],
+  "instructions": [],
+
   "mcp": {
     "appium-mcp": {
       "enabled": true,
       "timeout": 10000,
       "type": "stdio",
-      "command": ["npx", "appium-mcp@latest"],
+      "command": ["node", "C:\\Users\\user\\AppData\\Roaming\\npm\\node_modules\\appium-mcp\\dist\\index.js"],
       "environment": {
         "APPIUM_HOST": "127.0.0.1",
         "APPIUM_PORT": "4723"
       }
     }
+  },
+
+  "permission": {
+    "appium-mcp_*": "allow"
   }
 }

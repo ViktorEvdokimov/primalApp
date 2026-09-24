@@ -6,7 +6,7 @@ from appium.webdriver.common.appiumby import AppiumBy
 class BasePage:
     def __init__(self, driver):
         self.driver = driver
-        self.wait = WebDriverWait(driver, 20)
+        self.wait = WebDriverWait(driver, 10)
 
     def click(self, locator: tuple[str, str]) -> None:
         element = self.wait.until(EC.element_to_be_clickable(locator))
@@ -36,6 +36,32 @@ class BasePage:
             return True
         except TimeoutException:
             return False
+
+    def scroll_into_view(self, text: str, partial: bool = False, max_swipes: int = 15) -> None:
+        """Скроллит основной экран, пока элемент с текстом не станет реально видимым.
+
+        В отличие от scroll_to_text не доверяет UiScrollable: Compose отдаёт узлы за пределами экрана,
+        и UiScrollable считает их найденными без прокрутки. Сначала листает вниз, затем вверх.
+        """
+        selector = f'new UiSelector().{"textStartsWith" if partial else "text"}("{text}")'
+        for direction in ("down", "up"):
+            previous_source = None
+            for _ in range(max_swipes):
+                if any(el.is_displayed() for el in self.driver.find_elements(AppiumBy.ANDROID_UIAUTOMATOR, selector)):
+                    return
+                source = self.driver.page_source
+                if source == previous_source:
+                    break  # экран не изменился — достигнут край списка
+                previous_source = source
+                scrollables = self.driver.find_elements(AppiumBy.ANDROID_UIAUTOMATOR, 'new UiSelector().scrollable(true)')
+                if not scrollables:
+                    break
+                # Возвращаемый флаг «можно скроллить дальше» для Compose ненадёжен, поэтому край определяется по page_source
+                self.driver.execute_script("mobile: scrollGesture", {
+                    "elementId": scrollables[0].id, "direction": direction, "percent": 0.5
+                })
+        if not any(el.is_displayed() for el in self.driver.find_elements(AppiumBy.ANDROID_UIAUTOMATOR, selector)):
+            raise NoSuchElementException(f"Элемент с текстом «{text}» не найден при прокрутке")
 
     def scroll_to_text(self, text: str, max_swipes: int = 30) -> None:
         ui_selector = (
