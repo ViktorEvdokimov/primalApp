@@ -144,4 +144,28 @@ class TaskInfoTest {
     }
 
     //endregion
+
+    //region D-8. Разделители карт наград
+
+    @Test
+    fun `toEntity и toDomain сохраняют несколько карт наград`() {
+        // Подготовка: задание с четырьмя картами наград (как зад. 20)
+        val domain = TaskInfo(
+            questNumber = 20,
+            name = "Кристаллизация",
+            bossName = "Моркраас",
+            bossElement = Element.CRYSTAL,
+            victoryRewardCards = listOf("10", "11", "12", "13")
+        )
+
+        // Вызов проверяемого кода
+        val entity = domain.toEntity()
+        val restored = entity.toDomain()
+
+        // Проверка: карты пишутся через «,», как в seed, и читаются обратно без потерь
+        assertEquals("10,11,12,13", entity.victoryRewardCards)
+        assertEquals(listOf("10", "11", "12", "13"), restored.victoryRewardCards)
+    }
+
+    //endregion
 }

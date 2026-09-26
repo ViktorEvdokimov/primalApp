@@ -246,6 +246,66 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
     }
 }
 
+/** Прежние написания достижений в каталоге заданий → канонические (задача 42.1). */
+private val ACHIEVEMENT_RENAMES = listOf(
+    "Народ золотых гор" to "Народ Золотых гор",
+    "Яд пазиса" to "Яд Пазиса",
+    "Копье драконоборца" to "Копьё драконоборца"
+)
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SQLiteConnection) {
+        // Схема не меняется; пере-сид каталога заданий с каноническими названиями достижений
+        db.execSQL("DELETE FROM task_info")
+        seedTaskInfo(db)
+        // Достижения, уже выданные кампаниям, приводятся к каноническому написанию
+        ACHIEVEMENT_RENAMES.forEach { (old, canonical) ->
+            db.execSQL(
+                "UPDATE achievements SET achievement_id = '$canonical', name = '$canonical' " +
+                    "WHERE achievement_id = '$old' OR name = '$old'"
+            )
+        }
+        // Достижение, выданное повторно (разными заданиями или решением главы), остаётся в одном экземпляре
+        db.execSQL(
+            "DELETE FROM achievements WHERE id NOT IN " +
+                "(SELECT MIN(id) FROM achievements GROUP BY campaign_id, achievement_id)"
+        )
+    }
+}
+
+/**
+ * Решения defects.md (25.09.2026): условное улучшение набора охотника и финал кампании в каталоге глав
+ * (новые колонки), исправления каталога заданий (зад. 2, 14, 28, 35) и главы 10 (задание 30).
+ */
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL("ALTER TABLE chapter_info ADD COLUMN hunter_kit_upgrade_achievement TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE chapter_info ADD COLUMN expire_all_quests INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE chapter_info ADD COLUMN final_boss TEXT NOT NULL DEFAULT ''")
+        db.execSQL("DELETE FROM chapter_info")
+        seedChapterInfo(db)
+        db.execSQL("DELETE FROM task_info")
+        seedTaskInfo(db)
+    }
+}
+
+/**
+ * defects.md D-9: уникальность достижения в кампании на уровне БД. Перед созданием индекса
+ * удаляются оставшиеся точные дубли (остаётся запись с наименьшим id).
+ */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL(
+            "DELETE FROM achievements WHERE id NOT IN " +
+                "(SELECT MIN(id) FROM achievements GROUP BY campaign_id, achievement_id)"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_achievements_campaign_id_achievement_id` " +
+                "ON `achievements` (`campaign_id`, `achievement_id`)"
+        )
+    }
+}
+
 private val CREATE_BOSSES_TABLE = """
     CREATE TABLE IF NOT EXISTS bosses (
         id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -462,7 +522,7 @@ fun seedBosses(db: SQLiteConnection) {
         TaskInfoEntity::class,
         ChapterInfoEntity::class
     ],
-    version = 13,
+    version = 16,
     exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {

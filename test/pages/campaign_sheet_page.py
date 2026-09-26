@@ -2,6 +2,8 @@ import re
 
 import allure
 from appium.webdriver.common.appiumby import AppiumBy
+from selenium.common import NoSuchElementException, TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
 from pages.quest_selection_page import QuestSelectionPage
 from pages.main_page import MainPage
 
@@ -30,7 +32,9 @@ class CampaignSheetPage(BasePage):
     ELEMENTS_HEADER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Стихии:"]')
     QUESTS_HEADER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Задания:"]')
     OPENED_QUESTS_HEADER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Открытые:"]')
-    OPENED_QUEST_ITEMS = (AppiumBy.XPATH, '//android.widget.TextView[@text="Открытые:"]/following-sibling::android.widget.TextView[following-sibling::android.widget.TextView[@text="Достижения:"]]')
+    # Открытые — до «Выполненные:» (если он есть), выполненные — между «Выполненные:» и «Достижения:» (D-5)
+    OPENED_QUEST_ITEMS = (AppiumBy.XPATH, '//android.widget.TextView[@text="Открытые:"]/following-sibling::android.widget.TextView[following-sibling::android.widget.TextView[@text="Достижения:"]][not(preceding-sibling::android.widget.TextView[@text="Выполненные:"])]')
+    COMPLETED_QUEST_ITEMS = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выполненные:"]/following-sibling::android.widget.TextView[following-sibling::android.widget.TextView[@text="Достижения:"]]')
     EDIT_QUESTS_BUTTON = (AppiumBy.XPATH, '//android.widget.TextView[@text="Открытые:"]/following-sibling::android.view.View[1]')
     NO_OPENED_QUESTS = (AppiumBy.XPATH, '//android.widget.TextView[@text="Нет открытых заданий."]')
     ACHIEVEMENTS_HEADER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Достижения:"]')
@@ -197,6 +201,22 @@ class CampaignSheetPage(BasePage):
         self.click(_button(skill))
         return self
 
+    @allure.step("Проверить, открыт ли навык: {skill}")
+    def is_skill_unlocked(self, skill: str) -> bool:
+        self.scroll_into_view(skill)
+        # Состояние навыка передаётся семантикой selected (задача 42.2): цвет кнопки UiAutomator2 не видит.
+        # Для кнопок Compose отображает selected в атрибут checked (selected — только у вкладок)
+        button = self.driver.find_element(*_button(skill))
+        return "true" in (button.get_attribute("checked"), button.get_attribute("selected"))
+
+    @allure.step("Дождаться состояния навыка {skill}: открыт = {unlocked}")
+    def wait_skill_state(self, skill: str, unlocked: bool, timeout: float = 5) -> bool:
+        try:
+            WebDriverWait(self.driver, timeout).until(lambda _: self.is_skill_unlocked(skill) == unlocked)
+            return True
+        except TimeoutException:
+            return False
+
     @allure.step("Проверить, что секция заданий отображается")
     def is_quests_section_visible(self) -> bool:
         self.scroll_into_view("Задания:")
@@ -212,6 +232,16 @@ class CampaignSheetPage(BasePage):
                 numbers.append(int(match.group(1)))
         return numbers
 
+    @allure.step("Получить номера выполненных заданий")
+    def get_completed_quests(self) -> list[int]:
+        self.scroll_into_view("Достижения:")
+        numbers = []
+        for el in self.driver.find_elements(*self.COMPLETED_QUEST_ITEMS):
+            match = re.match(r"(\d+)\.", el.text.strip())
+            if match:
+                numbers.append(int(match.group(1)))
+        return numbers
+
     @allure.step("Нажать «Выполнено» у задания {number}")
     def complete_quest(self, number: int) -> "CampaignSheetPage":
         label = f'//android.widget.TextView[starts-with(@text, "{number}. ")]'
@@ -221,6 +251,16 @@ class CampaignSheetPage(BasePage):
         self.wait.until(lambda _: self.get_opened_quests() != before)
         return self
 
+    @allure.step("Нажать «Отмена» у выполненного задания {number}")
+    def uncomplete_quest(self, number: int) -> "CampaignSheetPage":
+        """Выполненное задание — в списке «Выполненные:»; кнопка «Отмена» рядом возвращает его в открытые."""
+        label = f'//android.widget.TextView[@text="Выполненные:"]/following-sibling::android.widget.TextView[starts-with(@text, "{number}. ")]'
+        before = self.get_completed_quests()
+        self.scroll_into_view(f"{number}. ", partial=True)
+        self.click((AppiumBy.XPATH, f'{label}/following-sibling::android.view.View[1]'))
+        self.wait.until(lambda _: self.get_completed_quests() != before)
+        return self
+
     @allure.step("Нажать «Редактировать» у заданий")
     def edit_quests(self) -> "CampaignRewardsPage.QuestsEditorDialog":
         from pages.campaign_rewards_page import CampaignRewardsPage
@@ -228,10 +268,18 @@ class CampaignSheetPage(BasePage):
         self.click(self.EDIT_QUESTS_BUTTON)
         return CampaignRewardsPage.QuestsEditorDialog(self.driver)
 
+    def _is_placeholder_visible(self, text: str, locator: tuple[str, str]) -> bool:
+        # Прокрутка к заголовку секции может остановиться у нижнего края экрана, а строка-заглушка под ним
+        # окажется за краем: узлов за пределами области прокрутки в дереве нет. Поэтому докручиваем до самой строки
+        try:
+            self.scroll_into_view(text)
+        except NoSuchElementException:
+            return False
+        return self.is_element_visible_quick(locator, timeout=3)
+
     @allure.step("Проверить, что нет открытых заданий")
     def has_no_opened_quests(self) -> bool:
-        self.scroll_into_view("Открытые:")
-        return self.is_element_visible_quick(self.NO_OPENED_QUESTS, timeout=3)
+        return self._is_placeholder_visible("Нет открытых заданий.", self.NO_OPENED_QUESTS)
 
     @allure.step("Проверить, что секция достижений отображается")
     def is_achievements_section_visible(self) -> bool:
@@ -253,8 +301,7 @@ class CampaignSheetPage(BasePage):
 
     @allure.step("Проверить, что нет достижений")
     def has_no_achievements(self) -> bool:
-        self.scroll_into_view("Полученные:")
-        return self.is_element_visible_quick(self.NO_ACHIEVEMENTS, timeout=3)
+        return self._is_placeholder_visible("Нет достижений.", self.NO_ACHIEVEMENTS)
 
     @allure.step("Проверить, что секция поверженных боссов отображается")
     def is_defeated_bosses_section_visible(self) -> bool:
@@ -298,6 +345,16 @@ class CampaignSheetPage(BasePage):
         self.scroll_into_view("Начать бой")
         self.click(self.START_BATTLE)
         return QuestSelectionPage(self.driver)
+
+    @allure.step("Начать финальный бой (после главы 11 задание не выбирается)")
+    def start_final_battle(self) -> "BattlePreparation":
+        from pages.battle_page import BattleSource
+        from pages.battle_preparation import BattlePreparation
+        self.scroll_into_view("Начать бой")
+        self.click(self.START_BATTLE)
+        prep = BattlePreparation(self.driver, source=BattleSource.CAMPAIGN)
+        assert prep.is_displayed(), "Финальный бой должен начинаться без выбора задания"
+        return prep
 
     @allure.step("Перейти в главное меню")
     def go_to_main_menu(self) -> "MainPage":

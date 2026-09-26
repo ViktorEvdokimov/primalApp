@@ -49,7 +49,7 @@ def reach_stance_threshold(battle: BattlePage) -> None:
 # region 1. НАЧАЛЬНОЕ СОСТОЯНИЕ
 
 @allure.feature("Экран боя — начальное состояние")
-@pytest.mark.parametrize("players_count", ["2", "3", "4"], ids=lambda p: f"{p} охотника")
+@pytest.mark.parametrize("players_count", ["2", "3", "4", "7"], ids=lambda p: f"охотников: {p}")  # 7 — без ограничения (D-12)
 def test_initial_state(driver, players_count: str):
     prep = prepare_battle(driver, players=players_count)
     expected_toughness = int(players_count) * int(prep.get_damage_to_wound())
@@ -192,30 +192,32 @@ def test_rage_buttons_and_surge(driver):
     battle.rage_plus_1_per_hunter_minus_1()
     with check("«+1/охот-1»: 6 → 8"):
         assert battle.get_rage_value() == 8
-    with check("Ниже порога 9 всплеска нет"):
+    with check("Ниже порога 9 выплеска нет"):
         assert not battle.is_element_visible_quick(RageSurgeDialog.MESSAGE)
 
     battle.rage_plus_1_per_hunter()
     surge = RageSurgeDialog(driver)
-    with check("«+1/охот»: 8 → 11 ≥ 9 → окно «Всплеск ярости»"):
+    with check("«+1/охот»: 8 → 11 ≥ 9 → окно «Выплеск ярости»"):
         assert surge.is_displayed()
+    with check("Окно напоминает: каждый охотник получает урон, равный силе монстра (R-8)"):
+        assert surge.has_damage_hint()
     surge.click_ok()
-    with check("После всплеска ярость сбрасывается до числа охотников"):
+    with check("После выплеска ярость сбрасывается до числа охотников"):
         assert battle.get_rage_value() == 3
 
 
 @allure.feature("Экран боя — ярость")
 def test_rage_surge_on_end_round(driver):
-    """2 охотника: ярость 2 → 5 кнопками, конец раунда +2 → 7 ≥ 6 — всплеск."""
+    """2 охотника: ярость 2 → 5 кнопками, конец раунда +2 → 7 ≥ 6 — выплеск."""
     battle = start_battle(driver, players="2")
     for _ in range(3):
         battle.rage_plus_1()
-    with check("Ярость 5 ниже порога 6 — всплеска нет"):
+    with check("Ярость 5 ниже порога 6 — выплеска нет"):
         assert not battle.is_element_visible_quick(RageSurgeDialog.MESSAGE)
 
     battle.end_round()
     surge = RageSurgeDialog(driver)
-    with check("Всплеск после конца раунда"):
+    with check("Выплеск после конца раунда"):
         assert surge.is_displayed()
     surge.click_ok()
     with check("Ярость сброшена до 2"):
@@ -234,30 +236,50 @@ def test_defeat_after_round_10(driver):
 
     battle.end_round()
     surge.dismiss_if_shown()
+    defeat = DefeatDialog(driver)
     with check("После 10-го раунда — экран «ПОРАЖЕНИЕ»"):
-        assert DefeatDialog(driver).is_displayed()
+        assert defeat.is_displayed()
+    with check("Причина: «Закончились раунды...» (D-14)"):
+        assert defeat.is_rounds_over_reason_displayed()
+
+
+@allure.feature("Экран боя — раунды и фазы")
+def test_undo_end_round(driver):
+    """«Отменить действие» после «Закончить раунд» возвращает номер раунда и ярость (D-4)."""
+    battle = start_battle(driver, players="2")
+    battle.end_round()
+    with check("Раунд 2, ярость 4"):
+        assert battle.get_round_number() == 2 and battle.get_rage_value() == 4
+
+    battle.undo()
+    with check("Отмена возвращает раунд 1"):
+        assert battle.get_round_number() == 1
+    with check("Отмена возвращает ярость 2"):
+        assert battle.get_rage_value() == 2
 
 # endregion
 
 
-# region 4. УСТОЙЧИВОСТЬ
+# region 4. СТАТУСЫ МОНСТРА И ЗАЖИВЛЕНИЕ РАНЫ
 
-@allure.feature("Экран боя — статусы и устойчивость")
+@allure.feature("Экран боя — статусы монстра")
 def test_hardened_status(driver):
-    """Устойчивость сжигает остаток урона после раны; без неё остаток сохраняется. Прочность 8."""
+    """«Затвердевший» сжигает остаток урона после раны; без него остаток сохраняется. Прочность 8."""
     battle = start_manual_battle(driver)
     toughness = battle.get_toughness_value()
 
-    battle.click_stability()
-    with check("Переключатель включает статус «Устойчивость»"):
-        assert battle.get_status() == "Статус: Устойчивость"
+    battle.click_hardened()
+    with check("Переключатель включает статус «Затвердевший»"):
+        assert battle.get_status() == "Статус: Затвердевший"
+    with check("«Устойчивость стойки» не включается"):
+        assert not battle.is_resilient_on()
     battle.apply_damage_manual(str(toughness + 5))
-    with check("Устойчивость: рана нанесена"):
+    with check("Затвердевший: рана нанесена"):
         assert battle.get_health_value() == INITIAL_HEALTH - 1
-    with check("Устойчивость: остаток 5 сгорел"):
+    with check("Затвердевший: остаток 5 сгорел"):
         assert battle.get_accumulated_damage_value() == 0
 
-    battle.click_stability()
+    battle.click_hardened()
     with check("Повторное переключение возвращает статус «Обычный»"):
         assert battle.get_status() == "Статус: Обычный"
     battle.apply_damage_manual(str(toughness + 3))
@@ -265,6 +287,85 @@ def test_hardened_status(driver):
         assert battle.get_health_value() == INITIAL_HEALTH - 2
     with check("Обычный статус: остаток 3 сохранился"):
         assert battle.get_accumulated_damage_value() == 3
+
+
+@allure.feature("Экран боя — статусы монстра")
+def test_resilient_status(driver):
+    """«Устойчивость стойки»: перенесённый урон сбрасывается при смене стойки (R-3).
+    Ручные данные: прочность 2 × 4 = 8, смена стойки при 9 HP — 11 урона дают рану и 3 урона переноса."""
+    battle = start_battle(driver, boss=None, damage_to_wound="2", stance_change="9")
+    stance_dialog = StanceChangeDialog(driver)
+
+    battle.click_resilient()
+    with check("Статус «Устойчивость стойки»"):
+        assert battle.get_status() == "Статус: Устойчивость стойки"
+    with check("«Затвердевший» не включается"):
+        assert not battle.is_hardened_on()
+
+    battle.apply_damage_manual("11")
+    assert stance_dialog.is_displayed(), "Порог 9 HP — диалог смены стойки (данных стойки нет)"
+    stance_dialog.set_damage_to_wound("2")
+    stance_dialog.click_ok()
+    with check("Фаза II"):
+        assert battle.get_phase_number() == 2
+    with check("Здоровье 9 — одна рана"):
+        assert battle.get_health_value() == INITIAL_HEALTH - 1
+    with check("Перенесённые 3 урона сброшены"):
+        assert battle.get_accumulated_damage_value() == 0
+
+
+@allure.feature("Экран боя — статусы монстра")
+@pytest.mark.parametrize("title, fragment", [
+    ("Затвердевший", "сбрасывается"),
+    ("Устойчивость стойки", "не переносится на новую карту стойки"),
+], ids=["Затвердевший", "Устойчивость стойки"])
+def test_status_info(driver, title: str, fragment: str):
+    """Кнопка «i» в сером кружке открывает описание статуса (R-3)."""
+    battle = start_manual_battle(driver)
+    info = battle.open_status_info(title)
+    with check(f"Открыто описание «{title}»"):
+        assert info.is_displayed(title)
+    with check("Описание объясняет действие статуса"):
+        assert info.has_text(fragment)
+    info.close()
+    with check("После «Понятно» — снова экран боя"):
+        assert battle.get_health_value() == INITIAL_HEALTH
+
+
+@allure.feature("Экран боя — заживление раны")
+def test_heal_wound(driver):
+    """«Заживить рану (+1 здоровья)» — +1 здоровья, жетоны урона не меняются, не выше 10 (R-4)."""
+    battle = start_manual_battle(driver)
+    battle.apply_damage_manual(str(battle.get_toughness_value() + 3))
+    with check("Рана нанесена, 3 урона накоплено"):
+        assert battle.get_health_value() == INITIAL_HEALTH - 1 and battle.get_accumulated_damage_value() == 3
+
+    battle.heal_wound()
+    with check("Здоровье +1"):
+        assert battle.get_health_value() == INITIAL_HEALTH
+    with check("Накопленный урон не изменился"):
+        assert battle.get_accumulated_damage_value() == 3
+
+    battle.heal_wound()
+    with check("Здоровье не поднимается выше начального"):
+        assert battle.get_health_value() == INITIAL_HEALTH
+
+
+@allure.feature("Экран боя — заживление раны")
+def test_negative_damage_reduces_only_accumulated(driver):
+    """Отрицательный урон уменьшает только накопленный урон; при 0 — ничего не делает (D-3)."""
+    battle = start_manual_battle(driver)
+    with check("Под полем ввода есть подсказка про отрицательное значение"):
+        assert battle.is_element_visible(battle.NEGATIVE_DAMAGE_HINT)
+    battle.apply_damage_manual("5")
+    battle.apply_damage_manual("-3")
+    with check("Накопленный урон 5 − 3 = 2"):
+        assert battle.get_accumulated_damage_value() == 2
+    battle.apply_damage_manual("-7")
+    with check("Накопленный урон не уходит ниже 0"):
+        assert battle.get_accumulated_damage_value() == 0
+    with check("Здоровье не изменилось"):
+        assert battle.get_health_value() == INITIAL_HEALTH
 
 # endregion
 
@@ -290,8 +391,11 @@ def test_exit_resume_and_surrender(driver):
     dialog = battle.surrender()
     with check("Окно подтверждения «Сдаться?»"):
         assert dialog.is_displayed()
+    defeat = dialog.confirm()
     with check("После подтверждения — экран «ПОРАЖЕНИЕ»"):
-        assert dialog.confirm().is_displayed()
+        assert defeat.is_displayed()
+    with check("Причина: «Вы сдались.» вместо «Закончились раунды...» (D-14)"):
+        assert defeat.is_surrender_reason_displayed()
 
 # endregion
 
@@ -300,37 +404,76 @@ def test_exit_resume_and_surrender(driver):
 
 @allure.feature("Экран боя — смена стойки")
 def test_stance_change_auto(driver):
-    """Вираксен, сложность 0: автосмена стойки при здоровье 7. «Отмена» откатывает урон, OK — фаза II."""
+    """Вираксен, сложность 0: при пороге здоровья открывается «Смена стойки!» с полями стойки II
+    из базы боссов. «Отмена» откатывает урон, «OK» применяет стойку II."""
     battle = start_battle(driver)
+    stance_dialog = StanceChangeDialog(driver)
+    toughness_1 = battle.get_toughness_value()
+
+    reach_stance_threshold(battle)
+    assert stance_dialog.is_displayed(), "При пороге здоровья появляется «Смена стойки!»"
+    with check("Поля заполнены из базы боссов"):
+        assert stance_dialog.is_from_boss_data()
+    prefilled_dfw = stance_dialog.get_damage_to_wound().strip()
+    with check(f"Урон для раны стойки II предзаполнен: «{prefilled_dfw}»"):
+        assert prefilled_dfw.isdigit()
+    stance_dialog.click_cancel()
+    with check("«Отмена» откатывает урон: здоровье 10, фаза I"):
+        assert battle.get_health_value() == INITIAL_HEALTH and battle.get_phase_number() == 1
+
+    reach_stance_threshold(battle)
+    assert stance_dialog.is_displayed(), "Диалог появляется повторно"
+    stance_dialog.click_ok()
+    with check("OK — фаза II"):
+        assert battle.get_phase_number() == 2
+    with check(f"Прочность стойки II = 4 охотника × {prefilled_dfw}"):
+        assert battle.get_toughness_value() == 4 * int(prefilled_dfw or 0)
+    with check("Прочность стойки II отличается от стойки I"):
+        assert battle.get_toughness_value() != toughness_1
+
+
+@allure.feature("Экран боя — смена стойки")
+def test_stance_change_dialog_manual_data(driver):
+    """Ручные данные (прочность 2 × 4 = 8, порог 7): параметры новой стойки неизвестны — диалог.
+    Цикл ран останавливается на пороге, остаток переносится и наносится с новой прочностью (R-2)."""
+    battle = start_battle(driver, boss=None, damage_to_wound="2", stance_change="7")
     stance_dialog = StanceChangeDialog(driver)
 
     reach_stance_threshold(battle)
     with check("При пороге здоровья появляется «Смена стойки!»"):
         assert stance_dialog.is_displayed()
+    with check("Данных о стойке нет — поля пустые"):
+        assert stance_dialog.is_without_boss_data()
     stance_dialog.click_cancel()
     with check("«Отмена» откатывает урон: здоровье 10"):
         assert battle.get_health_value() == INITIAL_HEALTH
     with check("«Отмена» оставляет фазу I"):
         assert battle.get_phase_number() == 1
 
-    reach_stance_threshold(battle)
-    with check("Диалог появляется повторно"):
-        assert stance_dialog.is_displayed()
+    battle.apply_damage_manual("29")  # 3 раны до порога 7 + 5 урона переноса
+    assert stance_dialog.is_displayed(), "Диалог появляется повторно"
+    with check("Диалог сообщает о перенесённом уроне 5"):
+        assert "Перенесённый урон 5 " in (stance_dialog.get_carried_damage_text() or "")
+    stance_dialog.set_damage_to_wound("1")
+    stance_dialog.set_stance_change_health("3")
     stance_dialog.click_ok()
-    with check("OK — фаза II"):
-        assert battle.get_phase_number() == 2
+    with check("OK — фаза II, прочность 1 × 4 = 4"):
+        assert battle.get_phase_number() == 2 and battle.get_toughness_value() == 4
+    with check("Перенесённые 5 урона → 1 рана с новой прочностью, остаток 1"):
+        assert battle.get_health_value() == 6 and battle.get_accumulated_damage_value() == 1
 
 
 @allure.feature("Экран боя — смена стойки")
 def test_stance_change_manual_iekoros(driver):
-    """Иекорос — смена стойки только по кнопке (порог здоровья не задан)."""
+    """Иекорос — смена стойки только по кнопке (порог здоровья не задан); поля — из базы боссов."""
     battle = start_battle(driver, boss="Молния - Иекорос")
     with check("Смена стойки «по запросу»"):
         assert battle.get_stance_change() == "Смена стойки: по запросу"
 
     dialog = battle.click_change_stance()
-    with check("«Сменить стойку» открывает диалог"):
-        assert dialog.is_displayed()
+    assert dialog.is_displayed(), "«Сменить стойку» открывает диалог"
+    with check("Поля заполнены из базы боссов"):
+        assert dialog.is_from_boss_data()
     dialog.click_ok()
     with check("Фаза II"):
         assert battle.get_phase_number() == 2
@@ -338,14 +481,17 @@ def test_stance_change_manual_iekoros(driver):
 
 @allure.feature("Экран боя — смена стойки")
 def test_stance_change_korowon_second_stance(driver):
-    """Коровон: на 2-й стойке нет порога раны — урон только копится и наносится при переходе на 3-ю."""
+    """Коровон: на 2-й стойке нет порога раны — урон только копится и наносится при переходе на 3-ю.
+    Параметры стоек подтверждаются в диалоге, поля заполнены из базы боссов."""
     battle = start_battle(driver, boss="Коралл - Коровон")
+    dialog = StanceChangeDialog(driver)
     with check("1-я стойка: кнопки «Сменить стойку» нет"):
         assert not battle.is_element_visible_quick(battle.CHANGE_STANCE)
 
     reach_stance_threshold(battle)
-    dialog = StanceChangeDialog(driver)
     assert dialog.is_displayed(), "Диалог смены на 2-ю стойку"
+    with check("2-я стойка из базы боссов: порога раны нет — поле пустое"):
+        assert dialog.is_from_boss_data() and dialog.get_damage_to_wound().strip() == ""
     dialog.click_ok()
     with check("Фаза II"):
         assert battle.get_phase_number() == 2
@@ -363,17 +509,18 @@ def test_stance_change_korowon_second_stance(driver):
 
     dialog = battle.click_change_stance()
     assert dialog.is_displayed(), "Диалог смены на 3-ю стойку"
+    with check("Диалог сообщает о перенесённом уроне 50"):
+        assert "Перенесённый урон 50 " in (dialog.get_carried_damage_text() or "")
     dialog.click_ok()
     with check("Фаза III"):
         assert battle.get_phase_number() == 3
-    # Здоровье сравнивать нельзя: диалог может задать «Здоровье босса в новой стойке»
-    with check("При переходе на 3-ю стойку накопленный урон пересчитан в раны (остаток меньше 50)"):
-        assert battle.get_accumulated_damage_value() < 50
+    with check("При переходе на 3-ю стойку накопленный урон пересчитан в раны"):
+        assert battle.get_accumulated_damage_value() < 50 and battle.get_health_value() < health_before
 
 
 @allure.feature("Экран боя — смена стойки")
 def test_stance_change_awakened_five_stances(driver):
-    """Пробуждённый (сложность 3, 1 охотник): 5 стоек подряд, затем победа."""
+    """Пробуждённый (сложность 3, 1 охотник): 5 стоек подряд, поля каждой — из базы боссов, затем победа."""
     battle = start_battle(driver, boss="Пробуждённый", complexity="3", players="1")
     dialog = StanceChangeDialog(driver)
     with check("Фаза I"):
@@ -382,6 +529,8 @@ def test_stance_change_awakened_five_stances(driver):
     for expected_phase in range(2, 6):
         reach_stance_threshold(battle)
         assert dialog.is_displayed(), f"Диалог смены на фазу {expected_phase}"
+        with check(f"Фаза {expected_phase}: поля из базы боссов"):
+            assert dialog.is_from_boss_data()
         dialog.click_ok()
         with check(f"Фаза {expected_phase}"):
             assert battle.get_phase_number() == expected_phase

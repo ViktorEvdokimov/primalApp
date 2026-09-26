@@ -1,6 +1,9 @@
 package com.primalapp.android.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,8 +11,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,58 +55,7 @@ import com.primalapp.viewmodel.BattleVibrationEvent
 import com.primalapp.viewmodel.BattleViewModel
 import com.primalapp.viewmodel.BattleScreenState
 import com.primalapp.viewmodel.FightPhase
-
-@Composable
-fun PreBattleScreen(onStart: (Int, Int?, Int) -> Unit) {
-    var hunterCount by remember { mutableStateOf("2") }
-    var damageForWound by remember { mutableStateOf("4") }
-    var healthForStance by remember { mutableStateOf("7") }
-
-    Column {
-        Text("Начало боя", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = hunterCount,
-            onValueChange = { hunterCount = it },
-            label = { Text("Количество охотников (1-4)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = damageForWound,
-            onValueChange = { damageForWound = it },
-            label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = healthForStance,
-            onValueChange = { healthForStance = it },
-            label = { Text("Здоровье для смены стойки") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = {
-                val count = hunterCount.toIntOrNull()
-                val wound = damageForWound.toIntOrNull()
-                val stance = healthForStance.toIntOrNull()
-                if (count != null && stance != null) {
-                    onStart(count, wound, stance)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Начать бой") }
-    }
-}
-
-@Composable
-fun SetupScreen(onConfirm: (Int, Int?, Int) -> Unit) {
-    PreBattleScreen(onStart = onConfirm)
-}
+import com.primalapp.viewmodel.MonsterStatusInfo
 
 @Composable
 fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
@@ -121,7 +78,7 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         else -> ""
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding((160f / 25.4f).dp)) {
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding((160f / 25.4f).dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ParamText("Фаза $phaseLabel", state.highlightedParams.contains(BattleParam.PHASE), baseBold = true)
             ParamText("Раунд ${state.currentRound}/${state.maxRounds}", state.highlightedParams.contains(BattleParam.ROUND))
@@ -136,7 +93,14 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
             ParamText("Прочность: ${monster.damageForWound?.toString() ?: "нет"}", state.highlightedParams.contains(BattleParam.DAMAGE_FOR_WOUND))
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            ParamText("Статус: ${if (monster.isHardened) "Устойчивость" else "Обычный"}", state.highlightedParams.contains(BattleParam.HARDENED))
+            val statusText = listOfNotNull(
+                MonsterStatusInfo.HARDENED.title.takeIf { monster.isHardened },
+                MonsterStatusInfo.RESILIENT.title.takeIf { monster.isResilient }
+            ).joinToString(", ").ifEmpty { "Обычный" }
+            ParamText(
+                "Статус: $statusText",
+                state.highlightedParams.contains(BattleParam.HARDENED) || state.highlightedParams.contains(BattleParam.RESILIENT)
+            )
             ParamText("Смена стойки: ${monster.healthForStanceChange?.let { "при $it HP" } ?: "по запросу"}", state.highlightedParams.contains(BattleParam.HEALTH_FOR_STANCE_CHANGE))
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -168,6 +132,15 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
             Spacer(Modifier.width(4.dp))
             Button(onClick = { viewModel.onCancelPress() }) { Text("Отмена") }
         }
+        Text(
+            "Отрицательное значение отменяет накопленный урон",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+        OutlinedButton(onClick = { viewModel.healWound() }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            Text("Заживить рану (+1 здоровья)")
+        }
 
         if (state.isTimerRunning) {
             Button(onClick = { viewModel.commitDamage() }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -192,10 +165,18 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("Устойчивость:")
-            Switch(checked = monster.isHardened, onCheckedChange = { viewModel.toggleHardened() })
-        }
+        StatusSwitchRow(
+            info = MonsterStatusInfo.HARDENED,
+            checked = monster.isHardened,
+            onToggle = { viewModel.toggleHardened() },
+            onInfo = { viewModel.onStatusInfoRequested(MonsterStatusInfo.HARDENED) }
+        )
+        StatusSwitchRow(
+            info = MonsterStatusInfo.RESILIENT,
+            checked = monster.isResilient,
+            onToggle = { viewModel.toggleResilient() },
+            onInfo = { viewModel.onStatusInfoRequested(MonsterStatusInfo.RESILIENT) }
+        )
         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
         if (monster.healthForStanceChange == null) {
@@ -233,6 +214,15 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
         }
     }
 
+    state.statusInfo?.let { info ->
+        AlertDialog(
+            onDismissRequest = { viewModel.onStatusInfoDismissed() },
+            title = { Text(info.title) },
+            text = { Text(info.description) },
+            confirmButton = { TextButton(onClick = { viewModel.onStatusInfoDismissed() }) { Text("Понятно") } }
+        )
+    }
+
     if (showSurrenderDialog) {
         AlertDialog(
             onDismissRequest = { showSurrenderDialog = false },
@@ -251,6 +241,27 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
                 }) { Text("Отмена") }
             }
         )
+    }
+}
+
+/** Переключатель статуса монстра с кнопкой «i» (серый кружок) — описание статуса (R-3). */
+@Composable
+private fun StatusSwitchRow(info: MonsterStatusInfo, checked: Boolean, onToggle: () -> Unit, onInfo: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("${info.title}:")
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .background(Color.Gray, CircleShape)
+                .semantics(mergeDescendants = true) { contentDescription = "Описание: ${info.title}" }
+                .clickable(onClick = onInfo),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("i", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+        Spacer(Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = { onToggle() })
     }
 }
 
@@ -291,13 +302,15 @@ private fun rememberBattleVibrator(): (BattleVibrationEvent) -> Unit {
 }
 
 @Composable
-fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
-    val battleState = viewModel.state.value
+fun PhaseChangeDialog(battleState: BattleScreenState, viewModel: BattleViewModel, onDismiss: () -> Unit) {
+    // Состояние передаётся параметром: если перенесённый урон сразу вызывает следующую смену стойки,
+    // окно остаётся открытым и должно показать новую стойку; поля сбрасываются для каждой стойки
+    val stance = battleState.monster.currentPhase
     val initialDfw = battleState.pendingDamageForWound
     val initialHsc = battleState.pendingHealthForStanceChange
-    var damageForWound by remember(initialDfw) { mutableStateOf(initialDfw) }
-    var healthForStance by remember(initialHsc) { mutableStateOf(initialHsc) }
-    var bossHealth by remember { mutableStateOf("") }
+    var damageForWound by remember(stance, initialDfw) { mutableStateOf(initialDfw) }
+    var healthForStance by remember(stance, initialHsc) { mutableStateOf(initialHsc) }
+    var bossHealth by remember(stance) { mutableStateOf("") }
 
     val damageForWoundVal = damageForWound.toIntOrNull()
     val healthForStanceVal = healthForStance.toIntOrNull()
@@ -308,7 +321,20 @@ fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
         title = { Text("Смена стойки!") },
         text = {
             Column {
-                Text("Монстр перешёл на следующую стойку. Укажите новые параметры:")
+                Text("Монстр перешёл на стойку ${battleState.monster.currentPhase}.")
+                Text(
+                    if (battleState.phaseChangeFromBossData) "Параметры заполнены из базы боссов — при необходимости исправьте:"
+                    else "Данных о стойке в базе боссов нет — укажите параметры:"
+                )
+                val carried = battleState.monster.accumulatedDamage
+                if (carried > 0) {
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        if (battleState.monster.isResilient) "Перенесённый урон $carried сбросится («Устойчивость стойки»)."
+                        else "Перенесённый урон $carried будет нанесён с новой прочностью после «OK».",
+                        fontWeight = FontWeight.Medium
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(value = damageForWound, onValueChange = { damageForWound = it }, label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
@@ -334,8 +360,13 @@ fun PhaseChangeDialog(viewModel: BattleViewModel, onDismiss: () -> Unit) {
 fun RageSurgeDialog(viewModel: BattleViewModel) {
     AlertDialog(
         onDismissRequest = { viewModel.confirmRageSurge() },
-        title = { Text("Всплеск ярости") },
-        text = { Text("Ярость монстра достигла критического уровня!") },
+        title = { Text("Выплеск ярости") },
+        text = {
+            Text(
+                "Ярость монстра достигла 3 за каждого охотника. Каждый охотник получает урон, " +
+                    "равный силе монстра. После этого ярость сбрасывается до 1 за каждого охотника."
+            )
+        },
         confirmButton = { TextButton(onClick = { viewModel.confirmRageSurge() }) { Text("OK") } }
     )
 }
@@ -355,13 +386,18 @@ fun VictoryScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
 
 @Composable
 fun DefeatScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
+    val surrendered = viewModel.state.collectAsState().value.surrendered
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Text("Закончились раунды...")
+        Text(defeatReason(surrendered))
         Spacer(Modifier.height(32.dp))
         Button(onClick = { viewModel.resetBattle() }) { Text("Новый бой") }
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = onBackToMenu) { Text("Выход в меню") }
     }
 }
+
+/** Причина поражения для экрана поражения (D-14). */
+fun defeatReason(surrendered: Boolean): String =
+    if (surrendered) "Вы сдались." else "Закончились раунды..."

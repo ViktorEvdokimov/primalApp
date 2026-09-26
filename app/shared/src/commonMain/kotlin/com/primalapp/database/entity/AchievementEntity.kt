@@ -16,7 +16,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index("campaign_id")]
+    indices = [
+        Index("campaign_id"),
+        // Одно достижение на кампанию (defects.md D-9, миграция 15→16)
+        Index(value = ["campaign_id", "achievement_id"], unique = true)
+    ]
 )
 data class AchievementEntity(
     @PrimaryKey(autoGenerate = true)

@@ -24,7 +24,7 @@ class BattleViewModelTest {
     private fun createViewModel(
         hunterCount: Int = 4,
         damageForWound: Int = 1,
-        healthForStanceChange: Int = 7,
+        healthForStanceChange: Int? = 7,
         scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     ): BattleViewModel {
         val viewModel = BattleViewModel(scope)
@@ -86,8 +86,8 @@ class BattleViewModelTest {
 
     @Test
     fun `Прямой ввод — фатальный урон`() {
-        // Подготовка
-        val viewModel = createViewModel()
+        // Подготовка: без порога смены стойки — цикл ран не прерывается (R-2)
+        val viewModel = createViewModel(healthForStanceChange = null)
         viewModel.onDamageInputChanged("100")
 
         // Вызов проверяемого кода
@@ -175,8 +175,8 @@ class BattleViewModelTest {
 
     @Test
     fun `Кнопки быстрого ввода — фатальный урон`() {
-        // Подготовка
-        val viewModel = createViewModel()
+        // Подготовка: без порога смены стойки — цикл ран не прерывается (R-2)
+        val viewModel = createViewModel(healthForStanceChange = null)
 
         // Вызов проверяемого кода: два нажатия +50 = 100 урона (фатально)
         viewModel.onQuickButtonPress(50)
@@ -261,8 +261,8 @@ class BattleViewModelTest {
 
     @Test
     fun `Изменение прямым вводом — фатальный урон`() {
-        // Подготовка
-        val viewModel = createViewModel()
+        // Подготовка: без порога смены стойки — цикл ран не прерывается (R-2)
+        val viewModel = createViewModel(healthForStanceChange = null)
 
         // Вызов проверяемого кода: сначала 3, потом 100 (фатально)
         viewModel.onDamageInputChanged("3")
@@ -346,8 +346,8 @@ class BattleViewModelTest {
 
     @Test
     fun `Прямой ввод плюс кнопки — фатальный урон`() {
-        // Подготовка
-        val viewModel = createViewModel()
+        // Подготовка: без порога смены стойки — цикл ран не прерывается (R-2)
+        val viewModel = createViewModel(healthForStanceChange = null)
 
         // Вызов проверяемого кода: ввод 14, потом +50 = 64 (фатально, 16 ран)
         viewModel.onDamageInputChanged("14")
@@ -677,21 +677,22 @@ class BattleViewModelTest {
     //region 4. Проверка метода endRound()
 
     @Test
-    fun `endRound — по��еда через pendingDamage убивающим босса`() {
-        // Подготовка: health=10, damageForWound=4, 40 урона = 10 ран → здоровье 0
-        val viewModel = createViewModel()
+    fun `endRound — победа через pendingDamage убивающим босса`() {
+        // Подготовка: health=10, damageForWound=4, без порога стойки, 40 урона = 10 ран → здоровье 0
+        val viewModel = createViewModel(healthForStanceChange = null)
         viewModel.onDamageInputChanged("40")
 
         // Вызов проверяемого кода
         viewModel.endRound()
 
-        // Проверка: VICTORY, босс повержен, раунд не инкрементирован, ярость не добавлена
+        // Проверка: VICTORY, босс повержен, раунд не инкрементирован,
+        // ярость не добавлена — осталась стартовой (= 4 охотника, задача 35.2)
         val state = viewModel.state.value
         assertEquals(FightPhase.VICTORY, state.phase)
         assertTrue(state.monster.isDefeated)
         assertEquals(0, state.monster.currentHealth)
         assertEquals(1, state.currentRound)
-        assertEquals(0, state.monster.rage)
+        assertEquals(4, state.monster.rage)
     }
 
     @Test
@@ -704,14 +705,15 @@ class BattleViewModelTest {
         // Вызов проверяемого кода
         viewModel.endRound()
 
-        // Проверка: фаза обновлена, диалог показан, раунд инкрементирован, ярость добавлена
+        // Проверка: фаза обновлена, диалог показан, раунд инкрементирован,
+        // ярость: стартовая 4 + 4 за охотников в конце раунда
         val state = viewModel.state.value
         assertEquals(FightPhase.PHASE_II, state.phase)
         assertTrue(state.showPhaseChangeDialog)
         assertEquals(7, state.monster.currentHealth)
         assertEquals(2, state.monster.currentPhase)
         assertEquals(2, state.currentRound)
-        assertEquals(4, state.monster.rage)
+        assertEquals(8, state.monster.rage)
     }
 
     @Test
@@ -732,7 +734,7 @@ class BattleViewModelTest {
         assertEquals(7, state.monster.currentHealth)
         assertEquals(2, state.monster.currentPhase)
         assertEquals(2, state.currentRound)
-        assertEquals(4, state.monster.rage)
+        assertEquals(8, state.monster.rage, "Ярость: стартовая 4 + 4 за охотников")
         assertEquals(0, state.monster.accumulatedDamage)
     }
 
@@ -752,7 +754,7 @@ class BattleViewModelTest {
         assertEquals(10, state.monster.currentHealth)
         assertEquals(3, state.monster.accumulatedDamage)
         assertEquals(2, state.currentRound)
-        assertEquals(4, state.monster.rage)
+        assertEquals(8, state.monster.rage, "Ярость: стартовая 4 + 4 за охотников")
     }
 
     @Test
@@ -763,32 +765,32 @@ class BattleViewModelTest {
         // Вызов проверяемого кода
         viewModel.endRound()
 
-        // Проверка: раунд инкрементирован, ярость добавлена, фаза не изменилась
+        // Проверка: раунд инкрементирован, ярость добавлена (стартовая 4 + 4), фаза не изменилась
         val state = viewModel.state.value
         assertEquals(FightPhase.PHASE_I, state.phase)
         assertEquals(2, state.currentRound)
-        assertEquals(4, state.monster.rage)
+        assertEquals(8, state.monster.rage)
     }
 
     @Test
     fun `endRound — победа через pendingDamage не добавляет ярость`() {
-        // Подготовка: 40 урона = 10 ран → здоровье 0
-        val viewModel = createViewModel()
+        // Подготовка: 40 урона = 10 ран → здоровье 0 (без порога стойки)
+        val viewModel = createViewModel(healthForStanceChange = null)
         viewModel.onDamageInputChanged("40")
 
         // Вызов проверяемого кода
         viewModel.endRound()
 
-        // Проверка: ярость не изменилась (ранний выход при победе)
+        // Проверка: ярость не изменилась — осталась стартовой 4 (ранний выход при победе)
         val state = viewModel.state.value
         assertEquals(FightPhase.VICTORY, state.phase)
-        assertEquals(0, state.monster.rage)
+        assertEquals(4, state.monster.rage)
     }
 
     @Test
     fun `endRound — VICTORY приоритетнее DEFEAT по раундам`() {
-        // Подготовка: доводим до 10-го раунда
-        val viewModel = createViewModel()
+        // Подготовка: доводим до 10-го раунда (без порога стойки)
+        val viewModel = createViewModel(healthForStanceChange = null)
         repeat(9) { viewModel.endRound() }
         assertEquals(10, viewModel.state.value.currentRound)
 
@@ -880,38 +882,39 @@ class BattleViewModelTest {
 
     @Test
     fun `Отмена ярости восстанавливает предыдущее значение`() {
-        // Подготовка: добавляем ярость
+        // Подготовка: добавляем ярость к стартовой (4 охотника → 4)
         val viewModel = createViewModel()
         viewModel.addRage(3)
         val stateBefore = viewModel.state.value
-        assertEquals(3, stateBefore.monster.rage)
+        assertEquals(7, stateBefore.monster.rage)
         assertTrue(stateBefore.canUndo)
 
         // Вызов проверяемого кода
         viewModel.onUndoPress()
 
-        // Проверка: ярость восстановлена до 0
+        // Проверка: ярость восстановлена до стартовой
         val state = viewModel.state.value
-        assertEquals(0, state.monster.rage)
+        assertEquals(4, state.monster.rage)
         assertFalse(state.canUndo)
     }
 
     @Test
     fun `Отмена завершения раунда восстанавливает ярость`() {
-        // Подготовка: завершаем раунд
+        // Подготовка: завершаем раунд (ярость: стартовая 4 + 4 за охотников)
         val viewModel = createViewModel()
         viewModel.endRound()
         val stateBefore = viewModel.state.value
         assertEquals(2, stateBefore.currentRound)
-        assertEquals(4, stateBefore.monster.rage)
+        assertEquals(8, stateBefore.monster.rage)
         assertTrue(stateBefore.canUndo)
 
         // Вызов проверяемого кода
         viewModel.onUndoPress()
 
-        // Проверка: ярость восстановлена (currentRound в BattleScreenState не откатывается)
+        // Проверка: ярость и номер раунда восстановлены (D-4)
         val state = viewModel.state.value
-        assertEquals(0, state.monster.rage)
+        assertEquals(4, state.monster.rage)
+        assertEquals(1, state.currentRound, "Отмена «Закончить раунд» должна вернуть раунд 1")
         assertFalse(state.canUndo)
     }
 
@@ -965,23 +968,23 @@ class BattleViewModelTest {
 
     @Test
     fun `Смешанная отмена — урон, ярость, раунд в обратном порядке`() {
-        // Подготовка: урон → ярость → завершение раунда
+        // Подготовка: урон → ярость → завершение раунда (стартовая ярость 4 = 4 охотника)
         val viewModel = createViewModel()
         viewModel.onDamageInputChanged("4")
         viewModel.commitDamage()
         viewModel.addRage(3)
         viewModel.endRound()
 
-        // Вызов: отмена раунда (rage: 7 → 3)
+        // Вызов: отмена раунда (rage: 11 → 7)
         viewModel.onUndoPress()
         val state1 = viewModel.state.value
-        assertEquals(3, state1.monster.rage)
+        assertEquals(7, state1.monster.rage)
         assertTrue(state1.canUndo)
 
-        // Вызов: отмена ярости (rage: 3 → 0)
+        // Вызов: отмена ярости (rage: 7 → 4)
         viewModel.onUndoPress()
         val state2 = viewModel.state.value
-        assertEquals(0, state2.monster.rage)
+        assertEquals(4, state2.monster.rage)
         assertTrue(state2.canUndo)
 
         // Вызов: отмена урона (health: 9 → 10)
@@ -1068,15 +1071,22 @@ class BattleViewModelTest {
         )
         viewModel.startBattleWithHunters(
             hunters = listOf(Hunter(name = "Охотник 1")),
-            damageForWound = 4,
-            healthForStanceChange = 7,
+            damageForWound = 2,
+            healthForStanceChange = 6,
             boss = korovon
         )
 
-        // Переход на стойку 2 (без порога раны): 8 урона = 4 раны (dfw=2), здоровье 10 → 6 → смена стойки
+        // Переход на стойку 2 (без порога раны): 8 урона = 4 раны (dfw=2), здоровье 10 → 6 → смена стойки.
+        // Диалог предзаполнен данными стойки 2 из базы: порога раны нет, смена по запросу
         viewModel.onDamageInputChanged("8")
         viewModel.commitDamage()
+        val stance2Dialog = viewModel.state.value
+        assertTrue(stance2Dialog.showPhaseChangeDialog, "Смена стойки открывает диалог")
+        assertTrue(stance2Dialog.phaseChangeFromBossData)
+        assertEquals("", stance2Dialog.pendingDamageForWound)
+        assertEquals("", stance2Dialog.pendingHealthForStanceChange)
         viewModel.confirmPhaseChange(damageForWound = null, healthForStanceChange = null)
+        assertEquals(2, viewModel.state.value.monster.currentPhase)
 
         // На стойке без порога раны урон только накапливается
         viewModel.onDamageInputChanged("20")
@@ -1084,10 +1094,10 @@ class BattleViewModelTest {
         assertEquals(20, viewModel.state.value.monster.accumulatedDamage,
             "На стойке без порога раны урон должен накапливаться")
 
-        // Ручная смена стойки 2 → 3
+        // Вызов проверяемого кода: ручная смена стойки 2 → 3 — диалог с dfw=4 из базы боссов, подтверждение
         viewModel.onManualStanceChange()
-
-        // Вызов проверяемого кода: подтверждение перехода на стойку 3 (dfw=4)
+        assertEquals("4", viewModel.state.value.pendingDamageForWound, "Прочность стойки 3 из базы боссов")
+        assertEquals("0", viewModel.state.value.pendingHealthForStanceChange)
         viewModel.confirmPhaseChange(damageForWound = 4, healthForStanceChange = 0)
 
         // Проверка: накопленный урон (20) немедленно пересчитан в раны (5 ран, здоровье 6 → 1)
@@ -1098,6 +1108,7 @@ class BattleViewModelTest {
         val result = state.lastDamageResult
         assertNotNull(result, "Должен быть результат немедленного нанесения урона")
         assertEquals(5, result.woundsInflicted, "Должно быть нанесено 5 ран")
+        assertFalse(state.showPhaseChangeDialog)
 
         scope.cancel()
     }
@@ -1289,6 +1300,295 @@ class BattleViewModelTest {
             "commitDamage с раной должен эмитить DOUBLE")
 
         collectJob.cancel()
+    }
+
+    //endregion
+
+    //region R-2. Смена стойки останавливает цикл ран, параметры новой стойки подтверждаются в диалоге
+
+    @Test
+    fun `R-2 урон со сменой неизвестной стойки останавливается на пороге, остаток наносится после подтверждения`() {
+        // Подготовка: 1 охотник, прочность 4, порог 7, здоровье 10
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 4, healthForStanceChange = 7)
+        viewModel.onDamageInputChanged("20")
+
+        // Вызов проверяемого кода: 20 урона = 3 раны до порога, 8 урона переносится на новую стойку
+        viewModel.onOkPress()
+
+        // Проверка: цикл ран остановлен на смене стойки, показан диалог
+        val afterDamage = viewModel.state.value
+        assertEquals(7, afterDamage.monster.currentHealth, "Раны после порога не наносятся старой прочностью")
+        assertEquals(8, afterDamage.monster.accumulatedDamage, "Остаток урона переносится на новую стойку")
+        assertEquals(2, afterDamage.monster.currentPhase)
+        assertTrue(afterDamage.showPhaseChangeDialog)
+
+        // Подтверждение прочности новой стойки: 6 → 1 рана, остаток 2
+        viewModel.confirmPhaseChange(damageForWound = 6, healthForStanceChange = 3)
+
+        val state = viewModel.state.value
+        assertEquals(6, state.monster.currentHealth, "Перенесённый урон наносится с новой прочностью")
+        assertEquals(2, state.monster.accumulatedDamage)
+        assertFalse(state.showPhaseChangeDialog)
+    }
+
+    @Test
+    fun `R-2 диалог смены стойки предзаполнен данными известного босса, перенесённый урон наносится после OK`() {
+        // Подготовка: пример книги — прочность 4, порог 7; стойка II: прочность 6, порог 4
+        val viewModel = BattleViewModel(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        val boss = Boss(
+            name = "Вираксен",
+            element = null,
+            difficulty = 0,
+            stances = listOf(BossStance(4, 7), BossStance(6, 4))
+        )
+        viewModel.startBattleWithHunters(listOf(Hunter(name = "Охотник 1")), 4, 7, boss)
+        viewModel.onDamageInputChanged("20")
+
+        // Вызов проверяемого кода: 3 раны до порога, 8 урона переносится
+        viewModel.onOkPress()
+
+        // Проверка: диалог открыт, поля — из стойки II базы боссов, урон ещё не нанесён
+        val dialog = viewModel.state.value
+        assertTrue(dialog.showPhaseChangeDialog)
+        assertTrue(dialog.phaseChangeFromBossData)
+        assertEquals("6", dialog.pendingDamageForWound)
+        assertEquals("4", dialog.pendingHealthForStanceChange)
+        assertEquals(7, dialog.monster.currentHealth)
+        assertEquals(8, dialog.monster.accumulatedDamage)
+
+        // Подтверждение предзаполненных значений: 8 урона → 1 рана с прочностью 6, остаток 2
+        viewModel.confirmPhaseChange(damageForWound = 6, healthForStanceChange = 4)
+        val state = viewModel.state.value
+        assertEquals(FightPhase.PHASE_II, state.phase)
+        assertEquals(6, state.monster.damageForWound)
+        assertEquals(6, state.monster.currentHealth)
+        assertEquals(2, state.monster.accumulatedDamage)
+        assertFalse(state.showPhaseChangeDialog)
+    }
+
+    @Test
+    fun `R-2 значения диалога известного босса можно исправить перед OK`() {
+        // Подготовка
+        val viewModel = BattleViewModel(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        val boss = Boss(name = "Вираксен", element = null, difficulty = 0, stances = listOf(BossStance(4, 7), BossStance(6, 4)))
+        viewModel.startBattleWithHunters(listOf(Hunter(name = "Охотник 1")), 4, 7, boss)
+        viewModel.onDamageInputChanged("20")
+        viewModel.onOkPress()
+
+        // Вызов проверяемого кода: игрок заменил прочность 6 на 8
+        viewModel.confirmPhaseChange(damageForWound = 8, healthForStanceChange = 4)
+
+        // Проверка: 8 урона → 1 рана с исправленной прочностью, остаток 0
+        val state = viewModel.state.value
+        assertEquals(8, state.monster.damageForWound)
+        assertEquals(6, state.monster.currentHealth)
+        assertEquals(0, state.monster.accumulatedDamage)
+    }
+
+    @Test
+    fun `R-2 стойка за пределами карт босса открывает пустой диалог`() {
+        // Подготовка: у босса только стойка I
+        val viewModel = BattleViewModel(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        val boss = Boss(name = "Вираксен", element = null, difficulty = 0, stances = listOf(BossStance(4, 7)))
+        viewModel.startBattleWithHunters(listOf(Hunter(name = "Охотник 1")), 4, 7, boss)
+        viewModel.onDamageInputChanged("12")
+
+        // Вызов проверяемого кода
+        viewModel.onOkPress()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertTrue(state.showPhaseChangeDialog)
+        assertFalse(state.phaseChangeFromBossData)
+        assertEquals("", state.pendingDamageForWound)
+        assertEquals("", state.pendingHealthForStanceChange)
+    }
+
+    @Test
+    fun `R-2 «Отмена» в диалоге известного босса откатывает урон и стойку`() {
+        // Подготовка: бой с известными стойками
+        val viewModel = BattleViewModel(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        val boss = Boss(name = "Вираксен", element = null, difficulty = 0, stances = listOf(BossStance(4, 7), BossStance(6, 4)))
+        viewModel.startBattleWithHunters(listOf(Hunter(name = "Охотник 1")), 4, 7, boss)
+        viewModel.onDamageInputChanged("20")
+        viewModel.onOkPress()
+
+        // Вызов проверяемого кода
+        viewModel.dismissPhaseChangeDialog()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertFalse(state.showPhaseChangeDialog)
+        assertEquals(FightPhase.PHASE_I, state.phase)
+        assertEquals(1, state.monster.currentPhase)
+        assertEquals(10, state.monster.currentHealth)
+        assertEquals(0, state.monster.accumulatedDamage)
+        assertEquals(4, state.monster.damageForWound)
+    }
+
+    //endregion
+
+    //region R-3, R-4, R-8, D-14. Статусы монстра, заживление раны, выплеск ярости, сдача
+
+    @Test
+    fun `R-3 «Устойчивость стойки» сбрасывает накопленный урон при смене стойки`() {
+        // Подготовка: прочность 4, порог 9 — 6 урона дают 1 рану и смену стойки, 2 урона переносится
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 4, healthForStanceChange = 9)
+        viewModel.toggleResilient()
+        viewModel.onDamageInputChanged("6")
+        viewModel.onOkPress()
+
+        // Вызов проверяемого кода: подтверждение новой стойки
+        viewModel.confirmPhaseChange(damageForWound = 4, healthForStanceChange = 5)
+
+        // Проверка: перенесённый урон сброшен
+        val state = viewModel.state.value
+        assertTrue(state.monster.isResilient)
+        assertFalse(state.monster.isHardened)
+        assertEquals(0, state.monster.accumulatedDamage)
+        assertEquals(9, state.monster.currentHealth)
+    }
+
+    @Test
+    fun `R-3 «Затвердевший» и «Устойчивость стойки» переключаются независимо`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.toggleHardened()
+        viewModel.toggleResilient()
+        viewModel.toggleHardened()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertFalse(state.monster.isHardened)
+        assertTrue(state.monster.isResilient)
+    }
+
+    @Test
+    fun `R-3 кнопка «i» открывает и закрывает описание статуса`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.onStatusInfoRequested(MonsterStatusInfo.RESILIENT)
+        val opened = viewModel.state.value.statusInfo
+        viewModel.onStatusInfoDismissed()
+
+        // Проверка
+        assertEquals(MonsterStatusInfo.RESILIENT, opened)
+        assertEquals("Устойчивость стойки", opened?.title)
+        assertNull(viewModel.state.value.statusInfo)
+    }
+
+    @Test
+    fun `R-4 «Заживить рану» добавляет 1 здоровья, не трогает накопленный урон и отменяется`() {
+        // Подготовка: 1 рана и 3 накопленного урона (прочность 4, 7 урона)
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 4, healthForStanceChange = null)
+        viewModel.onDamageInputChanged("7")
+        viewModel.onOkPress()
+        assertEquals(9, viewModel.state.value.monster.currentHealth)
+
+        // Вызов проверяемого кода
+        viewModel.healWound()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertEquals(10, state.monster.currentHealth)
+        assertEquals(3, state.monster.accumulatedDamage, "Заживление раны не затрагивает жетоны урона")
+
+        viewModel.onUndoPress()
+        assertEquals(9, viewModel.state.value.monster.currentHealth)
+    }
+
+    @Test
+    fun `R-4 «Заживить рану» не поднимает здоровье выше начального`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.healWound()
+
+        // Проверка
+        assertEquals(10, viewModel.state.value.monster.currentHealth)
+    }
+
+    @Test
+    fun `D-3 отрицательный урон уменьшает только накопленный урон`() {
+        // Подготовка: 3 накопленного урона
+        val viewModel = createViewModel(hunterCount = 1, damageForWound = 4, healthForStanceChange = null)
+        viewModel.onDamageInputChanged("3")
+        viewModel.onOkPress()
+
+        // Вызов проверяемого кода: −5 при накопленных 3
+        viewModel.onDamageInputChanged("-5")
+        viewModel.onOkPress()
+
+        // Проверка: накопленный урон 0, здоровье не изменилось
+        val state = viewModel.state.value
+        assertEquals(0, state.monster.accumulatedDamage)
+        assertEquals(10, state.monster.currentHealth)
+    }
+
+    @Test
+    fun `R-8 выплеск ярости сбрасывает ярость до 1 за охотника и напоминает об уроне охотникам`() {
+        // Подготовка: 4 охотника, ярость 4 → +8 = 12 ≥ 12
+        val viewModel = createViewModel()
+        viewModel.addRage(8)
+        assertTrue(viewModel.state.value.showRageSurgeDialog)
+
+        // Вызов проверяемого кода
+        viewModel.confirmRageSurge()
+
+        // Проверка
+        val state = viewModel.state.value
+        assertEquals(4, state.monster.rage)
+        assertTrue(state.message.startsWith("Выплеск ярости!"))
+        assertTrue(state.message.contains("урон, равный силе монстра"))
+    }
+
+    @Test
+    fun `D-14 сдача помечает поражение как сдачу, новый бой снимает признак`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.onSurrender()
+        val surrendered = viewModel.state.value.surrendered
+        viewModel.startBattle(hunterCount = 4, damageForWound = 1, healthForStanceChange = 7)
+
+        // Проверка
+        assertTrue(surrendered)
+        assertFalse(viewModel.state.value.surrendered)
+    }
+
+    @Test
+    fun `D-14 поражение по раундам не помечается как сдача`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        repeat(10) { viewModel.endRound() }
+
+        // Проверка
+        val state = viewModel.state.value
+        assertEquals(FightPhase.DEFEAT, state.phase)
+        assertFalse(state.surrendered)
+    }
+
+    @Test
+    fun `D-2 начало боя с боссом использует значения полей подготовки`() {
+        // Подготовка: у босса стойка I (2, 6), игрок изменил поля на (3, 5)
+        val viewModel = BattleViewModel(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+        val boss = Boss(name = "Коровон", element = Element.CORAL, difficulty = 0, stances = listOf(BossStance(2, 6)))
+
+        // Вызов проверяемого кода
+        viewModel.startBattleWithHunters(listOf(Hunter(name = "1"), Hunter(name = "2")), 3, 5, boss)
+
+        // Проверка
+        val monster = viewModel.state.value.monster
+        assertEquals(6, monster.damageForWound, "Прочность = 3 × 2 охотника из поля подготовки")
+        assertEquals(5, monster.healthForStanceChange)
     }
 
     //endregion

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.primalapp.domain.ConditionOutcome
 import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.viewmodel.CampaignViewModel
 import com.primalapp.viewmodel.QuestRewardsMode
@@ -35,7 +36,7 @@ fun QuestRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
-                    "Задание ${state.activeQuestNumber ?: "?"}: ${taskInfo?.name ?: "—"}",
+                    state.activeQuestNumber?.let { "Задание $it: ${taskInfo?.name ?: "—"}" } ?: "Бой без задания",
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
@@ -46,6 +47,15 @@ fun QuestRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                         Text("Босс: $boss", fontSize = 14.sp)
                         Spacer(Modifier.height(4.dp))
                     }
+                } else if (state.activeQuestNumber == null) {
+                    // Бой без задания (42.4): награда — стихии босса, выбранного перед боем
+                    val boss = state.selectedPreBattleBoss
+                    Text(
+                        boss?.let { b -> "Босс: ${b.name}" + (b.element?.let { " (${it.displayName})" } ?: "") }
+                            ?: "Босс не выбран",
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
                 } else {
                     Text("Данные о задании отсутствуют.", fontSize = 14.sp)
                 }
@@ -54,7 +64,11 @@ fun QuestRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                 if (isVictory) {
                     VictoryRewardsSummary(state)
                 } else {
-                    DefeatRewardsSummary(taskInfo?.defeatOpenQuests.orEmpty())
+                    DefeatRewardsSummary(
+                        openQuests = taskInfo?.defeatOpenQuests.orEmpty(),
+                        conditions = state.questConditionOutcomes,
+                        achievements = taskInfo?.defeatAchievements.orEmpty()
+                    )
                 }
 
                 val errorText = state.error
@@ -95,7 +109,7 @@ private fun VictoryRewardsSummary(state: CampaignUiState) {
 
     Text("Ресурсы:", fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(4.dp))
-    Text("Материи:")
+    Text("Материи:", fontWeight = FontWeight.Bold)
     if (taskInfo?.victoryMaterials.isNullOrEmpty()) {
         Text("—", fontSize = 13.sp)
     } else {
@@ -104,7 +118,7 @@ private fun VictoryRewardsSummary(state: CampaignUiState) {
         }
     }
     Spacer(Modifier.height(4.dp))
-    Text("Растения:")
+    Text("Растения:", fontWeight = FontWeight.Bold)
     if (taskInfo?.victoryPlants.isNullOrEmpty()) {
         Text("—", fontSize = 13.sp)
     } else {
@@ -121,6 +135,8 @@ private fun VictoryRewardsSummary(state: CampaignUiState) {
     } else {
         Text(openQuests.sorted().joinToString(", "), fontSize = 13.sp)
     }
+    // Условные задания и достижения — формулировка правил и результат для текущей кампании
+    ConditionOutcomesSection(state.questConditionOutcomes)
 
     val achievements = taskInfo?.victoryAchievements.orEmpty()
     if (achievements.isNotEmpty()) {
@@ -143,12 +159,19 @@ private fun VictoryRewardsSummary(state: CampaignUiState) {
 }
 
 @Composable
-private fun DefeatRewardsSummary(openQuests: List<Int>) {
+private fun DefeatRewardsSummary(openQuests: List<Int>, conditions: List<ConditionOutcome>, achievements: List<String>) {
     Text("Открываемые задания:", fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(4.dp))
     if (openQuests.isEmpty()) {
         Text("—", fontSize = 13.sp)
     } else {
         Text(openQuests.sorted().joinToString(", "), fontSize = 13.sp)
+    }
+    ConditionOutcomesSection(conditions)
+    // D-15: достижения поражения («Оледенение», зад. 47, 48) показываются до «Принять»
+    if (achievements.isNotEmpty()) {
+        Spacer(Modifier.height(4.dp))
+        Text("Достижения:", fontWeight = FontWeight.Bold)
+        achievements.forEach { Text(it, fontSize = 13.sp) }
     }
 }

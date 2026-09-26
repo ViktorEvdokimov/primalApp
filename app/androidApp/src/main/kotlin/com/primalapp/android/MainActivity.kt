@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.primalapp.database.CampaignRepositoryImpl
 import com.primalapp.database.PlatformContext
-import com.primalapp.model.Hunter
 import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.database.createPrimalDatabase
 import com.primalapp.android.ui.BattleScreen
@@ -54,13 +53,12 @@ import com.primalapp.android.ui.CampaignSetupScreen
 import com.primalapp.android.ui.CampaignSheetScreen
 import com.primalapp.android.ui.ChapterRewardsDialog
 import com.primalapp.android.ui.DefeatScreen
+import com.primalapp.android.ui.defeatReason
 import com.primalapp.android.ui.MainMenuScreen
 import com.primalapp.android.ui.PhaseChangeDialog
 import com.primalapp.android.ui.PostVictoryDialog
-import com.primalapp.android.ui.PreBattleScreen
 import com.primalapp.android.ui.QuestRewardsDialog
 import com.primalapp.android.ui.RageSurgeDialog
-import com.primalapp.android.ui.SetupScreen
 import com.primalapp.android.ui.VictoryScreen
 import com.primalapp.viewmodel.AppScreen
 import com.primalapp.viewmodel.BattleViewModel
@@ -288,7 +286,7 @@ fun CampaignBattleHost(
                     Text("Продолжить")
                 }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
+                OutlinedButton(onClick = { campaignViewModel.onVictoryExitToMenu() }) {
                     Text("Выход в меню")
                 }
             }
@@ -302,7 +300,7 @@ fun CampaignBattleHost(
                 ) {
                     Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    Text("Закончились раунды...")
+                    Text(defeatReason(battleState.surrendered))
                     Spacer(Modifier.height(16.dp))
                     Text("Открывшееся задание:", fontWeight = FontWeight.Bold)
                     FlowRow(modifier = Modifier.fillMaxWidth()) {
@@ -338,7 +336,7 @@ fun CampaignBattleHost(
                 ) {
                     Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    Text("Закончились раунды...")
+                    Text(defeatReason(battleState.surrendered))
                     Spacer(Modifier.height(32.dp))
                     Button(onClick = { campaignViewModel.onDefeat() }) {
                         Text("Продолжить")
@@ -353,7 +351,7 @@ fun CampaignBattleHost(
     }
 
     if (battleState.showPhaseChangeDialog) {
-        PhaseChangeDialog(battleViewModel) { battleViewModel.dismissPhaseChangeDialog() }
+        PhaseChangeDialog(battleState, battleViewModel) { battleViewModel.dismissPhaseChangeDialog() }
     }
     if (battleState.showRageSurgeDialog) {
         RageSurgeDialog(battleViewModel)
@@ -374,7 +372,9 @@ fun QuickBattleHost(
         FightPhase.PRE_BATTLE, FightPhase.SETUP -> {
             var bossDropdownExpanded by remember { mutableStateOf(false) }
             var difficultyDropdownExpanded by remember { mutableStateOf(false) }
-            var hunterCountText by remember { mutableStateOf(campaignState.preBattleHunterCount.toString()) }
+            // Локальная копия текста — поле отвечает на ввод без задержки StateFlow; значение для старта боя
+            // хранит ViewModel (onPreBattleHunterCountChanged / onConfirmQuickBattleStart, D-12)
+            var hunterCountText by remember { mutableStateOf(campaignState.preBattleHunterCountText) }
             val selectedBossName = campaignState.selectedPreBattleBossName?.let { name ->
                 campaignState.availableBosses.firstOrNull { it.name == name }
                     ?.let { b -> b.element?.let { "${it.displayName} - ${b.name}" } ?: b.name } ?: name
@@ -460,7 +460,10 @@ fun QuickBattleHost(
 
                 OutlinedTextField(
                     value = hunterCountText,
-                    onValueChange = { hunterCountText = it },
+                    onValueChange = {
+                        hunterCountText = it
+                        campaignViewModel.onPreBattleHunterCountChanged(it)
+                    },
                     label = { Text("Количество охотников") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
@@ -484,20 +487,7 @@ fun QuickBattleHost(
                 )
                 Spacer(Modifier.height(24.dp))
                 Button(
-                    onClick = {
-                        val wound = campaignState.preBattleDamageForWound.toIntOrNull()
-                        val stance = campaignState.preBattleHealthForStance.toIntOrNull()
-                        val count = hunterCountText.toIntOrNull()?.coerceIn(1, 6) ?: return@Button
-                        val boss = campaignState.selectedPreBattleBoss
-                        val difficulty = campaignState.preBattleDifficulty
-                        viewModel.startBattleWithHunters(
-                            hunters = (1..count).map { Hunter(name = "Охотник $it") },
-                            damageForWound = wound,
-                            healthForStanceChange = stance,
-                            boss = boss,
-                            difficulty = difficulty
-                        )
-                    },
+                    onClick = { campaignViewModel.onConfirmQuickBattleStart() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Начать бой", fontSize = 18.sp)
@@ -514,6 +504,6 @@ fun QuickBattleHost(
         FightPhase.VICTORY -> VictoryScreen(viewModel, onBackToMenu)
         FightPhase.DEFEAT -> DefeatScreen(viewModel, onBackToMenu)
     }
-    if (state.showPhaseChangeDialog) PhaseChangeDialog(viewModel) { viewModel.dismissPhaseChangeDialog() }
+    if (state.showPhaseChangeDialog) PhaseChangeDialog(state, viewModel) { viewModel.dismissPhaseChangeDialog() }
     if (state.showRageSurgeDialog) RageSurgeDialog(viewModel)
 }

@@ -32,11 +32,8 @@ def _reopen_sheet(sheet: CampaignSheetPage) -> CampaignSheetPage:
 class TestCampaignSheet:
 
     @allure.feature("Campaign")
-    @allure.story("3.1–3.4, 3.6 Шапка листа, охотники и древо навыков новой кампании")
+    @allure.story("3.1–3.6 Шапка листа, охотники и древо навыков новой кампании")
     def test_initial_header(self, sheet):
-        # TODO(3.5, implementationTasks.md задача 42.2): не хватает проверок открытия навыка «А1» и того,
-        #  что ступень 2 не открывается без ступени 1. Состояние навыка передаётся только цветом кнопки
-        #  (SkillCheckbox) и недоступно через UiAutomator2 — нужна семантика состояния в приложении.
         with check("3.1 Название кампании"):
             assert sheet.get_campaign_name() == CAMPAIGN_NAME
         with check("3.2 Начальная глава"):
@@ -49,6 +46,20 @@ class TestCampaignSheet:
             assert sheet.get_hunters() == [("Боец", "Дареон"), ("Мира", "Мира")]
         with check("3.6 Древо навыков: 5 ветвей по 2 ступени"):
             assert sheet.get_skill_tree() == {letter: [f"{letter}1", f"{letter}2"] for letter in "АБВГД"}
+
+        # 3.5: состояние навыка читается из атрибута selected (задача 42.2)
+        tier1, tier2 = "А1", "А2"
+        with check("3.5 В новой кампании навыки закрыты"):
+            assert not sheet.is_skill_unlocked(tier1) and not sheet.is_skill_unlocked(tier2)
+        sheet.click_skill(tier2)
+        with check("3.5 Ступень 2 не открывается без ступени 1"):
+            assert not sheet.wait_skill_state(tier2, unlocked=True, timeout=2)
+        sheet.click_skill(tier1)
+        with check("3.5 Навык «А1» открывается"):
+            assert sheet.wait_skill_state(tier1, unlocked=True)
+        sheet.click_skill(tier2)
+        with check("3.5 После «А1» открывается «А2»"):
+            assert sheet.wait_skill_state(tier2, unlocked=True)
 
     @allure.feature("Campaign")
     @allure.story("3.7, 3.11–3.13, 3.21 Пустые ресурсы, задания и достижения новой кампании")
@@ -113,17 +124,29 @@ class TestCampaignSheet:
         dialog.cancel()
 
     @allure.feature("Campaign")
-    @allure.story("3.17a Кнопка «Выполнено» открывает зависимые задания (behavior.md §7, qa 70)")
+    @allure.story("3.17a Кнопка «Выполнено» открывает зависимые задания и убирает задание из списка (qa 57, 70)")
     def test_complete_quest_button(self, sheet):
-        # TODO(implementationTasks.md задача 42.3): не хватает проверки, что выполненное задание 1 пропадает
-        #  из списка открытых (qa 57). Сейчас «Выполнено» ставит только is_completed, лист фильтрует
-        #  по isAvailable — задание остаётся в списке.
+        sheet.set_chapter(2)  # глава приложения 2 = глава книги 1 (defects.md R-1, qa 103)
         sheet.edit_quests().set_quest_completed(1, True).save()
         sheet.complete_quest(1)
-        with check("Задание 1 в главах 1–2 открывает задание 4"):
-            assert 4 in sheet.get_opened_quests()
+        opened = sheet.get_opened_quests()
+        with check("Задание 1 в главах книги 1–2 открывает задание 4"):
+            assert 4 in opened
+        with check(f"42.3 Выполненное задание 1 пропадает из списка открытых: {opened}"):
+            assert 1 not in opened
         with check("При ручном завершении ресурсы не начисляются"):
             assert sheet.get_all_materials() == dict.fromkeys(CampaignSheetPage.MATERIAL_NAMES, 0)
+        with check("Задание 1 — в списке «Выполненные:»"):
+            assert sheet.get_completed_quests() == [1]
+
+        sheet.uncomplete_quest(1)
+        opened = sheet.get_opened_quests()
+        with check(f"«Отмена» возвращает задание 1 в открытые: {opened}"):
+            assert 1 in opened
+        with check("Открытое выполнением задание 4 остаётся открытым"):
+            assert 4 in opened
+        with check("Список «Выполненные:» пуст"):
+            assert sheet.get_completed_quests() == []
 
     @allure.feature("Campaign")
     @allure.story("3.19–3.20 Сохранение заданий после выхода и после перезапуска приложения")

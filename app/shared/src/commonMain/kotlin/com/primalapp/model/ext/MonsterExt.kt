@@ -10,13 +10,19 @@ data class DamageResult(
     val message: String
 )
 
+/**
+ * Наносит урон. Раны наносятся по одной; как только здоровье достигло порога смены стойки,
+ * цикл ран останавливается — оставшийся урон переносится на новую стойку и применяется
+ * с её прочностью после [resetPhase] (правила, «Урон монстру и раны монстра»).
+ * Отрицательный урон уменьшает накопленный урон (не ниже 0) и не заживляет раны.
+ */
 fun Monster.takeDamage(amount: Int): DamageResult {
     if (isDefeated) {
         return DamageResult(0, amount, false, currentPhase, "Монстр уже побеждён.")
     }
 
     if (amount < 0) {
-        return healWound(-amount)
+        return reduceAccumulatedDamage(-amount)
     }
 
     accumulatedDamage += amount
@@ -56,6 +62,8 @@ fun Monster.takeDamage(amount: Int): DamageResult {
         if (hsc != null && currentHealth <= hsc && currentPhase < maxPhases) {
             currentPhase++
             phaseChanged = true
+            // Следующие раны — уже с прочностью новой стойки
+            break
         }
     }
 
@@ -79,39 +87,23 @@ fun Monster.takeDamage(amount: Int): DamageResult {
     )
 }
 
-private fun Monster.healWound(amount: Int): DamageResult {
-    var healRemaining = amount
-    var woundsHealed = 0
-
-    if (accumulatedDamage > 0) {
-        val reduceBy = minOf(healRemaining, accumulatedDamage)
-        accumulatedDamage -= reduceBy
-        healRemaining -= reduceBy
-    }
-
-    val dfw = damageForWound
-    if (dfw != null) {
-        while (healRemaining >= dfw) {
-            currentHealth += 1
-            woundsHealed++
-            healRemaining -= dfw
-        }
-
-        if (healRemaining > 0) {
-            accumulatedDamage = dfw - healRemaining
-        }
-    }
-
+private fun Monster.reduceAccumulatedDamage(amount: Int): DamageResult {
+    val reduced = minOf(amount, accumulatedDamage)
+    accumulatedDamage -= reduced
     return DamageResult(
         woundsInflicted = 0,
         remainingDamage = accumulatedDamage,
         phaseChanged = false,
         newPhase = currentPhase,
-        message = buildString {
-            if (woundsHealed > 0) append("Заживлено ран: $woundsHealed. ")
-            append("Босс восстановил здоровье.")
-        }
+        message = if (reduced > 0) "Накопленный урон уменьшен на $reduced." else "Накопленного урона нет."
     )
+}
+
+/** «Заживить рану»: здоровье +1 (не выше начального), накопленный урон не меняется. */
+fun Monster.healWound(): Boolean {
+    if (isDefeated || currentHealth >= Monster.DEFAULT_HEALTH) return false
+    currentHealth += 1
+    return true
 }
 
 fun Monster.addRage(amount: Int): Int {
@@ -139,10 +131,16 @@ fun Monster.toggleHardened(): Boolean {
     return isHardened
 }
 
+fun Monster.toggleResilient(): Boolean {
+    isResilient = !isResilient
+    return isResilient
+}
+
+/** Параметры новой стойки. Накопленный урон переносится, кроме стойки с «Устойчивостью». */
 fun Monster.resetPhase(damageForWound: Int?, healthForStanceChange: Int?) {
     this.damageForWound = damageForWound
     this.healthForStanceChange = healthForStanceChange
-    if (this.isHardened) {
+    if (this.isResilient) {
         this.accumulatedDamage = 0
     }
 }

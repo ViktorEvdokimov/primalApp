@@ -26,5 +26,11 @@ data class ChapterInfoEntity(
     val decisions: String = "",
     val messages: String = "",
     @ColumnInfo(name = "conditional_messages")
-    val conditionalMessages: String = ""
+    val conditionalMessages: String = "",
+    @ColumnInfo(name = "hunter_kit_upgrade_achievement", defaultValue = "")
+    val hunterKitUpgradeAchievement: String = "",
+    @ColumnInfo(name = "expire_all_quests", defaultValue = "0")
+    val expireAllQuests: Boolean = false,
+    @ColumnInfo(name = "final_boss", defaultValue = "")
+    val finalBoss: String = ""
 )

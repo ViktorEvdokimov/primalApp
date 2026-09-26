@@ -41,7 +41,13 @@ class BattlePage(BasePage):
     RAGE_PLUS_1_PER_HUNTER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Ярость:"]/following::android.widget.TextView[@text="+1/охот"]')
     RAGE_PLUS_1_PER_HUNTER_MINUS_1 = (AppiumBy.XPATH, '//android.widget.TextView[@text="Ярость:"]/following::android.widget.TextView[@text="+1/охот-1"]')
 
-    STABILITY = (AppiumBy.XPATH, '//android.widget.TextView[@text="Устойчивость:"]/following-sibling::android.view.View[@clickable="true"]')
+    # Два независимых статуса монстра (defects.md R-3): переключатель — последний checkable-сосед подписи
+    HARDENED_SWITCH = (AppiumBy.XPATH, '//android.widget.TextView[@text="Затвердевший:"]/following-sibling::android.view.View[@checkable="true"]')
+    RESILIENT_SWITCH = (AppiumBy.XPATH, '//android.widget.TextView[@text="Устойчивость стойки:"]/following-sibling::android.view.View[@checkable="true"]')
+    HARDENED_INFO = (AppiumBy.XPATH, '//*[@content-desc="Описание: Затвердевший"]')
+    RESILIENT_INFO = (AppiumBy.XPATH, '//*[@content-desc="Описание: Устойчивость стойки"]')
+    HEAL_WOUND = (AppiumBy.XPATH, '//android.widget.TextView[@text="Заживить рану (+1 здоровья)"]')
+    NEGATIVE_DAMAGE_HINT = (AppiumBy.XPATH, '//android.widget.TextView[@text="Отрицательное значение отменяет накопленный урон"]')
     END_ROUND = (AppiumBy.XPATH, '//android.widget.TextView[@text="Закончить раунд"]')
     CHANGE_STANCE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Сменить стойку"]')
     SURRENDER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Сдаться"]')
@@ -189,9 +195,32 @@ class BattlePage(BasePage):
     def rage_plus_1_per_hunter_minus_1(self) -> None:
         self.click(self.RAGE_PLUS_1_PER_HUNTER_MINUS_1)
 
-    @allure.step("Кликнуть Устойчивость")
-    def click_stability(self) -> None:
-        self.click(self.STABILITY)
+    @allure.step("Переключить «Затвердевший»")
+    def click_hardened(self) -> None:
+        self.click(self.HARDENED_SWITCH)
+
+    @allure.step("Переключить «Устойчивость стойки»")
+    def click_resilient(self) -> None:
+        self.click(self.RESILIENT_SWITCH)
+
+    @allure.step("Проверить, включён ли «Затвердевший»")
+    def is_hardened_on(self) -> bool:
+        return self.driver.find_element(*self.HARDENED_SWITCH).get_attribute("checked") == "true"
+
+    @allure.step("Проверить, включена ли «Устойчивость стойки»")
+    def is_resilient_on(self) -> bool:
+        return self.driver.find_element(*self.RESILIENT_SWITCH).get_attribute("checked") == "true"
+
+    @allure.step("Открыть описание статуса «{title}» (кнопка «i»)")
+    def open_status_info(self, title: str) -> "StatusInfoDialog":
+        locator = self.HARDENED_INFO if title == "Затвердевший" else self.RESILIENT_INFO
+        self.click(locator)
+        return StatusInfoDialog(self.driver)
+
+    @allure.step("Заживить рану (+1 здоровья)")
+    def heal_wound(self) -> None:
+        self.click(self.HEAL_WOUND)
+
 
     @allure.step("Сменить стойку вручную")
     def click_change_stance(self) -> "StanceChangeDialog":
@@ -203,9 +232,15 @@ class BattlePage(BasePage):
         self.click(self.END_ROUND)
 
     def _reveal_bottom_button(self, text: str) -> None:
-        """Кнопки внизу экрана боя: после ручного ввода их закрывает клавиатура, ниже — прокрутка."""
+        """Кнопки внизу экрана боя: после ручного ввода их может закрывать клавиатура, ниже — прокрутка."""
+        selector = (AppiumBy.ANDROID_UIAUTOMATOR, f'new UiSelector().text("{text}")')
+        if any(el.is_displayed() for el in self.driver.find_elements(*selector)):
+            return
+        # Плавающая клавиатура не закрывает кнопки, а BACK при ней сворачивает приложение — поэтому
+        # клавиатура закрывается только если кнопка не видна, и одним BACK (hide_keyboard() повторяет BACK)
         if self.driver.is_keyboard_shown():
-            self.driver.hide_keyboard()
+            self.driver.press_keycode(4)
+            WebDriverWait(self.driver, 3).until(lambda d: not d.is_keyboard_shown())
         self.scroll_into_view(text)
 
     @allure.step("Сдаться")
@@ -229,21 +264,26 @@ class BattlePage(BasePage):
 
 
 class RageSurgeDialog(BasePage):
-    MESSAGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Всплеск ярости"]')
+    MESSAGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выплеск ярости"]')
+    DAMAGE_HINT = (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "урон, равный силе монстра")]')
     OK_BUTTON = (AppiumBy.XPATH, '//android.widget.TextView[@text="OK"]')
 
-    @allure.step("Проверить, что окно Всплеск ярости отображается")
+    @allure.step("Проверить, что окно «Выплеск ярости» отображается")
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.MESSAGE)
 
-    @allure.step("Закрыть окно Всплеск ярости, если оно появилось")
+    @allure.step("Проверить, что окно напоминает об уроне охотникам")
+    def has_damage_hint(self) -> bool:
+        return self.is_element_visible(self.DAMAGE_HINT)
+
+    @allure.step("Закрыть окно «Выплеск ярости», если оно появилось")
     def dismiss_if_shown(self, timeout: int = 2) -> bool:
         if self.is_element_visible_quick(self.MESSAGE, timeout=timeout):
             self.click_ok()
             return True
         return False
 
-    @allure.step("Нажать OK в окне Всплеск ярости")
+    @allure.step("Нажать OK в окне «Выплеск ярости»")
     def click_ok(self) -> None:
         self.click(self.OK_BUTTON)
 
@@ -269,6 +309,8 @@ class SurrenderDialog(BasePage):
 
 class DefeatDialog(BasePage):
     MESSAGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="ПОРАЖЕНИЕ"]')
+    ROUNDS_OVER = (AppiumBy.XPATH, '//android.widget.TextView[@text="Закончились раунды..."]')
+    SURRENDERED = (AppiumBy.XPATH, '//android.widget.TextView[@text="Вы сдались."]')
     NEW_BATTLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Новый бой"]')
     CONTINUE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Продолжить"]')
     EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
@@ -276,6 +318,14 @@ class DefeatDialog(BasePage):
     @allure.step("Проверить, что окно поражения отображается")
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.MESSAGE)
+
+    @allure.step("Проверить причину поражения «Вы сдались.»")
+    def is_surrender_reason_displayed(self) -> bool:
+        return self.is_element_visible(self.SURRENDERED)
+
+    @allure.step("Проверить причину поражения «Закончились раунды...»")
+    def is_rounds_over_reason_displayed(self) -> bool:
+        return self.is_element_visible(self.ROUNDS_OVER)
 
     @allure.step("Нажать Продолжить (поражение в кампании)")
     def click_continue(self) -> "QuestRewardsPage":
@@ -349,8 +399,29 @@ class CampaignVictoryDialog(BasePage):
         return MainPage(self.driver)
 
 
+class StatusInfoDialog(BasePage):
+    """Описание статуса монстра по кнопке «i» (defects.md R-3)."""
+    CLOSE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Понятно"]')
+
+    @allure.step("Проверить, что открыто описание «{title}»")
+    def is_displayed(self, title: str) -> bool:
+        return self.is_element_visible((AppiumBy.XPATH, f'//android.widget.TextView[@text="{title}"]'))
+
+    @allure.step("Проверить, что описание содержит «{text}»")
+    def has_text(self, text: str) -> bool:
+        return self.is_element_visible((AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "{text}")]'))
+
+    @allure.step("Закрыть описание статуса")
+    def close(self) -> None:
+        self.click(self.CLOSE)
+        self.wait.until(EC.invisibility_of_element_located(self.CLOSE))
+
+
 class StanceChangeDialog(BasePage):
     TITLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Смена стойки!"]')
+    FROM_BOSS_DATA = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Параметры заполнены из базы боссов")]')
+    NO_BOSS_DATA = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Данных о стойке в базе боссов нет")]')
+    CARRIED_DAMAGE = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Перенесённый урон")]')
     DAMAGE_TO_WOUND = (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "Урон для нанесения раны на игрока")]/..')
     STANCE_CHANGE_HEALTH = (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "Здоровье для смены стойки")]/..')
     BOSS_HEALTH = (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, "Здоровье босса в новой стойке")]/..')
@@ -361,9 +432,26 @@ class StanceChangeDialog(BasePage):
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.TITLE)
 
+    @allure.step("Проверить, что поля заполнены из базы боссов")
+    def is_from_boss_data(self) -> bool:
+        return self.is_element_visible_quick(self.FROM_BOSS_DATA)
+
+    @allure.step("Проверить, что данных о стойке в базе боссов нет")
+    def is_without_boss_data(self) -> bool:
+        return self.is_element_visible_quick(self.NO_BOSS_DATA)
+
+    @allure.step("Получить строку о перенесённом уроне")
+    def get_carried_damage_text(self) -> str | None:
+        elements = self.driver.find_elements(*self.CARRIED_DAMAGE)
+        return elements[0].text if elements else None
+
     @allure.step("Установить урон для нанесения раны на игрока")
     def set_damage_to_wound(self, value: str) -> None:
         self.type_text(self.DAMAGE_TO_WOUND, value)
+
+    @allure.step("Получить урон для нанесения раны на игрока")
+    def get_damage_to_wound(self) -> str:
+        return self.get_text(self.DAMAGE_TO_WOUND)
 
     @allure.step("Установить здоровье для смены стойки")
     def set_stance_change_health(self, value: str) -> None:

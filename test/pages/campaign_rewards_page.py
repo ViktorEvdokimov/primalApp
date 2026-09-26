@@ -22,7 +22,57 @@ def _parse_resources(items, names: list[str]) -> dict[str, int]:
     return result
 
 
-class CampaignRewardsPage(BasePage):
+class _ScrollableDialog(BasePage):
+    """Окно наград с прокручиваемым содержимым: тексты собираются по всей высоте окна."""
+    TITLE: tuple[str, str]
+    SCROLL_AREA = (AppiumBy.CLASS_NAME, "android.widget.ScrollView")
+    CONTENT_TEXTS = (AppiumBy.XPATH, '//android.widget.ScrollView//android.widget.TextView')
+
+    def _visible_texts(self) -> list[str]:
+        return [el.text.strip() for el in self.driver.find_elements(*self.CONTENT_TEXTS) if el.text.strip()]
+
+    def _scroll(self, direction: str) -> None:
+        areas = self.driver.find_elements(*self.SCROLL_AREA)
+        if areas:
+            self.driver.execute_script("mobile: scrollGesture", {"elementId": areas[0].id, "direction": direction, "percent": 0.8})
+
+    def _collect_texts(self) -> list[str]:
+        """Все тексты окна по порядку: содержимое прокручивается, а узлы за пределами области не видны в дереве."""
+        self.wait.until(EC.visibility_of_element_located(self.TITLE))
+        for _ in range(10):
+            before = self._visible_texts()
+            self._scroll("up")
+            if self._visible_texts() == before:
+                break
+        collected = self._visible_texts()
+        for _ in range(10):
+            self._scroll("down")
+            page = self._visible_texts()
+            # Склеиваем по перекрытию: хвост собранного совпадает с началом новой страницы
+            overlap = next(k for k in range(min(len(collected), len(page)), -1, -1) if collected[len(collected) - k:] == page[:k])
+            if overlap == len(page):
+                break
+            collected += page[overlap:]
+        return collected
+
+    def _items_after(self, texts: list[str], header: str) -> list[str]:
+        if header not in texts:
+            return []
+        items = []
+        for text in texts[texts.index(header) + 1:]:
+            if text.endswith(":") or text.startswith("Карты наград"):
+                break
+            items.append(text)
+        return [] if items == ["—"] else items
+
+    @allure.step("Получить условия раздела «{header}» (формулировка, результат)")
+    def get_conditions(self, header: str = "Условные задания:") -> list[tuple[str, str]]:
+        """Условное правило в формулировке правил и строка результата под ним."""
+        items = self._items_after(self._collect_texts(), header)
+        return list(zip(items[0::2], items[1::2]))
+
+
+class CampaignRewardsPage(_ScrollableDialog):
     """Окно «Награды главы N»."""
     TITLE = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Награды главы")]')
     RESOURCE_ITEMS = (AppiumBy.XPATH, '//android.widget.TextView[contains(@text, ": ")]')
@@ -68,7 +118,8 @@ class CampaignRewardsPage(BasePage):
 
     @allure.step("Проверить наличие сообщения главы: {text}")
     def has_message(self, text: str) -> bool:
-        return self.is_element_visible_quick((AppiumBy.XPATH, f'//android.widget.TextView[contains(@text, "{text}")]'), timeout=3)
+        # Условные сообщения выводятся в разделе условий ниже — ищем по всему окну с прокруткой
+        return any(text in item for item in self._collect_texts())
 
     @allure.step("Нажать кнопку «Принять»")
     def accept(self) -> "CampaignSheetPage":
@@ -106,6 +157,11 @@ class CampaignRewardsPage(BasePage):
                 self.click(self._checkbox(quest_number))
                 self.wait.until(lambda _: self.is_quest_completed(quest_number) == completed)
             return self
+
+        @allure.step("Проверить, можно ли изменить задание {quest_number}")
+        def is_quest_editable(self, quest_number: int) -> bool:
+            chk = self.wait.until(EC.presence_of_element_located(self._checkbox(quest_number)))
+            return chk.get_attribute("enabled") == "true"
 
         @allure.step("Получить статус задания {quest_number}")
         def is_quest_completed(self, quest_number: int) -> bool:
@@ -179,54 +235,16 @@ class CampaignRewardsPage(BasePage):
             return CampaignSheetPage(self.driver)
 
 
-class QuestRewardsPage(BasePage):
+class QuestRewardsPage(_ScrollableDialog):
     """Окно «Награды за задание» / «Награды за поражение»."""
     TITLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Награды за задание" or @text="Награды за поражение"]')
     QUEST_TITLE = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Задание ")]')
-    SCROLL_AREA = (AppiumBy.CLASS_NAME, "android.widget.ScrollView")
-    CONTENT_TEXTS = (AppiumBy.XPATH, '//android.widget.ScrollView//android.widget.TextView')
     ACCEPT_BUTTON = _button("Принять")
     EXIT_BUTTON = _button("Выход")
 
     @allure.step("Проверить, что окно наград за задание отображается")
     def is_displayed(self) -> bool:
         return self.is_element_visible(self.TITLE)
-
-    def _visible_texts(self) -> list[str]:
-        return [el.text.strip() for el in self.driver.find_elements(*self.CONTENT_TEXTS) if el.text.strip()]
-
-    def _scroll(self, direction: str) -> None:
-        area = self.driver.find_element(*self.SCROLL_AREA)
-        self.driver.execute_script("mobile: scrollGesture", {"elementId": area.id, "direction": direction, "percent": 0.8})
-
-    def _collect_texts(self) -> list[str]:
-        """Все тексты окна по порядку: содержимое прокручивается, а узлы за пределами области не видны в дереве."""
-        self.wait.until(EC.visibility_of_element_located(self.TITLE))
-        for _ in range(10):
-            before = self._visible_texts()
-            self._scroll("up")
-            if self._visible_texts() == before:
-                break
-        collected = self._visible_texts()
-        for _ in range(10):
-            self._scroll("down")
-            page = self._visible_texts()
-            # Склеиваем по перекрытию: хвост собранного совпадает с началом новой страницы
-            overlap = next(k for k in range(min(len(collected), len(page)), -1, -1) if collected[len(collected) - k:] == page[:k])
-            if overlap == len(page):
-                break
-            collected += page[overlap:]
-        return collected
-
-    def _items_after(self, texts: list[str], header: str) -> list[str]:
-        if header not in texts:
-            return []
-        items = []
-        for text in texts[texts.index(header) + 1:]:
-            if text.endswith(":") or text.startswith("Карты наград"):
-                break
-            items.append(text)
-        return [] if items == ["—"] else items
 
     @allure.step("Получить заголовок задания")
     def get_quest_title(self) -> str:

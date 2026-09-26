@@ -1,7 +1,7 @@
 package com.primalapp.database
 
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.execSQL
+import com.primalapp.database.entity.TaskInfoEntity
 
 /**
  * Каталог заданий из doc/taskInfo.md.
@@ -9,6 +9,10 @@ import androidx.sqlite.execSQL
  * Формат условий: `kind|achievement|chapterSet|quest|else|rewardAchievement` через ';' между условиями.
  * Очевидные опечатки исправлены (см. doc/qa.md). Составное условие зад. 25 —
  * `ACHIEVEMENT_OWNED_IN_CHAPTER` (достижение И глава), условные достижения зад. 29/40 — поле rewardAchievement.
+ * Названия достижений записаны так же, как в условиях каталога глав: «Народ Золотых гор», «Яд Пазиса»,
+ * «Копьё драконоборца» (задача 42.1).
+ * Исправлено по решениям defects.md (25.09.2026): зад. 2 — при поражении в главе книги 1–2 открывается задание 5;
+ * зад. 14 — ЗЛАТИЯ 2; зад. 28 и 35 — «Иридия» перенесена из растений в материи.
  */
 private val TASK_INFO_ROWS = listOf(
     // 1 Память пустыни
@@ -23,7 +27,7 @@ private val TASK_INFO_ROWS = listOf(
         "2", "Полёт в вечную бурю", "Озев", "LIGHTNING",
         "BLOOD:2;ZIMIA:1;IRIDIA:1",
         "ALBALACEA:2;MELLIS:1;ANTHEMON:1;SELICORNIA:1",
-        "", "CHAPTER_IN||1,2|5|", "", "", "", "", "CHAPTER_IN||3|1|1"
+        "", "CHAPTER_IN||1,2|5|", "", "", "", "", "CHAPTER_IN||1,2|5|"
     ),
     // 3 Рёв моря
     arrayOf(
@@ -44,7 +48,7 @@ private val TASK_INFO_ROWS = listOf(
         "5", "Серебряные когти", "Юром", "METAL",
         "SCALES:2;IRIDIA:1;ZLATIA:1",
         "TARMARET:2;ALBALACEA:1;ANTHEMON:1;SELICORNIA:1",
-        "", "", "Пыль аркеума;Народ золотых гор", "1", "", "", ""
+        "", "", "Пыль аркеума;Народ Золотых гор", "1", "", "", ""
     ),
     // 6 Охота меж двух пустынь
     arrayOf(
@@ -105,7 +109,7 @@ private val TASK_INFO_ROWS = listOf(
     // 14 Тысячеликий дракон
     arrayOf(
         "14", "Тысячеликий дракон", "Дигоракс", "HORN",
-        "SCALES:1;BONES:1;ZLATIA:1",
+        "SCALES:1;BONES:1;ZLATIA:2",
         "NILLEA:2;TARMARET:1;ALBALACEA:1;SELICORNIA:1",
         "", "", "", "6", "", "", ""
     ),
@@ -135,7 +139,7 @@ private val TASK_INFO_ROWS = listOf(
         "18", "Залы памяти", "Торамат", "HORN",
         "BONES:2;ZLATIA:2",
         "NILLEA:1;TARMARET:2;ALBALACEA:1;SELICORNIA:1",
-        "", "", "Копье драконоборца", "8", "", "", ""
+        "", "", "Копьё драконоборца", "8", "", "", ""
     ),
     // 19 Трон в недрах горы
     arrayOf(
@@ -203,7 +207,7 @@ private val TASK_INFO_ROWS = listOf(
     // 28 Гора из плоти и кристаллов
     arrayOf(
         "28", "Гора из плоти и кристаллов", "Моркраас", "CRYSTAL",
-        "SCALES:1;ZIMIA:1;IRIDIA:2",
+        "SCALES:1;ZIMIA:1;IRIDIA:3",
         "TARMARET:1;ALBALACEA:1;ANTHEMON:1;SELICORNIA:1",
         "", "", "", "10,11,12,13", "", "", ""
     ),
@@ -252,7 +256,7 @@ private val TASK_INFO_ROWS = listOf(
     // 35 В жерле вулкана
     arrayOf(
         "35", "В жерле вулкана", "Тараск", "FIRE",
-        "SCALES:1;BONES:1;BLOOD:1;IRIDIA:1",
+        "SCALES:1;BONES:1;BLOOD:1;IRIDIA:2",
         "TARMARET:1;ALBALACEA:2;MELLIS:1",
         "", "", "", "24", "", "", ""
     ),
@@ -261,7 +265,7 @@ private val TASK_INFO_ROWS = listOf(
         "36", "Чудовище «Муары»", "Пазис", "FEATHER",
         "BONES:1;ZIMIA:2;ZLATIA:1",
         "NILLEA:2;TARMARET:1;MELLIS:1;ANTHEMON:1",
-        "", "", "Лагерь в джунглях;Яд пазиса", "", "", "", ""
+        "", "", "Лагерь в джунглях;Яд Пазиса", "", "", "", ""
     ),
     // 37 Речной дракон
     arrayOf(
@@ -356,11 +360,48 @@ private val TASK_INFO_ROWS = listOf(
     )
 )
 
+/** Каталог заданий в виде сущностей — для сквозной проверки seed-данных в тестах (задача 42.1). */
+internal fun taskInfoSeedEntities(): List<TaskInfoEntity> = TASK_INFO_ROWS.map { row ->
+    TaskInfoEntity(
+        questNumber = row[0].toInt(),
+        name = row[1],
+        bossName = row[2],
+        bossElement = row[3].ifBlank { null },
+        victoryMaterials = row[4],
+        victoryPlants = row[5],
+        victoryOpenQuests = row[6],
+        victoryOpenQuestConditions = row[7],
+        victoryAchievements = row[8],
+        victoryRewardCards = row[9],
+        victorySpecial = row[10],
+        defeatOpenQuests = row[11],
+        defeatOpenQuestConditions = row[12],
+        defeatAchievements = row.getOrNull(13).orEmpty()
+    )
+}
+
+/** defeat_achievements появилась в версии 13: миграции 10→11 и 11→12 вставляют только существующие колонки. */
 fun seedTaskInfo(db: SQLiteConnection) {
+    val columns = db.columnsOf("task_info")
     TASK_INFO_ROWS.forEach { row ->
-        db.execSQL(
-            "INSERT INTO task_info (quest_number, name, boss_name, boss_element, victory_materials, victory_plants, victory_open_quests, victory_open_quest_conditions, victory_achievements, victory_reward_cards, victory_special, defeat_open_quests, defeat_open_quest_conditions, defeat_achievements) " +
-                "VALUES (${row[0]}, '${row[1]}', '${row[2]}', '${row[3]}', '${row[4]}', '${row[5]}', '${row[6]}', '${row[7]}', '${row[8]}', '${row[9]}', '${row[10]}', '${row[11]}', '${row[12]}', '${row.getOrNull(13).orEmpty()}')"
+        db.insertExistingColumns(
+            "task_info", columns,
+            linkedMapOf(
+                "quest_number" to row[0],
+                "name" to sqlText(row[1]),
+                "boss_name" to sqlText(row[2]),
+                "boss_element" to sqlText(row[3]),
+                "victory_materials" to sqlText(row[4]),
+                "victory_plants" to sqlText(row[5]),
+                "victory_open_quests" to sqlText(row[6]),
+                "victory_open_quest_conditions" to sqlText(row[7]),
+                "victory_achievements" to sqlText(row[8]),
+                "victory_reward_cards" to sqlText(row[9]),
+                "victory_special" to sqlText(row[10]),
+                "defeat_open_quests" to sqlText(row[11]),
+                "defeat_open_quest_conditions" to sqlText(row[12]),
+                "defeat_achievements" to sqlText(row.getOrNull(13).orEmpty())
+            )
         )
     }
 }

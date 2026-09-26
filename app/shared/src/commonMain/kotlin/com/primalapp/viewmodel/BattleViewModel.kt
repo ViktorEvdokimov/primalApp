@@ -4,13 +4,14 @@ import com.primalapp.model.ext.DamageResult
 import com.primalapp.model.Hunter
 import com.primalapp.model.Monster
 import com.primalapp.model.campaign.Boss
-import com.primalapp.model.campaign.BossStance
 import com.primalapp.model.ext.addRagePerHunter
 import com.primalapp.model.ext.endRound
+import com.primalapp.model.ext.healWound
 import com.primalapp.model.ext.removeRage
 import com.primalapp.model.ext.resetPhase
 import com.primalapp.model.ext.takeDamage
 import com.primalapp.model.ext.toggleHardened
+import com.primalapp.model.ext.toggleResilient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -55,12 +56,27 @@ enum class BattleParam {
     ACCUMULATED_DAMAGE,
     DAMAGE_FOR_WOUND,
     HEALTH_FOR_STANCE_CHANGE,
-    HARDENED
+    HARDENED,
+    RESILIENT
 }
 
 enum class BattleVibrationEvent {
     SHORT,
     DOUBLE
+}
+
+/** Статусы монстра с описанием для кнопки «i» на экране боя (R-3). */
+enum class MonsterStatusInfo(val title: String, val description: String) {
+    HARDENED(
+        "Затвердевший",
+        "Состояние монстра (например, торамат и дигоракс при затвердевании 3). После нанесения ран весь " +
+            "оставшийся урон, которого не хватило на очередную рану, сбрасывается."
+    ),
+    RESILIENT(
+        "Устойчивость стойки",
+        "Ключевое слово карты стойки. Когда монстр переходит на следующую стойку, накопленный урон " +
+            "не переносится на новую карту стойки, а сбрасывается."
+    )
 }
 
 data class MonsterSnapshot(
@@ -87,13 +103,19 @@ data class BattleScreenState(
     val showPhaseChangeDialog: Boolean = false,
     val pendingDamageForWound: String = "",
     val pendingHealthForStanceChange: String = "",
+    /** Поля диалога «Смена стойки!» заполнены данными стойки из базы боссов. */
+    val phaseChangeFromBossData: Boolean = false,
     val damageInputText: String = "",
     val inputMode: InputMode = InputMode.NONE,
     val canUndo: Boolean = false,
     val showRageSurgeDialog: Boolean = false,
     val selectedBoss: Boss? = null,
     val selectedDifficulty: Int = 0,
-    val highlightedParams: Set<BattleParam> = emptySet()
+    val highlightedParams: Set<BattleParam> = emptySet(),
+    /** Поражение наступило из-за «Сдаться», а не из-за окончания раундов (D-14). */
+    val surrendered: Boolean = false,
+    /** Открытое описание статуса монстра (кнопка «i»). */
+    val statusInfo: MonsterStatusInfo? = null
 )
 
 class BattleViewModel(
@@ -131,6 +153,10 @@ class BattleViewModel(
         startBattleWithHunters(hunters, damageForWound, healthForStanceChange)
     }
 
+    /**
+     * Начинает бой. Прочность и порог смены стойки берутся из переданных значений полей подготовки
+     * (предзаполнены стойкой I выбранного босса и могут быть изменены вручную — D-2).
+     */
     fun startBattleWithHunters(
         hunters: List<Hunter>,
         damageForWound: Int?,
@@ -138,14 +164,13 @@ class BattleViewModel(
         boss: Boss? = null,
         difficulty: Int = 0
     ) {
-        val stance = boss?.getStance(0)
         val monsterName = boss?.name ?: "Монстр"
         val monster = Monster(
             name = monsterName,
             currentHealth = 10,
             rage = hunters.size,
-            damageForWound = if (stance != null) stance.damageForWound?.let { hunters.size * it } else damageForWound?.let { hunters.size * it },
-            healthForStanceChange = if (stance != null) stance.healthForStanceChange else healthForStanceChange
+            damageForWound = damageForWound?.let { hunters.size * it },
+            healthForStanceChange = healthForStanceChange
         )
         actionHistory.clear()
         _state.update {
@@ -163,7 +188,11 @@ class BattleViewModel(
                 message = "Бой начался! Фаза I",
                 selectedBoss = boss,
                 selectedDifficulty = difficulty,
-                highlightedParams = emptySet()
+                highlightedParams = emptySet(),
+                surrendered = false,
+                statusInfo = null,
+                showPhaseChangeDialog = false,
+                showRageSurgeDialog = false
             )
         }
     }
@@ -192,6 +221,59 @@ class BattleViewModel(
         else -> FightPhase.PHASE_I
     }
 
+    /** Результат применения урона с учётом смены стойки. */
+    private data class StanceOutcome(
+        val result: DamageResult,
+        val victory: Boolean,
+        /** Монстр перешёл на новую стойку — нужен диалог «Смена стойки!». */
+        val needsDialog: Boolean
+    )
+
+    /**
+     * Применяет урон (R-2): цикл ран останавливается на смене стойки, остаток урона переносится
+     * и наносится с прочностью новой стойки после подтверждения её параметров в диалоге.
+     * Победа — по флагу `isDefeated` и по тексту результата (D-18).
+     */
+    private fun applyDamage(monster: Monster, amount: Int): StanceOutcome {
+        val result = monster.takeDamage(amount)
+        val victory = monster.isDefeated || result.message.contains("побеждён")
+        return StanceOutcome(
+            result = if (victory) result.copy(message = "Монстр побеждён! Нанесено ран: ${result.woundsInflicted}") else result,
+            victory = victory,
+            needsDialog = result.phaseChanged && !victory
+        )
+    }
+
+    /** Значения полей диалога «Смена стойки!»: из базы боссов, если у босса есть такая стойка. */
+    private data class StancePrefill(val damageForWound: String, val healthForStanceChange: String, val fromBossData: Boolean)
+
+    private fun stancePrefill(boss: Boss?, phase: Int): StancePrefill {
+        val stance = boss?.getStance(phase - 1) ?: return StancePrefill("", "", false)
+        return StancePrefill(
+            damageForWound = stance.damageForWound?.toString().orEmpty(),
+            healthForStanceChange = stance.healthForStanceChange?.toString().orEmpty(),
+            fromBossData = true
+        )
+    }
+
+    /** Поля состояния для открытия диалога «Смена стойки!» на стойке [phase]. */
+    private fun BattleScreenState.withPhaseChangeDialog(show: Boolean, phase: Int): BattleScreenState {
+        if (!show) return copy(showPhaseChangeDialog = false)
+        val prefill = stancePrefill(selectedBoss, phase)
+        return copy(
+            showPhaseChangeDialog = true,
+            pendingDamageForWound = prefill.damageForWound,
+            pendingHealthForStanceChange = prefill.healthForStanceChange,
+            phaseChangeFromBossData = prefill.fromBossData
+        )
+    }
+
+    private fun resolvePhase(outcome: StanceOutcome, current: FightPhase): FightPhase = when {
+        outcome.victory -> FightPhase.VICTORY
+        outcome.result.phaseChanged -> phaseForNumber(outcome.result.newPhase)
+        else -> current
+    }
+
     fun onManualStanceChange() {
         val current = _state.value
         val before = current.toBattleValues()
@@ -199,17 +281,14 @@ class BattleViewModel(
         if (monster.healthForStanceChange != null) return
         if (monster.currentPhase >= monster.maxPhases) return
 
+        saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${monster.currentPhase + 1}")
         monster.currentPhase++
-        val newPhase = phaseForNumber(monster.currentPhase)
-
         _state.update {
             it.copy(
-                phase = newPhase,
+                phase = phaseForNumber(monster.currentPhase),
                 monster = monster,
-                showPhaseChangeDialog = true,
-                pendingDamageForWound = current.selectedBoss?.getStance(monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
-                pendingHealthForStanceChange = current.selectedBoss?.getStance(monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: ""
-            )
+                canUndo = actionHistory.isNotEmpty()
+            ).withPhaseChangeDialog(show = true, phase = monster.currentPhase)
         }
         highlightChanged(before)
         emitVibration(BattleVibrationEvent.SHORT)
@@ -227,7 +306,7 @@ class BattleViewModel(
             damageForWound = monster.damageForWound,
             healthForStanceChange = monster.healthForStanceChange
         )
-        actionHistory.add(0, ActionSnapshot(snapshot, current.phase, actionType, description))
+        actionHistory.add(0, ActionSnapshot(snapshot, current.phase, actionType, description, current.currentRound))
         if (actionHistory.size > 10) {
             actionHistory.removeAt(actionHistory.lastIndex)
         }
@@ -241,7 +320,8 @@ class BattleViewModel(
         val accumulatedDamage: Int,
         val damageForWound: Int?,
         val healthForStanceChange: Int?,
-        val hardened: Boolean
+        val hardened: Boolean,
+        val resilient: Boolean
     )
 
     private fun BattleScreenState.toBattleValues(): BattleValues = BattleValues(
@@ -252,7 +332,8 @@ class BattleViewModel(
         accumulatedDamage = monster.accumulatedDamage,
         damageForWound = monster.damageForWound,
         healthForStanceChange = monster.healthForStanceChange,
-        hardened = monster.isHardened
+        hardened = monster.isHardened,
+        resilient = monster.isResilient
     )
 
     private fun changedParams(before: BattleValues, after: BattleScreenState): Set<BattleParam> {
@@ -265,6 +346,7 @@ class BattleViewModel(
         if (before.damageForWound != after.monster.damageForWound) changed += BattleParam.DAMAGE_FOR_WOUND
         if (before.healthForStanceChange != after.monster.healthForStanceChange) changed += BattleParam.HEALTH_FOR_STANCE_CHANGE
         if (before.hardened != after.monster.isHardened) changed += BattleParam.HARDENED
+        if (before.resilient != after.monster.isResilient) changed += BattleParam.RESILIENT
         return changed
     }
 
@@ -389,23 +471,13 @@ class BattleViewModel(
         val newPhase = if (snapshot.monster.isDefeated) {
             current.phase
         } else {
-            when (snapshot.monster.currentPhase) {
-                1 -> FightPhase.PHASE_I
-                2 -> FightPhase.PHASE_II
-                3 -> FightPhase.PHASE_III
-                4 -> FightPhase.PHASE_IV
-                5 -> FightPhase.PHASE_V
-                6 -> FightPhase.PHASE_VI
-                7 -> FightPhase.PHASE_VII
-                8 -> FightPhase.PHASE_VIII
-                9 -> FightPhase.PHASE_IX
-                else -> current.phase
-            }
+            phaseForNumber(snapshot.monster.currentPhase)
         }
 
         _state.update {
             it.copy(
                 monster = current.monster,
+                currentRound = snapshot.round,
                 message = "Отменено: ${snapshot.description}",
                 canUndo = actionHistory.isNotEmpty(),
                 phase = newPhase
@@ -434,88 +506,92 @@ class BattleViewModel(
         val damageDescription = if (current.pendingDamage >= 0) {
             "урон +${current.pendingDamage}"
         } else {
-            "лечение ${-current.pendingDamage}"
+            "снижение накопленного урона на ${-current.pendingDamage}"
         }
         saveSnapshot(ActionType.DAMAGE, damageDescription)
 
-        val result = monster.takeDamage(current.pendingDamage)
-
-        val newPhase = when {
-            result.message.contains("побеждён") -> FightPhase.VICTORY
-            result.phaseChanged -> {
-                when (result.newPhase) {
-                    2 -> FightPhase.PHASE_II
-                    3 -> FightPhase.PHASE_III
-                    4 -> FightPhase.PHASE_IV
-                    5 -> FightPhase.PHASE_V
-                    6 -> FightPhase.PHASE_VI
-                    7 -> FightPhase.PHASE_VII
-                    8 -> FightPhase.PHASE_VIII
-                    9 -> FightPhase.PHASE_IX
-                    else -> current.phase
-                }
-            }
-            else -> current.phase
-        }
+        val outcome = applyDamage(monster, current.pendingDamage)
+        val newPhase = resolvePhase(outcome, current.phase)
 
         _state.update {
             it.copy(
                 isTimerRunning = false,
-                message = result.message,
-                lastDamageResult = result,
+                message = outcome.result.message,
+                lastDamageResult = outcome.result,
                 pendingDamage = 0,
                 damageInputText = "",
                 inputMode = InputMode.NONE,
                 phase = newPhase,
                 monster = monster,
-                showPhaseChangeDialog = result.phaseChanged && newPhase != FightPhase.VICTORY,
-                pendingDamageForWound = current.selectedBoss?.getStance(monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
-                pendingHealthForStanceChange = current.selectedBoss?.getStance(monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: "",
+                canUndo = actionHistory.isNotEmpty()
+            ).withPhaseChangeDialog(show = outcome.needsDialog && newPhase != FightPhase.VICTORY, phase = monster.currentPhase)
+        }
+        highlightChanged(before)
+        emitDamageVibration(outcome.result)
+    }
+
+    /** Кнопка «Заживить рану»: здоровье монстра +1, накопленный урон не меняется (R-4). */
+    fun healWound() {
+        val current = _state.value
+        if (!isBattlePhase(current.phase)) return
+        val before = current.toBattleValues()
+        saveSnapshot(ActionType.HEAL, "заживление раны")
+        val healed = current.monster.healWound()
+        if (!healed) actionHistory.removeAt(0)
+        _state.update {
+            it.copy(
+                monster = current.monster,
+                message = if (healed) "Рана заживлена. Здоровье: ${current.monster.currentHealth}"
+                    else "Здоровье уже максимальное",
                 canUndo = actionHistory.isNotEmpty()
             )
         }
         highlightChanged(before)
-        emitDamageVibration(result)
+        emitVibration(BattleVibrationEvent.SHORT)
     }
 
+    /**
+     * Подтверждение параметров новой стойки (поля предзаполнены из базы боссов, если стойка известна).
+     * Перенесённый урон сразу наносится с новой прочностью (правила: «нанесите рану прежде, чем…»);
+     * если он снова доводит до порога — открывается диалог следующей стойки.
+     */
     fun confirmPhaseChange(damageForWound: Int?, healthForStanceChange: Int?, bossHealth: Int = 0) {
         val current = _state.value
         val before = current.toBattleValues()
-        val previousDfw = current.monster.damageForWound
-        saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${current.monster.currentPhase + 1}")
+        saveSnapshot(ActionType.PHASE_CHANGE, "смена на стойку ${current.monster.currentPhase}")
         val totalDamageForWound = damageForWound?.let { it * current.hunterCount }
         current.monster.resetPhase(totalDamageForWound, healthForStanceChange)
         if (bossHealth > 0) {
             current.monster.currentHealth = bossHealth
         }
 
-        val immediateResult = if (previousDfw == null && totalDamageForWound != null && current.monster.accumulatedDamage > 0) {
-            current.monster.takeDamage(0)
+        val outcome = if (totalDamageForWound != null && current.monster.accumulatedDamage > 0) {
+            applyDamage(current.monster, 0)
         } else {
             null
         }
 
-        val newPhase = when {
-            immediateResult?.message?.contains("побеждён") == true -> FightPhase.VICTORY
-            immediateResult?.phaseChanged == true -> phaseForNumber(immediateResult.newPhase)
-            else -> current.phase
-        }
+        val newPhase = if (outcome != null) resolvePhase(outcome, current.phase) else current.phase
 
         val hscText = healthForStanceChange?.let { "$it HP" } ?: "по запросу"
         val dfwText = totalDamageForWound?.let { "Урон для раны: $it" } ?: "Порог раны отсутствует"
         val message = buildString {
-            if (immediateResult != null) append(immediateResult.message).append(' ')
+            if (outcome != null && (outcome.result.woundsInflicted > 0 || outcome.victory)) {
+                append(outcome.result.message).append(' ')
+            }
             append("Стойка ${current.monster.currentPhase}. ").append(dfwText).append(", смена: ").append(hscText)
         }
 
         _state.update {
             it.copy(
-                showPhaseChangeDialog = false,
                 phase = newPhase,
                 monster = current.monster,
-                lastDamageResult = immediateResult,
+                lastDamageResult = outcome?.result,
                 message = message,
                 canUndo = actionHistory.isNotEmpty()
+            ).withPhaseChangeDialog(
+                show = outcome?.needsDialog == true && newPhase != FightPhase.VICTORY,
+                phase = current.monster.currentPhase
             )
         }
         highlightChanged(before)
@@ -535,7 +611,8 @@ class BattleViewModel(
             it.copy(
                 monster = current.monster,
                 showRageSurgeDialog = false,
-                message = "Всплеск ярости! Ярость сброшена до ${current.hunterCount}"
+                message = "Выплеск ярости! Каждый охотник получил урон, равный силе монстра. " +
+                    "Ярость сброшена до ${current.hunterCount}"
             )
         }
         highlightChanged(before)
@@ -609,36 +686,58 @@ class BattleViewModel(
         emitVibration(BattleVibrationEvent.SHORT)
     }
 
+    /** «Затвердевший»: остаток урона после ран сгорает. */
     fun toggleHardened() {
         val before = _state.value.toBattleValues()
         _state.update { current ->
             val hardened = current.monster.toggleHardened()
             current.copy(
                 monster = current.monster,
-                message = if (hardened) "Монстр устойчивый" else "Монстр неустойчивый"
+                message = if (hardened) "Монстр затвердевший" else "Монстр не затвердевший"
             )
         }
         highlightChanged(before)
         emitVibration(BattleVibrationEvent.SHORT)
     }
 
+    /** «Устойчивость» стойки: при смене стойки накопленный урон сбрасывается. */
+    fun toggleResilient() {
+        val before = _state.value.toBattleValues()
+        _state.update { current ->
+            val resilient = current.monster.toggleResilient()
+            current.copy(
+                monster = current.monster,
+                message = if (resilient) "Стойка с устойчивостью" else "Стойка без устойчивости"
+            )
+        }
+        highlightChanged(before)
+        emitVibration(BattleVibrationEvent.SHORT)
+    }
+
+    fun onStatusInfoRequested(info: MonsterStatusInfo) {
+        _state.update { it.copy(statusInfo = info) }
+    }
+
+    fun onStatusInfoDismissed() {
+        _state.update { it.copy(statusInfo = null) }
+    }
+
     fun endRound() {
         val current = _state.value
         val before = current.toBattleValues()
         saveSnapshot(ActionType.ROUND_END, "завершение раунда ${current.currentRound}")
-        var phaseUpdated = false
         var newFightPhase = current.phase
-        var defeatMessage: String? = null
+        var needsDialog = false
         var appliedDamageResult: DamageResult? = null
 
         if (current.pendingDamage > 0) {
-            val result = current.monster.takeDamage(current.pendingDamage)
+            val outcome = applyDamage(current.monster, current.pendingDamage)
 
-            if (result.message.contains("побеждён")) {
+            if (outcome.victory) {
                 _state.update {
                     it.copy(
                         phase = FightPhase.VICTORY,
-                        message = result.message,
+                        message = outcome.result.message,
                         monster = current.monster,
                         pendingDamage = 0,
                         isTimerRunning = false,
@@ -648,25 +747,13 @@ class BattleViewModel(
                     )
                 }
                 highlightChanged(before)
-                emitDamageVibration(result)
+                emitDamageVibration(outcome.result)
                 return
             }
 
-            if (result.phaseChanged) {
-                newFightPhase = when (result.newPhase) {
-                    2 -> FightPhase.PHASE_II
-                    3 -> FightPhase.PHASE_III
-                    4 -> FightPhase.PHASE_IV
-                    5 -> FightPhase.PHASE_V
-                    6 -> FightPhase.PHASE_VI
-                    7 -> FightPhase.PHASE_VII
-                    8 -> FightPhase.PHASE_VIII
-                    9 -> FightPhase.PHASE_IX
-                    else -> newFightPhase
-                }
-                phaseUpdated = true
-            }
-            appliedDamageResult = result
+            newFightPhase = resolvePhase(outcome, newFightPhase)
+            needsDialog = outcome.needsDialog
+            appliedDamageResult = outcome.result
         }
 
         current.monster.endRound(current.hunterCount)
@@ -685,9 +772,6 @@ class BattleViewModel(
                 inputMode = InputMode.NONE,
                 isTimerRunning = false,
                 canUndo = actionHistory.isNotEmpty(),
-                showPhaseChangeDialog = phaseUpdated && finalPhase != FightPhase.DEFEAT,
-                pendingDamageForWound = current.selectedBoss?.getStance(current.monster.currentPhase - 1)?.damageForWound?.toString() ?: "",
-                pendingHealthForStanceChange = current.selectedBoss?.getStance(current.monster.currentPhase - 1)?.healthForStanceChange?.toString() ?: "",
                 showRageSurgeDialog = finalPhase != FightPhase.DEFEAT &&
                     current.monster.rage >= current.hunterCount * 3,
                 message = if (defeatByRounds) {
@@ -695,7 +779,7 @@ class BattleViewModel(
                 } else {
                     "Раунд $nextRound. Ярость: ${current.monster.rage}"
                 }
-            )
+            ).withPhaseChangeDialog(show = needsDialog && finalPhase != FightPhase.DEFEAT, phase = current.monster.currentPhase)
         }
         highlightChanged(before)
         if (appliedDamageResult != null) {
@@ -715,6 +799,7 @@ class BattleViewModel(
                 isTimerRunning = false,
                 pendingDamage = 0,
                 damageInputText = "",
+                surrendered = true,
                 message = "Поражение! Вы сдались."
             )
         }

@@ -7,7 +7,7 @@
 import allure
 from pytest_check import check
 
-from campaign_tests.campaign_steps import (sheet_after_prologue, start_new_campaign, win_battle,
+from campaign_tests.campaign_steps import (open_sheet, sheet_after_prologue, start_new_campaign, win_battle,
                                            win_battle_from_sheet, win_prologue)
 from pages.campaign_sheet_page import CampaignSheetPage
 from pages.create_campaign_page import Hunter
@@ -65,11 +65,6 @@ class TestChapterRewards:
     @allure.feature("Campaign")
     @allure.story("4.6–4.7 Глава 4: задания, истечение и 2 уровень кузницы и лаборатории")
     def test_chapter4_rewards(self, driver):
-        # TODO(4.6, implementationTasks.md задача 42.1): не хватает двух проверок условий главы 4 по достижениям:
-        #  - после задания 36 окно главы 4 показывает «Получите награду 25» (достижение «Яд Пазиса»);
-        #  - после задания 5 глава 4 открывает задание 7 вместо 8 (достижение «Народ Золотых гор»).
-        #  Сейчас задания выдают «Яд пазиса» / «Народ золотых гор», а глава проверяет написание с заглавной
-        #  буквы (регистрозависимое сравнение) — условия никогда не срабатывают.
         sheet = sheet_after_prologue(driver, "Chapter4Test")
         sheet.set_chapter(4)
         chapter_rewards = win_battle_from_sheet(sheet, quest=1).accept()
@@ -93,14 +88,38 @@ class TestChapterRewards:
         with check(f"Задание 7 не открыто, истёкшее задание 1 убрано: {opened}"):
             assert 7 not in opened and 1 not in opened
 
+    @allure.feature("Campaign")
+    @allure.story("4.6 Глава 4: условия по достижениям заданий 36 и 5 (задача 42.1)")
+    def test_chapter4_achievement_conditions(self, driver):
+        sheet = sheet_after_prologue(driver, "Chapter4Achievements")
+        sheet = win_battle_from_sheet(sheet, quest=2).accept().accept()  # задание 2 в главе 2 открывает задание 5
+        sheet = win_battle_from_sheet(sheet, quest=36).accept().accept()  # «Яд Пазиса», переход к главе 4
+        chapter_rewards = win_battle_from_sheet(sheet, quest=5).accept()  # «Народ Золотых гор»
+        with check("Окно наград главы 4"):
+            assert chapter_rewards.get_chapter() == 4
+        with check("4.6 После задания 36 окно главы 4 показывает «Получите награду 25»"):
+            assert chapter_rewards.has_message("Получите награду 25")
+        with check("Условная награда главы 4: условие и результат"):
+            assert chapter_rewards.get_conditions("Условные награды:") == [
+                ("Если есть достижение «Яд Пазиса»: Получите награду 25", "Достижение есть: Получите награду 25.")
+            ]
+        with check("Условное задание главы 4: «Народ Золотых гор» → «Добавлено задание 7.»"):
+            assert (
+                "Если есть достижение «Народ Золотых гор», открыть задание 7, иначе добавить задание 8",
+                "Добавлено задание 7.",
+            ) in chapter_rewards.get_conditions()
+
+        sheet = chapter_rewards.accept()
+        opened = sheet.get_opened_quests()
+        with check(f"4.6 После задания 5 глава 4 открывает задание 7, а не 8: {opened}"):
+            assert 7 in opened and 8 not in opened
+
 
 class TestQuestRewards:
 
     @allure.feature("Campaign")
     @allure.story("5.1, 6.7 Награды за победу в Задании 1 «Память пустыни»")
     def test_quest1_victory_rewards(self, driver):
-        # TODO(implementationTasks.md задача 42.3): не хватает проверки, что выполненное победой задание 1
-        #  пропадает из списка открытых в листе (qa 57) — сейчас оно остаётся.
         rewards = win_battle_from_sheet(sheet_after_prologue(driver, "Quest1Test"), quest=1)
         with check("6.7 «Продолжить» открывает награды выбранного задания"):
             assert rewards.get_quest_title() == "Задание 1: Память пустыни"
@@ -108,10 +127,17 @@ class TestQuestRewards:
             assert rewards.get_materials() == {"Кости": 2, "Златия": 2}
         with check("5.1 Растения"):
             assert rewards.get_plants() == {"Ниллея": 2, "Тармарет": 1, "Альбалацея": 1, "Селикорния": 1}
+        with check("Условное задание: формулировка правил и результат для главы книги 1"):
+            assert rewards.get_conditions() == [
+                ("Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6", "Добавлено задание 4.")
+            ]
 
         sheet = rewards.accept().accept()
-        with check("5.9 В главе 1–2 открывается задание 4 (условное, в окне не показывается)"):
-            assert 4 in sheet.get_opened_quests()
+        opened = sheet.get_opened_quests()
+        with check("5.9 В главе книги 1–2 открывается задание 4"):
+            assert 4 in opened
+        with check(f"42.3 Выполненное победой задание 1 пропадает из списка открытых (qa 57): {opened}"):
+            assert 1 not in opened
         with check("Кости: 1 за главу 1 + 2 за задание 1"):
             assert sheet.get_resource_value("Кости") == 1 + 2
 
@@ -125,20 +151,20 @@ class TestQuestRewards:
             assert rewards.get_materials() == {"Чешуя": 2, "Иридия": 1, "Златия": 1}
         with check("Растения"):
             assert rewards.get_plants() == {"Тармарет": 2, "Альбалацея": 1, "Антемон": 1, "Селикорния": 1}
-        with check("Достижения"):
-            assert sorted(rewards.get_achievements()) == ["Народ золотых гор", "Пыль аркеума"]
+        with check("Достижения (написание как в условиях главы 4, задача 42.1)"):
+            assert sorted(rewards.get_achievements()) == ["Народ Золотых гор", "Пыль аркеума"]
 
     @allure.feature("Campaign")
     @allure.story("5.12 Достижения за Задание 36 «Чудовище «Муары»»")
     def test_quest36_achievements(self, driver):
-        # Сравнение без учёта регистра: написание «Яд пазиса» / «Яд Пазиса» расходится (задача 42.1)
-        expected = ["лагерь в джунглях", "яд пазиса"]
+        # Написание совпадает с условиями каталога глав (задача 42.1)
+        expected = ["Лагерь в джунглях", "Яд Пазиса"]
         rewards = win_battle_from_sheet(sheet_after_prologue(driver, "Quest36Test"), quest=36)
         with check("Достижения в окне наград"):
-            assert sorted(a.casefold() for a in rewards.get_achievements()) == expected
+            assert sorted(rewards.get_achievements()) == expected
         sheet = rewards.accept().accept()
         with check("Достижения в листе после принятия"):
-            assert sorted(a.casefold() for a in sheet.get_achievements()) == expected
+            assert sorted(sheet.get_achievements()) == expected
 
 
 class TestCampaignBattle:
@@ -164,14 +190,23 @@ class TestCampaignBattle:
             assert "Торамат" in prep.get_selected_boss()
 
     @allure.feature("Campaign")
-    @allure.story("6.4 Продолжить без задания")
+    @allure.story("6.4, 6.7 Продолжить без задания: победа и переход главы (qa 61, задача 42.4)")
     def test_continue_without_quest(self, driver):
-        # TODO(6.7, implementationTasks.md задача 42.4): не хватает проверки, что после победы без задания
-        #  «Принять» в окне наград открывает награды главы (qa 61). Сейчас onQuestRewardsAccept прерывается
-        #  ошибкой «У задания не указан босс».
         prep = sheet_after_prologue(driver, "NoQuest").start_battle().continue_without_quest()
         with check("Открывается подготовка к бою"):
             assert prep.is_displayed()
+
+        prep.select_boss("Рог - Торамат")
+        chapter_rewards = win_battle(prep).click_continue().accept()
+        with check("6.7 «Принять» после боя без задания открывает награды главы 2"):
+            assert chapter_rewards.get_chapter() == 2
+        sheet = chapter_rewards.accept()
+        with check("Переход к главе 3"):
+            assert sheet.get_chapter() == 3
+        with check("2 стихии «Рог» за Торамата"):
+            assert sheet.get_resource_value("Рог") == 2
+        with check("Торамат среди поверженных боссов"):
+            assert "Торамат (Рог)" in sheet.get_defeated_bosses()
 
     @allure.feature("Campaign")
     @allure.story("6.6, 6.8 Экран победы и выход в меню")
@@ -182,6 +217,13 @@ class TestCampaignBattle:
         main_page = victory.click_exit_to_menu()
         with check("6.8 «Выход в меню» возвращает в главное меню"):
             assert main_page.is_element_visible(MainPage.CAMPAIGN)
+        sheet = open_sheet(driver, "VictoryTest")
+        with check("D-13 Результат пролога не потерян: награды главы 1 применены, глава 2"):
+            assert sheet.get_chapter() == 2
+        with check("D-13 Открыты задания главы 1"):
+            assert sheet.get_opened_quests() == CHAPTER1_QUESTS
+        with check("D-13 Вираксен среди поверженных боссов"):
+            assert any(boss.startswith("Вираксен") for boss in sheet.get_defeated_bosses())
 
     @allure.feature("Campaign")
     @allure.story("6.9 Поражение в бою кампании (Задание 1)")
@@ -190,8 +232,22 @@ class TestCampaignBattle:
         defeat = prep.start_battle().surrender().confirm()
         with check("Экран поражения"):
             assert defeat.is_displayed()
+        with check("D-14 Причина поражения — «Вы сдались.»"):
+            assert defeat.is_surrender_reason_displayed()
         rewards = defeat.click_continue()
         with check("Окно наград за поражение"):
             assert rewards.is_displayed()
         with check("5.2 Поражение в задании 1 открывает задание 6"):
             assert rewards.get_opened_quests() == [6]
+
+    @allure.feature("Campaign")
+    @allure.story("D-15 Окно наград за поражение показывает достижения поражения (Задание 47)")
+    def test_defeat_rewards_show_achievements(self, driver):
+        sheet = sheet_after_prologue(driver, "FrostDefeat")
+        sheet = sheet.edit_quests().set_quest_completed(47, True).save()
+        defeat = sheet.start_battle().select_quest(47).start_battle().surrender().confirm()
+        rewards = defeat.click_continue()
+        with check("Окно наград за поражение"):
+            assert rewards.is_displayed()
+        with check("Достижение поражения «Оледенение» показано до «Принять»"):
+            assert rewards.get_achievements() == ["Оледенение"]

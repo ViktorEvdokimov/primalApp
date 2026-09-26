@@ -36,9 +36,11 @@ fun ChapterRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                     Spacer(Modifier.height(8.dp))
                 }
                 if (chapterInfo == null) {
-                    Text("Данные о главе отсутствуют.", fontSize = 14.sp)
+                    // После финального боя (R-6) вместо данных главы — сообщение о завершении кампании
+                    if (state.chapterRewardsMessage.isBlank()) Text("Данные о главе отсутствуют.", fontSize = 14.sp)
                 } else {
                     ChapterRewardsSummary(chapterInfo)
+                    ConditionOutcomesSection(state.chapterConditionOutcomes)
                 }
                 val errorText = state.error
                 if (errorText != null) {
@@ -114,10 +116,6 @@ private fun ChapterRewardsSummary(chapterInfo: com.primalapp.model.campaign.Chap
     }
     if (chapterInfo.openQuests.isNotEmpty()) {
         Text("Открываемые задания: ${chapterInfo.openQuests.sorted().joinToString(", ")}", fontSize = 13.sp)
-        Spacer(Modifier.height(4.dp))
-    }
-    if (chapterInfo.conditionalOpenQuests.isNotEmpty()) {
-        Text("Условные задания: ${chapterInfo.conditionalOpenQuests.size}", fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
     }
     if (chapterInfo.expireQuests.isNotEmpty()) {

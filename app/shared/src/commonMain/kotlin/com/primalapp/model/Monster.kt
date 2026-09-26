@@ -9,7 +9,10 @@ data class Monster(
     var damageForWound: Int? = 4,
     var healthForStanceChange: Int? = 7,
     var rage: Int = 0,
+    /** «Затвердевший»: остаток урона после нанесения ран сгорает (правила, «Затвердевший»). */
     var isHardened: Boolean = false,
+    /** «Устойчивость» стойки: при смене стойки накопленный урон не переносится (правила, «Устойчивость»). */
+    var isResilient: Boolean = false,
     var isDefeated: Boolean = false
 ) {
     val isLastPhase: Boolean get() = currentPhase >= maxPhases
