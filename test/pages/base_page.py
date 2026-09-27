@@ -15,7 +15,13 @@ class BasePage:
     def type_text(self, locator: tuple[str, str], text: str) -> None:
         element = self.wait.until(EC.element_to_be_clickable(locator))
         element.clear()
-        element.send_keys(text)
+        # Compose показывает очищенное поле только после рекомпозиции: send_keys раньше этого
+        # дописывает текст к старому значению («4» → «44»)
+        try:
+            WebDriverWait(self.driver, 3).until(lambda d: d.find_element(*locator).text == "")
+        except TimeoutException:
+            pass
+        self.driver.find_element(*locator).send_keys(text)
 
     def get_text(self, locator: tuple[str, str]) -> str:
         element = self.wait.until(EC.visibility_of_element_located(locator))
@@ -37,13 +43,14 @@ class BasePage:
         except TimeoutException:
             return False
 
-    def scroll_into_view(self, text: str, partial: bool = False, max_swipes: int = 15) -> None:
+    def scroll_into_view(self, text: str, partial: bool = False, max_swipes: int = 15, contains: bool = False) -> None:
         """Скроллит основной экран, пока элемент с текстом не станет реально видимым.
 
         В отличие от scroll_to_text не доверяет UiScrollable: Compose отдаёт узлы за пределами экрана,
         и UiScrollable считает их найденными без прокрутки. Сначала листает вниз, затем вверх.
         """
-        selector = f'new UiSelector().{"textStartsWith" if partial else "text"}("{text}")'
+        method = "textContains" if contains else ("textStartsWith" if partial else "text")
+        selector = f'new UiSelector().{method}("{text}")'
         for direction in ("down", "up"):
             previous_source = None
             for _ in range(max_swipes):

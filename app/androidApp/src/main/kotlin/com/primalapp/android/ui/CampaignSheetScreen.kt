@@ -31,6 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -142,8 +145,28 @@ fun CampaignSheetScreen(state: CampaignUiState, viewModel: CampaignViewModel) {
                         fontSize = 14.sp,
                         modifier = Modifier.weight(1f)
                     )
-                    Button(onClick = { viewModel.onToggleQuestCompleted(quest.id) }, modifier = Modifier.height(32.dp)) {
+                    Button(onClick = { viewModel.onCompleteQuest(quest.id) }, modifier = Modifier.height(32.dp)) {
                         Text("Выполнено", fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+        if (state.campaignCompletedQuests.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Выполненные:", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            state.campaignCompletedQuests.sortedBy { it.questNumber }.forEach { quest ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        questDisplayLabel(state, quest),
+                        fontSize = 14.sp,
+                        color = androidx.compose.ui.graphics.Color.Gray,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedButton(onClick = { viewModel.onUncompleteQuest(quest.id) }, modifier = Modifier.height(32.dp)) {
+                        Text("Отмена", fontSize = 12.sp)
                     }
                 }
             }
@@ -247,16 +270,24 @@ private fun QuestEditDialog(state: CampaignUiState, viewModel: CampaignViewModel
         text = {
             Column {
                 Text("Отметьте номера открытых заданий:")
+                Text("Выполненные задания отмечены серым, их изменить нельзя.", fontSize = 12.sp, color = androidx.compose.ui.graphics.Color.Gray)
                 val allNumbers = (1..49).toList()
+                val completedNumbers = state.campaignCompletedQuests.map { it.questNumber }.toSet()
                 FlowRow {
                     allNumbers.forEach { number ->
                         val checked = state.editedQuestNumbers.contains(number)
+                        val completed = number in completedNumbers
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(52.dp)) {
                             Checkbox(
                                 checked = checked,
-                                onCheckedChange = { viewModel.onToggleEditedQuest(number) }
+                                onCheckedChange = { viewModel.onToggleEditedQuest(number) },
+                                enabled = !completed
                             )
-                            Text("$number", fontSize = 12.sp)
+                            Text(
+                                "$number",
+                                fontSize = 12.sp,
+                                color = if (completed) androidx.compose.ui.graphics.Color.Gray else androidx.compose.ui.graphics.Color.Unspecified
+                            )
                         }
                     }
                 }
@@ -381,7 +412,13 @@ private fun SkillCheckbox(unlocked: Boolean, label: String, onClick: () -> Unit)
     val color = if (unlocked) Color(0xFF4CAF50) else Color(0xFFBDBDBD)
     Button(
         onClick = onClick,
-        modifier = Modifier.padding(2.dp),
+        // Состояние навыка доступно TalkBack и UI-тестам, а не только цветом (42.2)
+        modifier = Modifier
+            .padding(2.dp)
+            .semantics {
+                selected = unlocked
+                stateDescription = if (unlocked) "Открыт" else "Закрыт"
+            },
         colors = ButtonDefaults.buttonColors(containerColor = color)
     ) {
         Text(label, color = Color.White, fontSize = 14.sp)

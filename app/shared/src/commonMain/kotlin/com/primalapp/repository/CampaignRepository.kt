@@ -14,7 +14,6 @@ import com.primalapp.model.campaign.SkillBranch
 import com.primalapp.model.campaign.SkillNode
 import com.primalapp.model.campaign.TaskInfo
 import com.primalapp.model.campaign.Trophy
-import com.primalapp.domain.ExchangeResult
 
 interface CampaignRepository {
 
@@ -38,15 +37,6 @@ interface CampaignRepository {
     suspend fun getElements(hunterId: Long): Map<Element, Int>
     suspend fun updateResource(hunterId: Long, resourceType: ResourceType, resourceName: String, quantity: Int)
     suspend fun addResource(hunterId: Long, resourceType: ResourceType, resourceName: String, amount: Int)
-    suspend fun getHuntersWithResource(campaignId: Long, resourceName: String, resourceType: ResourceType): List<CampaignHunter>
-    suspend fun exchangeResources(
-        fromHunterId: Long, toHunterId: Long,
-        fromResources: List<Pair<String, Int>>,
-        toResources: List<Pair<String, Int>>,
-        resourceType: ResourceType
-    ): ExchangeResult
-
-    suspend fun advanceChapter(campaignId: Long)
     suspend fun updateChapter(campaignId: Long, chapter: Int)
     suspend fun updateForgeLevel(campaignId: Long, level: Int) {}
     suspend fun updateLabLevel(campaignId: Long, level: Int) {}

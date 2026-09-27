@@ -1,9 +1,11 @@
 package com.primalapp.model
 
 import com.primalapp.model.ext.endRound
+import com.primalapp.model.ext.healWound
 import com.primalapp.model.ext.resetPhase
 import com.primalapp.model.ext.takeDamage
 import com.primalapp.model.ext.toggleHardened
+import com.primalapp.model.ext.toggleResilient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -149,8 +151,31 @@ class MonsterTest {
     }
 
     @Test
-    fun `resetPhase обнуляет накопленный урон для затвердевшего монстра`() {
-        // Подготовка: затвердевший монстр с накопленным уроном 5
+    fun `resetPhase обнуляет накопленный урон при «Устойчивости стойки»`() {
+        // Подготовка: монстр с «Устойчивостью стойки» и накопленным уроном 5 (R-3)
+        val monster = Monster(
+            name = "Test",
+            currentHealth = 7,
+            accumulatedDamage = 5,
+            damageForWound = 4,
+            healthForStanceChange = 3,
+            currentPhase = 2,
+            isResilient = true
+        )
+
+        // Вызов проверяемого кода: смена стойки
+        monster.resetPhase(damageForWound = 6, healthForStanceChange = 2)
+
+        // Проверка: пороги обновлены, урон не переносится на новую стойку
+        assertEquals(6, monster.damageForWound)
+        assertEquals(2, monster.healthForStanceChange)
+        assertEquals(0, monster.accumulatedDamage,
+            "При «Устойчивости стойки» урон не переносится на новую стойку")
+    }
+
+    @Test
+    fun `resetPhase переносит накопленный урон для затвердевшего монстра без «Устойчивости стойки»`() {
+        // Подготовка: «Затвердевший» влияет только на остаток после раны (R-3)
         val monster = Monster(
             name = "Test",
             currentHealth = 7,
@@ -161,14 +186,81 @@ class MonsterTest {
             isHardened = true
         )
 
-        // Вызов проверяемого кода: смена стойки
+        // Вызов проверяемого кода
         monster.resetPhase(damageForWound = 6, healthForStanceChange = 2)
 
-        // Проверка: пороги обновлены, остаток урона сгорает
-        assertEquals(6, monster.damageForWound)
-        assertEquals(2, monster.healthForStanceChange)
-        assertEquals(0, monster.accumulatedDamage,
-            "Для затвердевшего монстра остаток урона должен сгорать")
+        // Проверка
+        assertEquals(5, monster.accumulatedDamage)
+    }
+
+    @Test
+    fun `toggleResilient переключает «Устойчивость стойки» независимо от «Затвердевшего»`() {
+        // Подготовка
+        val monster = Monster(name = "Test")
+
+        // Вызов проверяемого кода
+        monster.toggleResilient()
+
+        // Проверка
+        assertTrue(monster.isResilient)
+        assertFalse(monster.isHardened)
+    }
+
+    @Test
+    fun `takeDamage останавливает цикл ран на смене стойки и переносит остаток`() {
+        // Подготовка: пример книги — прочность 4, порог 7, здоровье 9 (R-2)
+        val monster = Monster(name = "Вираксен", currentHealth = 9, damageForWound = 4, healthForStanceChange = 7)
+
+        // Вызов проверяемого кода: 13 урона
+        val result = monster.takeDamage(13)
+
+        // Проверка: 2 раны, 5 урона перенесено на новую стойку
+        assertEquals(2, result.woundsInflicted)
+        assertTrue(result.phaseChanged)
+        assertEquals(7, monster.currentHealth)
+        assertEquals(5, monster.accumulatedDamage)
+        assertEquals(2, monster.currentPhase)
+    }
+
+    @Test
+    fun `healWound заживляет одну рану и не трогает накопленный урон`() {
+        // Подготовка (R-4)
+        val monster = Monster(name = "Test", currentHealth = 6, accumulatedDamage = 3, damageForWound = 4)
+
+        // Вызов проверяемого кода
+        val healed = monster.healWound()
+
+        // Проверка
+        assertTrue(healed)
+        assertEquals(7, monster.currentHealth)
+        assertEquals(3, monster.accumulatedDamage)
+    }
+
+    @Test
+    fun `healWound не поднимает здоровье выше начального`() {
+        // Подготовка
+        val monster = Monster(name = "Test", currentHealth = 10)
+
+        // Вызов проверяемого кода
+        val healed = monster.healWound()
+
+        // Проверка
+        assertFalse(healed)
+        assertEquals(10, monster.currentHealth)
+    }
+
+    @Test
+    fun `отрицательный урон больше накопленного обнуляет накопленный урон и не лечит`() {
+        // Подготовка (D-3)
+        val monster = Monster(name = "Test", currentHealth = 8, accumulatedDamage = 2, damageForWound = 4)
+
+        // Вызов проверяемого кода
+        val result = monster.takeDamage(-7)
+
+        // Проверка
+        assertEquals(0, monster.accumulatedDamage)
+        assertEquals(8, monster.currentHealth)
+        assertEquals(0, result.woundsInflicted)
     }
 
     //endregion

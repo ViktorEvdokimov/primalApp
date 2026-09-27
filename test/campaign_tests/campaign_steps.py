@@ -47,13 +47,18 @@ def win_battle(prep: BattlePreparation) -> CampaignVictoryDialog:
     victory = CampaignVictoryDialog(prep.driver)
     stance_dialog = StanceChangeDialog(prep.driver)
     battle.apply_damage_manual(WINNING_DAMAGE)
-    # У многостоечных боссов (например, Пробуждённый — 5 стоек) урон сначала вызывает смену стойки:
-    # подтверждаем предзаполненные значения новой стойки и добиваем
-    for _ in range(MAX_STANCES):
+    # Каждая смена стойки открывает «Смена стойки!» (поля — из базы боссов): подтверждаем и добиваем.
+    # После «OK» перенесённый урон может сразу вызвать следующую смену стойки или победу — поэтому
+    # урон вводится только когда окна смены стойки нет
+    for _ in range(MAX_STANCES * 2):
         if victory.is_element_visible_quick(victory.TITLE, timeout=3):
             break
         if stance_dialog.is_element_visible_quick(stance_dialog.TITLE, timeout=2):
+            # Для стойки за пределами карт босса поля пустые — пустая прочность сделала бы монстра неуязвимым
+            if not stance_dialog.get_damage_to_wound().strip().isdigit():
+                stance_dialog.set_damage_to_wound("1")
             stance_dialog.click_ok()
+            continue
         battle.apply_damage_manual(WINNING_DAMAGE)
     assert victory.is_displayed(), "Диалог победы не появился"
     return victory

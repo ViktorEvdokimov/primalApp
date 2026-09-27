@@ -6,12 +6,6 @@ import com.primalapp.database.entity.ResourceEntity
 import com.primalapp.database.entity.SkillEntity
 import com.primalapp.database.mapper.toDomain
 import com.primalapp.database.mapper.toEntity
-import com.primalapp.domain.ChapterProgression
-import com.primalapp.domain.ChapterProgressionImpl
-import com.primalapp.domain.ChapterState
-import com.primalapp.domain.ExchangeResult
-import com.primalapp.domain.ResourceExchangeValidator
-import com.primalapp.domain.ResourceExchangeValidatorImpl
 import com.primalapp.domain.SkillValidatorImpl
 import com.primalapp.model.campaign.Achievement
 import com.primalapp.model.campaign.Boss
@@ -44,8 +38,6 @@ class CampaignRepositoryImpl(
     private val chapterInfoDao get() = database.chapterInfoDao()
 
     private val skillValidator = SkillValidatorImpl()
-    private val exchangeValidator = ResourceExchangeValidatorImpl()
-    private val chapterProgression = ChapterProgressionImpl()
 
     override suspend fun getAllCampaigns(): List<Campaign> =
         campaignDao.getAllCampaignsList().map { it.toDomain() }
@@ -137,88 +129,6 @@ class CampaignRepositoryImpl(
                 )
             )
         }
-    }
-
-    override suspend fun getHuntersWithResource(campaignId: Long, resourceName: String, resourceType: ResourceType): List<CampaignHunter> {
-        val resources = resourceDao.getAlliesWithResourceList(campaignId, resourceName, resourceType.name)
-        return resources.mapNotNull { res ->
-            val entity = hunterDao.getHunter(res.hunterId) ?: return@mapNotNull null
-            entity.toDomain()
-        }
-    }
-
-    override suspend fun exchangeResources(
-        fromHunterId: Long,
-        toHunterId: Long,
-        fromResources: List<Pair<String, Int>>,
-        toResources: List<Pair<String, Int>>,
-        resourceType: ResourceType
-    ): ExchangeResult {
-        val fromMap = fromResources.toMap()
-        val toMap = toResources.toMap()
-
-        val validationResult = when (resourceType) {
-            ResourceType.MATERIAL -> {
-                val fromMat = fromMap.mapKeys { Material.valueOf(it.key) }
-                val toMat = toMap.mapKeys { Material.valueOf(it.key) }
-                exchangeValidator.canExchangeMaterials(fromMat, toMat)
-            }
-            ResourceType.PLANT -> {
-                val fromPl = fromMap.mapKeys { Plant.valueOf(it.key) }
-                val toPl = toMap.mapKeys { Plant.valueOf(it.key) }
-                exchangeValidator.canExchangePlants(fromPl, toPl)
-            }
-            ResourceType.ELEMENT -> {
-                val fromEl = fromMap.mapKeys { Element.valueOf(it.key) }
-                val toEl = toMap.mapKeys { Element.valueOf(it.key) }
-                exchangeValidator.canExchangeElements(fromEl, toEl)
-            }
-        }
-
-        if (validationResult is ExchangeResult.Invalid) return validationResult
-
-        val rtName = resourceType.name
-        for ((name, qty) in fromResources) {
-            val res = resourceDao.getResource(fromHunterId, rtName, name)
-                ?: return ExchangeResult.Invalid("У охотника нет ресурса $name")
-            if (res.quantity < qty) return ExchangeResult.Invalid("Недостаточно $name: нужно $qty, есть ${res.quantity}")
-        }
-        for ((name, qty) in toResources) {
-            val res = resourceDao.getResource(toHunterId, rtName, name)
-                ?: return ExchangeResult.Invalid("У союзника нет ресурса $name")
-            if (res.quantity < qty) return ExchangeResult.Invalid("У союзника недостаточно $name: нужно $qty, есть ${res.quantity}")
-        }
-
-        for ((name, qty) in fromResources) {
-            val res = resourceDao.getResource(fromHunterId, rtName, name)!!
-            resourceDao.updateQuantity(fromHunterId, rtName, name, res.quantity - qty)
-            addResource(toHunterId, resourceType, name, qty)
-        }
-        for ((name, qty) in toResources) {
-            val res = resourceDao.getResource(toHunterId, rtName, name)!!
-            resourceDao.updateQuantity(toHunterId, rtName, name, res.quantity - qty)
-            addResource(fromHunterId, resourceType, name, qty)
-        }
-
-        return ExchangeResult.Valid()
-    }
-
-    override suspend fun advanceChapter(campaignId: Long) {
-        val campaign = campaignDao.getCampaign(campaignId) ?: return
-        val current = ChapterState(
-            chapter = campaign.currentChapter,
-            forgeLevel = campaign.forgeLevel,
-            labLevel = campaign.labLevel
-        )
-        val next = chapterProgression.advanceChapter(current, bossDefeated = true)
-        campaignDao.updateCampaign(
-            campaign.copy(
-                currentChapter = next.chapter,
-                forgeLevel = next.forgeLevel,
-                labLevel = next.labLevel,
-                updatedAt = currentTimeMillis()
-            )
-        )
     }
 
     override suspend fun updateChapter(campaignId: Long, chapter: Int) {

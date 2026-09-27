@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.primalapp.model.campaign.ChapterDecision
 import com.primalapp.viewmodel.CampaignUiState
 import com.primalapp.viewmodel.CampaignViewModel
 
@@ -36,9 +35,11 @@ fun ChapterRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
                     Spacer(Modifier.height(8.dp))
                 }
                 if (chapterInfo == null) {
-                    Text("Данные о главе отсутствуют.", fontSize = 14.sp)
+                    // После финального боя (R-6) вместо данных главы — сообщение о завершении кампании
+                    if (state.chapterRewardsMessage.isBlank()) Text("Данные о главе отсутствуют.", fontSize = 14.sp)
                 } else {
                     ChapterRewardsSummary(chapterInfo)
+                    ConditionOutcomesSection(state.chapterConditionOutcomes)
                 }
                 val errorText = state.error
                 if (errorText != null) {
@@ -56,44 +57,12 @@ fun ChapterRewardsDialog(state: CampaignUiState, viewModel: CampaignViewModel) {
             }
         },
         dismissButton = {
-            Row {
-                if (chapterInfo != null && chapterInfo.decisions.isNotEmpty()) {
-                    chapterInfo.decisions.forEach { decision ->
-                        ChapterDecisionButtons(
-                            decision = decision,
-                            viewModel = viewModel,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                    }
-                }
-                TextButton(onClick = { viewModel.onChapterRewardsReject() }) {
-                    Text("Отклонить")
-                }
+            // Решение главы задаётся отдельным окном до наград главы (ChapterDecisionDialog)
+            TextButton(onClick = { viewModel.onChapterRewardsReject() }) {
+                Text("Отклонить")
             }
         }
     )
-}
-
-@Composable
-private fun ChapterDecisionButtons(
-    decision: ChapterDecision,
-    viewModel: CampaignViewModel,
-    modifier: Modifier = Modifier
-) {
-    Text(decision.question, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = modifier)
-    Spacer(Modifier.height(4.dp))
-    Row(modifier = modifier) {
-        decision.options.forEach { option ->
-            TextButton(
-                onClick = {
-                    val isAchievementOption = option == decision.optionForAchievement
-                    viewModel.onChapterDecisionSelected(option, if (isAchievementOption) decision.achievementOnOption else null)
-                }
-            ) {
-                Text(option)
-            }
-        }
-    }
 }
 
 @Composable
@@ -114,10 +83,6 @@ private fun ChapterRewardsSummary(chapterInfo: com.primalapp.model.campaign.Chap
     }
     if (chapterInfo.openQuests.isNotEmpty()) {
         Text("Открываемые задания: ${chapterInfo.openQuests.sorted().joinToString(", ")}", fontSize = 13.sp)
-        Spacer(Modifier.height(4.dp))
-    }
-    if (chapterInfo.conditionalOpenQuests.isNotEmpty()) {
-        Text("Условные задания: ${chapterInfo.conditionalOpenQuests.size}", fontSize = 13.sp)
         Spacer(Modifier.height(4.dp))
     }
     if (chapterInfo.expireQuests.isNotEmpty()) {

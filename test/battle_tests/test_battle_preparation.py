@@ -35,6 +35,22 @@ def test_bosses_characteristics(driver):
             assert prep.get_stance_change() == stance_change
 
 
+@allure.feature('Проверка окна "Подготовка к бою"')
+@allure.story("Под сложностью — колода карт реакций выбранного уровня")
+def test_reaction_deck_hint(driver):
+    prep = MainPage(driver).select_expedition()
+    with check("Надпись «Подготовьте колоду карт реакций:»"):
+        assert prep.is_reaction_deck_label_displayed()
+    with check("По умолчанию сложность 0 — картинка колоды 0-го уровня"):
+        assert prep.get_reaction_deck_level() == 0
+
+    prep.select_boss("Огонь - Вираксен")
+    for complexity in ("1", "2", "3", "0"):
+        prep.set_complexity(complexity)
+        with check(f"Сложность {complexity} — картинка колоды {complexity}-го уровня"):
+            assert prep.get_reaction_deck_level() == int(complexity)
+
+
 @allure.feature('Проверка обязательности поля "Количество охотников"')
 @allure.story("Без количества охотников бой не начинается")
 def test_players_count_required(driver):

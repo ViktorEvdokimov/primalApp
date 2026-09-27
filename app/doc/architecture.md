@@ -41,7 +41,7 @@
 │  ┌──────────────────────┐  ┌──────────────────────────┐ │
 │  │  Android: Compose UI  │  │  iOS: SwiftUI Views      │ │
 │  │  MainActivity.kt      │  │  ContentView.swift       │ │
-│  │  ├── PreBattleScreen  │  │                          │ │
+│  │  ├── QuickBattleHost  │  │                          │ │
 │  │  ├── BattleScreen     │  │                          │ │
 │  │  ├── PhaseChangeDialog│  │                          │ │
 │  │  ├── RageSurgeDialog  │  │                          │ │
@@ -61,6 +61,7 @@
 │  │              onQuickButtonPress, onOkPress,             ││
 │  │              onCancelPress, onUndoPress, commitDamage,  ││
 │  │              addRage, removeRage, toggleHardened,       ││
+│  │              toggleResilient, healWound,                ││
 │  │              endRound, confirmPhaseChange, resetBattle,  ││
 │  │              confirmRageSurge                            ││
 │  └────────────────────────┬─────────────────────────────┘│
@@ -71,14 +72,12 @@
 │  │  Validators & Progression (shared/commonMain)        ││
 │  │  ├── SkillValidatorImpl.kt: canUnlock,               ││
 │  │  │   getAvailableBranches                             ││
-│  │  ├── ResourceExchangeValidatorImpl.kt: 1:1 exchange   ││
-│  │  ├── ChapterProgressionImpl.kt: chapter + forge/lab   ││
-│  │  └── ExchangeResult (Valid/Invalid)                   ││
+│  │  └── AchievementNames.kt: сравнение названий          ││
 │  │                                                       ││
 │  │  Extension Functions (shared/commonMain)             ││
 │  │  ├── MonsterExt.kt: takeDamage, addRage, removeRage,  ││
 │  │  │   addRagePerHunter, endRound, toggleHardened,      ││
-│  │  │   resetPhase                                       ││
+│  │  │   toggleResilient, healWound, resetPhase           ││
 │  │  └── HunterExt.kt: takeDamage, heal, revive,          ││
 │  │      isCritical                                       ││
 │  └────────────────────────┬─────────────────────────────┘│
@@ -91,7 +90,7 @@
 │  │  ├── getHunters, addHunters                           ││
 │  │  ├── getSkills, unlockSkill                           ││
 │  │  ├── getMaterials/Plants/Elements, addResource        ││
-│  │  ├── exchangeResources, advanceChapter                ││
+│  │  ├── updateChapter, forge/lab levels                  ││
 │  │  └── saveVictory, quests, achievements, trophies      ││
 │  │                                                       ││
 │  │  Room Database (shared/commonMain)                    ││
@@ -106,6 +105,7 @@
 │  │  ├── Monster: name, currentPhase, currentHealth,      ││
 │  │  │   accumulatedDamage, damageForWound,               ││
 │  │  │   healthForStanceChange, rage, isHardened,         ││
+│  │  │   isResilient,                                     ││
 │  │  │   isDefeated, isLastPhase                          ││
 │  │  ├── Hunter: name, maxHealth, currentHealth,          ││
 │  │  │   isUnconscious, isAlive, healthPercentage         ││
@@ -209,15 +209,16 @@ BattleViewModel.onQuickButtonPress(1):
 BattleViewModel.commitDamage():
   1. timerJob?.cancel()
   2. lastSnapshot = MonsterSnapshot(...)    ← снимок для undo
-  3. val result = monster.takeDamage(11)
+  3. applyDamage(monster, 11)
         │
         ▼
 Monster.takeDamage(11):
-  → DamageResult(wounds=2, remaining=3, phaseChanged=true)
+  → DamageResult(wounds=2, remaining=3, phaseChanged=true)   ← цикл ран остановлен на смене стойки (R-2)
         │
         ▼
 commitDamage() (продолжение):
-  - phase = PHASE_II, showPhaseChangeDialog = true
+  - phase = PHASE_II, showPhaseChangeDialog = true (3 урона ждут подтверждения)
+  - поля диалога: из selectedBoss.getStance(1), если стойка известна (phaseChangeFromBossData), иначе пустые
   - inputMode = NONE, damageInputText = "", canUndo = true
   - _state.update { ... }
         │

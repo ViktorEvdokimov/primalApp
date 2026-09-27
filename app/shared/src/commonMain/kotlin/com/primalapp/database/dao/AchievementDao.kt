@@ -15,10 +15,11 @@ interface AchievementDao {
     @Query("SELECT * FROM achievements WHERE campaign_id = :campaignId")
     suspend fun getAchievementsList(campaignId: Long): List<AchievementEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /** Уже выданное кампании достижение не дублируется: вставка пропускается, возвращается -1 (D-9). */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAchievement(achievement: AchievementEntity): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAchievements(achievements: List<AchievementEntity>)
 
     @Query("UPDATE achievements SET unlocked = :unlocked WHERE campaign_id = :campaignId AND achievement_id = :achievementId")

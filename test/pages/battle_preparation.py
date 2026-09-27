@@ -18,6 +18,8 @@ class BattlePreparation(BasePage):
     DAMAGE_TO_WOUND = (AppiumBy.XPATH, '//android.widget.TextView[@text="Урон для нанесения раны на игрока (пусто = нет порога раны)"]/..')
     STANCE_CHANGE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Здоровье для смены стойки (пусто = по запросу)"]/..')
     START_BATTLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Начать бой"]')
+    REACTION_DECK_LABEL = (AppiumBy.XPATH, '//android.widget.TextView[starts-with(@text, "Подготовьте колоду карт реакций:")]')
+    REACTION_DECK_IMAGE = (AppiumBy.XPATH, '//*[starts-with(@content-desc, "Колода карт реакций, уровень ")]')
     TITLE = (AppiumBy.XPATH, '//android.widget.TextView[@text="Подготовка к бою"]')
     EXIT_TO_MENU = (AppiumBy.XPATH, '//android.widget.TextView[@text="Выход в меню"]')
 
@@ -57,6 +59,17 @@ class BattlePreparation(BasePage):
             self.scroll_to_text("Сложность")
             self.click(self.COMPLEXITY)
         self.click((AppiumBy.XPATH, f'//android.widget.TextView[@text="{complexity}"]/..'))
+
+    @allure.step("Проверить надпись «Подготовьте колоду карт реакций:»")
+    def is_reaction_deck_label_displayed(self) -> bool:
+        return self.is_element_visible(self.REACTION_DECK_LABEL)
+
+    @allure.step("Получить уровень колоды карт реакций на картинке")
+    def get_reaction_deck_level(self) -> int | None:
+        elements = self.driver.find_elements(*self.REACTION_DECK_IMAGE)
+        if not elements:
+            return None
+        return int(elements[0].get_attribute("content-desc").rsplit(" ", 1)[1])
 
     @allure.step("Установить количество охотников")
     def set_players_count(self, players_count: str) -> None:

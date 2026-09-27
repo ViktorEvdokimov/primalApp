@@ -201,6 +201,10 @@ private fun parseStringList(value: String): List<String> =
     if (value.isBlank()) emptyList()
     else value.split(RESOURCE_SEPARATOR).map { it.trim() }.filter { it.isNotEmpty() }
 
+/** Номера карт наград: seed пишет их через ',', прежний toEntity — через ';'; принимаются оба. */
+private fun parseRewardCards(value: String): List<String> =
+    value.split(LIST_SEPARATOR, RESOURCE_SEPARATOR).mapNotNull { it.trim().toIntOrNull()?.toString() }
+
 // ---------- TaskCondition ----------
 
 private fun TaskCondition.encode(): String {
@@ -322,7 +326,7 @@ return TaskInfo(
         victoryOpenQuests = parseIntList(victoryOpenQuests),
         victoryOpenQuestConditions = parseConditions(victoryOpenQuestConditions),
         victoryAchievements = parseStringList(victoryAchievements),
-        victoryRewardCards = parseIntList(victoryRewardCards).map { it.toString() },
+        victoryRewardCards = parseRewardCards(victoryRewardCards),
         victorySpecial = victorySpecial,
         defeatOpenQuests = parseIntList(defeatOpenQuests),
         defeatOpenQuestConditions = parseConditions(defeatOpenQuestConditions),
@@ -340,7 +344,7 @@ fun TaskInfo.toEntity() = TaskInfoEntity(
     victoryOpenQuests = encodeIntList(victoryOpenQuests),
     victoryOpenQuestConditions = encodeConditions(victoryOpenQuestConditions),
     victoryAchievements = encodeStringList(victoryAchievements),
-    victoryRewardCards = encodeStringList(victoryRewardCards),
+    victoryRewardCards = victoryRewardCards.joinToString(LIST_SEPARATOR),
     victorySpecial = victorySpecial,
     defeatOpenQuests = encodeIntList(defeatOpenQuests),
     defeatOpenQuestConditions = encodeConditions(defeatOpenQuestConditions),
@@ -362,6 +366,9 @@ fun ChapterInfoEntity.toDomain(): ChapterInfo {
         forgeUpgrade = forgeUpgrade,
         labUpgrade = labUpgrade,
         hunterKitUpgrade = hunterKitUpgrade,
+        hunterKitUpgradeAchievement = hunterKitUpgradeAchievement.ifBlank { null },
+        expireAllQuests = expireAllQuests,
+        finalBossName = finalBoss.ifBlank { null },
         decisions = parseDecisions(decisions),
         messages = parseStringList(messages),
         conditionalMessages = parseConditionalMessages(conditionalMessages)
@@ -378,6 +385,9 @@ fun ChapterInfo.toEntity() = ChapterInfoEntity(
     forgeUpgrade = forgeUpgrade,
     labUpgrade = labUpgrade,
     hunterKitUpgrade = hunterKitUpgrade,
+    hunterKitUpgradeAchievement = hunterKitUpgradeAchievement.orEmpty(),
+    expireAllQuests = expireAllQuests,
+    finalBoss = finalBossName.orEmpty(),
     decisions = encodeDecisions(decisions),
     messages = encodeStringList(messages),
     conditionalMessages = encodeConditionalMessages(conditionalMessages)

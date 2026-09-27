@@ -32,18 +32,4 @@ interface ResourceDao {
 
     @Query("DELETE FROM resources WHERE hunter_id = :hunterId")
     suspend fun deleteResourcesByHunter(hunterId: Long)
-
-    @Query("""
-        SELECT r.* FROM resources r
-        INNER JOIN hunters h ON r.hunter_id = h.id
-        WHERE h.campaign_id = :campaignId AND r.resource_name = :resourceName AND r.resource_type = :resourceType AND r.quantity > 0
-    """)
-    fun getAlliesWithResource(campaignId: Long, resourceName: String, resourceType: String): Flow<List<ResourceEntity>>
-
-    @Query("""
-        SELECT r.* FROM resources r
-        INNER JOIN hunters h ON r.hunter_id = h.id
-        WHERE h.campaign_id = :campaignId AND r.resource_name = :resourceName AND r.resource_type = :resourceType AND r.quantity > 0
-    """)
-    suspend fun getAlliesWithResourceList(campaignId: Long, resourceName: String, resourceType: String): List<ResourceEntity>
 }
