@@ -1,0 +1,218 @@
+# Боссы и их стойки по уровням враждебности (0–3). Перенос seedBosses() из
+# app/shared/src/commonMain/kotlin/com/primalapp/database/PrimalDatabase.kt (doc/data-model.md §4.2).
+# Стойка: t — прочность за охотника (~ — нет порога раны: урон только копится);
+#         change — здоровье, при котором монстр переходит на следующую стойку,
+#                  FINAL — последняя стойка, ON_DEMAND — смена кнопкой «Сменить стойку».
+# Порядок списка — как в app: по названию стихии, затем по имени; Пробуждённый — последним.
+
+- code: KOROVON
+  name: Коровон
+  element: CORAL
+  sortOrder: 1
+  stances:
+    0: [{t: 2, change: 6}, {t: ~, change: ON_DEMAND}, {t: 4, change: FINAL}]
+    1: [{t: 6, change: 6}, {t: ~, change: ON_DEMAND}, {t: 8, change: FINAL}]
+    2: [{t: 13, change: 6}, {t: ~, change: ON_DEMAND}, {t: 16, change: FINAL}]
+    3: [{t: 20, change: 6}, {t: ~, change: ON_DEMAND}, {t: 25, change: FINAL}]
+- code: ORUXEN
+  name: Оруксен
+  element: CORAL
+  sortOrder: 2
+  stances:
+    0: [{t: 2, change: 6}, {t: 3, change: 3}, {t: 4, change: FINAL}]
+    1: [{t: 6, change: 6}, {t: 7, change: 3}, {t: 8, change: FINAL}]
+    2: [{t: 10, change: 6}, {t: 15, change: 3}, {t: 20, change: FINAL}]
+    3: [{t: 20, change: 6}, {t: 22, change: 3}, {t: 26, change: FINAL}]
+- code: MORKRAAS
+  name: Моркраас
+  element: CRYSTAL
+  sortOrder: 3
+  stances:
+    0: [{t: 5, change: 6}, {t: 3, change: 3}, {t: 2, change: FINAL}]
+    1: [{t: 10, change: 6}, {t: 8, change: 3}, {t: 6, change: FINAL}]
+    2: [{t: 20, change: 6}, {t: 16, change: 3}, {t: 14, change: FINAL}]
+    3: [{t: 30, change: 6}, {t: 25, change: 6}, {t: 20, change: FINAL}]
+- code: FELAXIR
+  name: Фелаксир
+  element: CRYSTAL
+  sortOrder: 4
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 3}, {t: 4, change: FINAL}]
+    1: [{t: 6, change: 7}, {t: 7, change: 3}, {t: 9, change: FINAL}]
+    2: [{t: 12, change: 7}, {t: 14, change: 4}, {t: 20, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 25, change: 4}, {t: 28, change: FINAL}]
+- code: MUMARAAK
+  name: Мумараак
+  element: ICE
+  expansion: ICE
+  sortOrder: 5
+  stances:
+    0: [{t: 3, change: 7}, {t: 4, change: 4}, {t: 5, change: FINAL}]
+    1: [{t: 6, change: 7}, {t: 8, change: 4}, {t: 10, change: FINAL}]
+    2: [{t: 12, change: 7}, {t: 18, change: 4}, {t: 20, change: FINAL}]
+    3: [{t: 20, change: 7}, {t: 25, change: 4}, {t: 30, change: FINAL}]
+- code: SIRKAAJ
+  name: Сиркаадж
+  element: ICE
+  expansion: ICE
+  sortOrder: 6
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 2}, {t: 3, change: FINAL}]
+    1: [{t: 5, change: 7}, {t: 6, change: 2}, {t: 9, change: FINAL}]
+    2: [{t: 13, change: 7}, {t: 16, change: 3}, {t: 20, change: FINAL}]
+    3: [{t: 22, change: 7}, {t: 25, change: 3}, {t: 28, change: FINAL}]
+- code: TARRAGUA
+  name: Таррагуа
+  element: METAL
+  sortOrder: 7
+  stances:
+    0: [{t: 2, change: 6}, {t: 3, change: 3}, {t: 4, change: FINAL}]
+    1: [{t: 6, change: 6}, {t: 7, change: 3}, {t: 8, change: FINAL}]
+    2: [{t: 10, change: 6}, {t: 14, change: 3}, {t: 18, change: FINAL}]
+    3: [{t: 16, change: 6}, {t: 18, change: 3}, {t: 22, change: FINAL}]
+- code: YUROM
+  name: Юром
+  element: METAL
+  sortOrder: 8
+  stances:
+    0: [{t: 2, change: 6}, {t: 2, change: 3}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 6}, {t: 6, change: 3}, {t: 7, change: FINAL}]
+    2: [{t: 9, change: 6}, {t: 14, change: 3}, {t: 17, change: FINAL}]
+    3: [{t: 15, change: 7}, {t: 20, change: 3}, {t: 25, change: FINAL}]
+- code: ZEKALIT
+  name: Зекалит
+  element: LIGHTNING
+  sortOrder: 9
+  stances:
+    0: [{t: 2, change: 6}, {t: 3, change: 2}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 6}, {t: 7, change: 2}, {t: 8, change: FINAL}]
+    2: [{t: 10, change: 6}, {t: 16, change: 2}, {t: 18, change: FINAL}]
+    3: [{t: 15, change: 6}, {t: 24, change: 2}, {t: 28, change: FINAL}]
+- code: ZEKAT
+  name: Зекат
+  element: LIGHTNING
+  sortOrder: 10
+  stances:
+    0: [{t: 2, change: 6}, {t: 3, change: 2}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 6}, {t: 7, change: 2}, {t: 8, change: FINAL}]
+    2: [{t: 10, change: 6}, {t: 16, change: 2}, {t: 18, change: FINAL}]
+    3: [{t: 15, change: 6}, {t: 24, change: 2}, {t: 28, change: FINAL}]
+- code: IEKOROS
+  name: Иекорос
+  element: LIGHTNING
+  sortOrder: 11
+  stances:
+    0: [{t: 2, change: ON_DEMAND}, {t: 4, change: ON_DEMAND}, {t: 5, change: ON_DEMAND}]
+    1: [{t: 7, change: ON_DEMAND}, {t: 8, change: ON_DEMAND}, {t: 12, change: ON_DEMAND}]
+    2: [{t: 12, change: ON_DEMAND}, {t: 17, change: ON_DEMAND}, {t: 22, change: ON_DEMAND}]
+    3: [{t: 20, change: ON_DEMAND}, {t: 25, change: ON_DEMAND}, {t: 30, change: ON_DEMAND}]
+- code: OZEV
+  name: Озев
+  element: LIGHTNING
+  sortOrder: 12
+  stances:
+    0: [{t: 3, change: 8}, {t: 2, change: 3}, {t: 2, change: FINAL}]
+    1: [{t: 7, change: 7}, {t: 5, change: 3}, {t: 3, change: FINAL}]
+    2: [{t: 16, change: 7}, {t: 12, change: 3}, {t: 9, change: FINAL}]
+    3: [{t: 25, change: 7}, {t: 18, change: 3}, {t: 15, change: FINAL}]
+- code: VIRAXEN
+  name: Вираксен
+  element: FIRE
+  sortOrder: 13
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 3}, {t: 4, change: FINAL}]
+    1: [{t: 5, change: 7}, {t: 7, change: 3}, {t: 10, change: FINAL}]
+    2: [{t: 10, change: 7}, {t: 15, change: 3}, {t: 20, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 24, change: 3}, {t: 30, change: FINAL}]
+- code: TARASK
+  name: Тараск
+  element: FIRE
+  sortOrder: 14
+  stances:
+    0: [{t: 5, change: 8}, {t: 3, change: 4}, {t: 3, change: FINAL}]
+    1: [{t: 9, change: 8}, {t: 8, change: 4}, {t: 7, change: FINAL}]
+    2: [{t: 20, change: 8}, {t: 16, change: 4}, {t: 14, change: FINAL}]
+    3: [{t: 28, change: 8}, {t: 25, change: 4}, {t: 22, change: FINAL}]
+- code: KHARJA
+  name: Харджа
+  element: FIRE
+  sortOrder: 15
+  stances:
+    0: [{t: 2, change: 6}, {t: 3, change: 2}, {t: 5, change: FINAL}]
+    1: [{t: 5, change: 6}, {t: 7, change: 2}, {t: 12, change: FINAL}]
+    2: [{t: 10, change: 7}, {t: 16, change: 2}, {t: 20, change: FINAL}]
+    3: [{t: 15, change: 7}, {t: 25, change: 2}, {t: 30, change: FINAL}]
+- code: XITEROS
+  name: Кситерос
+  element: FEATHER
+  expansion: FEATHER
+  sortOrder: 16
+  stances:
+    0: [{t: 3, change: 7}, {t: 4, change: ON_DEMAND}, {t: 5, change: FINAL}]
+    1: [{t: 7, change: 7}, {t: 8, change: ON_DEMAND}, {t: 12, change: FINAL}]
+    2: [{t: 15, change: 7}, {t: 20, change: ON_DEMAND}, {t: 25, change: FINAL}]
+    3: [{t: 20, change: 7}, {t: 25, change: ON_DEMAND}, {t: 35, change: FINAL}]
+- code: NAGARJAS
+  name: Нагарджас
+  element: FEATHER
+  expansion: FEATHER
+  sortOrder: 17
+  stances:
+    0: [{t: 4, change: 7}, {t: 4, change: 4}, {t: 5, change: FINAL}]
+    1: [{t: 5, change: 7}, {t: 6, change: 4}, {t: 7, change: FINAL}]
+    2: [{t: 11, change: 7}, {t: 15, change: 4}, {t: 16, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 22, change: 4}, {t: 28, change: FINAL}]
+- code: PAZIS
+  name: Пазис
+  element: FEATHER
+  expansion: FEATHER
+  sortOrder: 18
+  stances:
+    0: [{t: 2, change: 8}, {t: 2, change: 5}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 7}, {t: 5, change: 4}, {t: 7, change: FINAL}]
+    2: [{t: 10, change: 8}, {t: 13, change: 5}, {t: 17, change: FINAL}]
+    3: [{t: 18, change: 8}, {t: 20, change: 5}, {t: 25, change: FINAL}]
+- code: DIGORAX
+  name: Дигоракс
+  element: HORN
+  sortOrder: 19
+  stances:
+    0: [{t: 2, change: 8}, {t: 3, change: 4}, {t: 4, change: FINAL}]
+    1: [{t: 5, change: 8}, {t: 7, change: 4}, {t: 10, change: FINAL}]
+    2: [{t: 9, change: 8}, {t: 14, change: 4}, {t: 18, change: FINAL}]
+    3: [{t: 15, change: 8}, {t: 20, change: 4}, {t: 25, change: FINAL}]
+- code: TORAMAT
+  name: Торамат
+  element: HORN
+  sortOrder: 20
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 4}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 7}, {t: 6, change: 4}, {t: 9, change: FINAL}]
+    2: [{t: 10, change: 7}, {t: 16, change: 4}, {t: 20, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 25, change: 4}, {t: 30, change: FINAL}]
+- code: GIDAR
+  name: Гидар
+  element: POISON
+  expansion: POISON
+  sortOrder: 21
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 4}, {t: 3, change: FINAL}]
+    1: [{t: 4, change: 7}, {t: 6, change: 4}, {t: 8, change: FINAL}]
+    2: [{t: 12, change: 7}, {t: 15, change: 4}, {t: 18, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 22, change: 4}, {t: 28, change: FINAL}]
+- code: REIKAL
+  name: Рейкал
+  element: POISON
+  expansion: POISON
+  sortOrder: 22
+  stances:
+    0: [{t: 2, change: 7}, {t: 3, change: 3}, {t: 5, change: FINAL}]
+    1: [{t: 6, change: 7}, {t: 8, change: 3}, {t: 10, change: FINAL}]
+    2: [{t: 12, change: 7}, {t: 16, change: 3}, {t: 20, change: FINAL}]
+    3: [{t: 18, change: 7}, {t: 22, change: 4}, {t: 30, change: FINAL}]
+- code: AWAKENED
+  name: Пробуждённый
+  element: ~
+  sortOrder: 23
+  stances:
+    3: [{t: 30, change: 8}, {t: 40, change: 6}, {t: 50, change: 4}, {t: 60, change: 2}, {t: 60, change: FINAL}]

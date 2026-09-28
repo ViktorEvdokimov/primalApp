@@ -1,0 +1,27 @@
+# Настройки окружения с секретами
+.env
+
+# Бэкенд
+.gradle/
+build/
+backend/out/
+
+# Фронтенд
+node_modules/
+dist/
+dev-dist/
+coverage/
+
+# E2E
+.venv/
+__pycache__/
+.pytest_cache/
+allure-results/
+allure-report/
+
+# IDE и ОС
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

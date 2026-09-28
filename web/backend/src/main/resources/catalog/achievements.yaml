@@ -1,0 +1,27 @@
+# Достижения кампании: код (транслитерация названия) и каноническое написание (app, задача 42.1).
+# Источник — условия и награды app/shared/.../TaskInfoSeed.kt и ChapterInfoSeed.kt.
+# Код не меняется после выпуска: на него ссылаются кампании и эффекты заданий и глав.
+
+- { code: EKHO_VODOPADA, name: Эхо водопада }
+- { code: FOLIANT_O_CHUDOVISHCHAKH, name: Фолиант о чудовищах }
+- { code: GERBARIY, name: Гербарий }
+- { code: GOLOS_VOLTYARA, name: Голос Волтьяра }
+- { code: GORYASHCHIY_UGOLEK, name: Горящий уголёк }
+- { code: GRIBNOY_LES, name: Грибной лес }
+- { code: KHOZYAYKA_FONARYA, name: Хозяйка фонаря }
+- { code: KOPE_DRAKONOBORTSA, name: Копьё драконоборца }
+- { code: KOSTI_DRAKONA, name: Кости дракона }
+- { code: LAGER_V_DZHUNGLYAKH, name: Лагерь в джунглях }
+- { code: NAROD_ZOLOTYKH_GOR, name: Народ Золотых гор }
+- { code: NEOPLACHENNYY_DOLG, name: Неоплаченный долг }
+- { code: OLEDENENIE, name: Оледенение }
+- { code: OZERO_NEBESNOGO, name: Озеро Небесного }
+- { code: PYL_ARKEUMA, name: Пыль аркеума }
+- { code: TAYNY_PROSHLOGO, name: Тайны прошлого }
+- { code: TRI_KOPYA, name: Три копья }
+- { code: UPAVSHAYA_ZVEZDA, name: Упавшая звезда }
+- { code: UROBBOROS, name: Уробборос }
+- { code: YAD_PAZISA, name: Яд Пазиса }
+- { code: ZATISHE, name: Затишье }
+- { code: ZMEINAYA_KROV, name: Змеиная кровь }
+- { code: ZVEZDA_DRAKONA, name: Звезда дракона }

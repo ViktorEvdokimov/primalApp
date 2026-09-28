@@ -1,0 +1,78 @@
+# Настройки берутся из переменных окружения (.env, doc/setup.md, раздел 5).
+# Значения по умолчанию подходят для локальной разработки с docker-compose.dev.yml.
+spring:
+  application:
+    name: primal-backend
+  autoconfigure:
+    # Паролей нет: пользователь по умолчанию со сгенерированным паролем не нужен (вход — по коду, задача 3.1)
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/primal}
+    username: ${DB_USER:primal}
+    password: ${DB_PASSWORD:primal}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migration
+  web:
+    resources:
+      add-mappings: false
+  mvc:
+    problemdetails:
+      enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: 8080
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      base-path: /api/actuator
+      exposure:
+        include: health
+  health:
+    mail:
+      enabled: false   # недоступный SMTP не должен «ронять» сайт
+
+springdoc:
+  default-produces-media-type: application/json
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+primal:
+  public-url: ${PUBLIC_URL:http://localhost:8088}
+  otp:
+    pepper: ${PRIMAL_OTP_PEPPER:local-dev-otp-pepper-change-me}
+  share-link:
+    key: ${PRIMAL_SHARE_LINK_KEY:local-dev-share-key-change-me}
+  campaign:
+    max-per-user: 10
+    hunters:
+      min: 2
+      max: 5
+    battle-warning-hours: 24
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    tls: ${SMTP_TLS:none}          # none | starttls | ssl
+    from: ${MAIL_FROM:Primal <no-reply@primal.local>}
+  rate-limit:
+    codes-per-ip-hour: ${PRIMAL_CODES_PER_IP_HOUR:20}
+    verifications-per-ip-hour: ${PRIMAL_VERIFICATIONS_PER_IP_HOUR:60}
+    joins-per-ip-hour: ${PRIMAL_JOINS_PER_IP_HOUR:30}
+
+logging:
+  pattern:
+    # Номер запроса (X-Request-Id, RequestIdFilter) в каждой строке лога запроса
+    level: "%5p [%X{requestId:-}]"

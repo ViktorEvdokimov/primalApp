@@ -1,0 +1,226 @@
+package com.primal.catalog;
+
+import static com.primal.catalog.AppSeeds.column;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
+
+import com.primal.rules.effects.Condition;
+import com.primal.rules.effects.Effect;
+import com.primal.rules.model.Expansion;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeSet;
+import java.util.stream.IntStream;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+@DisplayName("Каталог: задания")
+class QuestCatalogTest {
+
+    private static final Catalog CATALOG = CatalogLoader.load();
+
+    @Nested
+    @DisplayName("Состав")
+    class Contents {
+
+        @Test
+        @DisplayName("49 заданий с номерами 1–49")
+        void allQuests() {
+            // вызов
+            List<Integer> numbers = CATALOG.quests().stream().map(QuestDef::number).toList();
+
+            // проверка
+            assertThat(numbers).isEqualTo(IntStream.rangeClosed(1, 49).boxed().toList());
+        }
+
+        @Test
+        @DisplayName("задание 25: вложенное условие — в главе 8 задание 34, иначе 27 (при «Горящем угольке»)")
+        void quest25NestedCondition() {
+            // вызов
+            Effect.Conditional rule = conditionals(quest(25).victory()).getFirst();
+
+            // проверка
+            assertThat(rule.condition()).isEqualTo(new Condition.HasAchievement("GORYASHCHIY_UGOLEK"));
+            Effect.Conditional nested = (Effect.Conditional) rule.then().getFirst();
+            assertThat(nested.condition()).isEqualTo(new Condition.ChapterIn(List.of(8)));
+            assertThat(nested.then()).containsExactly(new Effect.OpenQuest(34, null));
+            assertThat(nested.otherwise()).containsExactly(new Effect.OpenQuest(27, null));
+        }
+
+        @Test
+        @DisplayName("задание 42: задание 45 открывается, только если задание 18 ещё не доступно")
+        void quest42QuestNotAvailable() {
+            // вызов
+            Effect.Conditional rule = conditionals(quest(42).victory()).getFirst();
+
+            // проверка
+            assertThat(rule.condition()).isEqualTo(new Condition.Not(new Condition.QuestAvailable(18)));
+            assertThat(rule.then()).containsExactly(new Effect.OpenQuest(45, null));
+        }
+
+        @Test
+        @DisplayName("задания 47 и 48: при поражении выдаётся «Оледенение» (R-7)")
+        void defeatAchievements() {
+            // вызов и проверка
+            for (int number : new int[] {47, 48}) {
+                assertThat(quest(number).defeat()).contains(new Effect.GrantAchievement("OLEDENENIE", null));
+            }
+        }
+
+        @Test
+        @DisplayName("дополнение задания совпадает с дополнением его босса")
+        void expansionFollowsBoss() {
+            // вызов и проверка
+            for (QuestDef quest : CATALOG.quests()) {
+                Expansion bossExpansion = CATALOG.boss(quest.bossCode()).orElseThrow().expansion();
+                assertThat(quest.expansion()).as("задание " + quest.number()).isEqualTo(bossExpansion);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Паритет с TaskInfoSeed.kt мобильного приложения")
+    class Parity {
+
+        @Test
+        @DisplayName("босс, ресурсы, карты наград, открываемые задания и достижения совпадают у всех заданий")
+        void unconditionalRewards() {
+            // подготовка
+            Optional<List<List<String>>> seed = AppSeeds.taskRows();
+            assumeTrue(seed.isPresent(), "исходники app рядом с web/");
+
+            // вызов и проверка
+            for (List<String> row : seed.get()) {
+                QuestDef quest = quest(Integer.parseInt(row.get(0)));
+                String where = "задание " + quest.number();
+                assertThat(quest.name()).as(where).isEqualTo(row.get(1));
+                assertThat(CATALOG.boss(quest.bossCode()).orElseThrow().name()).as(where).isEqualTo(row.get(2));
+                assertThat(resources(quest.victory())).as(where + ": ресурсы")
+                        .isEqualTo(seedResources(row.get(4), row.get(5)));
+                assertThat(topLevel(quest.victory(), Effect.RewardCards.class).stream().flatMap(c -> c.cards().stream()).toList())
+                        .as(where + ": карты наград").isEqualTo(split(row.get(9)));
+                assertThat(openQuests(quest.victory())).as(where + ": задания победы").isEqualTo(numbers(row.get(6)));
+                assertThat(achievementNames(quest.victory())).as(where + ": достижения победы").isEqualTo(split(row.get(8)));
+                assertThat(topLevel(quest.victory(), Effect.Message.class).stream().map(Effect.Message::text).toList())
+                        .as(where + ": особая награда").isEqualTo(split(row.get(10)));
+                assertThat(openQuests(quest.defeat())).as(where + ": задания поражения").isEqualTo(numbers(row.get(11)));
+                assertThat(achievementNames(quest.defeat())).as(where + ": достижения поражения")
+                        .isEqualTo(split(column(row, 13)));
+            }
+        }
+
+        @Test
+        @DisplayName("условия открывают те же задания и выдают те же достижения, что в app")
+        void conditionsHaveSameTargets() {
+            // подготовка
+            Optional<List<List<String>>> seed = AppSeeds.taskRows();
+            assumeTrue(seed.isPresent(), "исходники app рядом с web/");
+
+            // вызов и проверка
+            for (List<String> row : seed.get()) {
+                QuestDef quest = quest(Integer.parseInt(row.get(0)));
+                assertThat(conditionTargets(quest.victory())).as("задание " + quest.number() + ", победа")
+                        .isEqualTo(seedConditionTargets(row.get(7)));
+                assertThat(conditionTargets(quest.defeat())).as("задание " + quest.number() + ", поражение")
+                        .isEqualTo(seedConditionTargets(row.get(12)));
+            }
+        }
+    }
+
+    private static QuestDef quest(int number) {
+        return CATALOG.quest(number).orElseThrow();
+    }
+
+    static List<Effect.Conditional> conditionals(List<Effect> effects) {
+        return topLevel(effects, Effect.Conditional.class);
+    }
+
+    static <T extends Effect> List<T> topLevel(List<Effect> effects, Class<T> type) {
+        return effects.stream().filter(type::isInstance).map(type::cast).toList();
+    }
+
+    private static Map<String, Integer> resources(List<Effect> effects) {
+        Map<String, Integer> items = new LinkedHashMap<>();
+        topLevel(effects, Effect.Resources.class).forEach(r -> r.items().forEach((k, v) -> items.put(k.name(), v)));
+        return items;
+    }
+
+    private static Map<String, Integer> seedResources(String... columns) {
+        Map<String, Integer> items = new LinkedHashMap<>();
+        for (String column : columns) {
+            for (String part : split(column)) {
+                String[] pair = part.split(":");
+                items.put(pair[0].trim(), Integer.parseInt(pair[1].trim()));
+            }
+        }
+        return items;
+    }
+
+    private static List<Integer> openQuests(List<Effect> effects) {
+        return topLevel(effects, Effect.OpenQuest.class).stream().map(Effect.OpenQuest::quest).toList();
+    }
+
+    private static List<String> achievementNames(List<Effect> effects) {
+        return topLevel(effects, Effect.GrantAchievement.class).stream()
+                .map(grant -> CATALOG.achievement(grant.achievement()).orElseThrow().name()).toList();
+    }
+
+    /** Задания и достижения, которые могут появиться из условий (включая вложенные). */
+    private static TreeSet<String> conditionTargets(List<Effect> effects) {
+        TreeSet<String> targets = new TreeSet<>();
+        for (Effect.Conditional conditional : conditionals(effects)) {
+            collect(conditional, targets);
+        }
+        return targets;
+    }
+
+    private static void collect(Effect effect, TreeSet<String> targets) {
+        switch (effect) {
+            case Effect.OpenQuest open -> targets.add("задание " + open.quest());
+            case Effect.GrantAchievement grant -> targets.add(CATALOG.achievement(grant.achievement()).orElseThrow().name());
+            case Effect.Conditional conditional -> {
+                conditional.then().forEach(e -> collect(e, targets));
+                conditional.otherwise().forEach(e -> collect(e, targets));
+            }
+            default -> {
+            }
+        }
+    }
+
+    /** Цели условий app: {@code kind|achievement|chapterSet|quest|else|rewardAchievement}. */
+    private static TreeSet<String> seedConditionTargets(String conditions) {
+        TreeSet<String> targets = new TreeSet<>();
+        for (String condition : split(conditions)) {
+            String[] parts = Arrays.copyOf(condition.split("\\|", -1), 6);
+            for (int index : new int[] {3, 4}) {
+                if (parts[index] != null && !parts[index].isBlank()) {
+                    targets.add("задание " + parts[index].trim());
+                }
+            }
+            if (parts[5] != null && !parts[5].isBlank()) {
+                targets.add(parts[5].trim());
+            }
+        }
+        return targets;
+    }
+
+    private static List<Integer> numbers(String column) {
+        return split(column).stream().map(Integer::parseInt).toList();
+    }
+
+    /** Список из колонки seed: элементы через «;» или «,». */
+    private static List<String> split(String column) {
+        List<String> items = new ArrayList<>();
+        for (String part : column.split("[;,]")) {
+            if (!part.isBlank()) {
+                items.add(part.trim());
+            }
+        }
+        return items;
+    }
+}

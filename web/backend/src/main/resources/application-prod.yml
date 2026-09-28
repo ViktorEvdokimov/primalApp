@@ -1,0 +1,7 @@
+# Профиль prod — сайт в Docker на сервере (docker-compose.yml, SPRING_PROFILES_ACTIVE=prod).
+# Логи — JSON (Elastic Common Schema) в консоль контейнера: `docker compose logs backend`; поле
+# requestId — номер запроса из заголовка X-Request-Id (RequestIdFilter).
+logging:
+  structured:
+    format:
+      console: ecs

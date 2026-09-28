@@ -1,0 +1,51 @@
+# Бэкенд сайта (web/backend): сборка и все тесты — модульные, интеграционные (Testcontainers), ArchUnit.
+# Интеграционный тест сохраняет контракт API в build/openapi.json — он публикуется артефактом.
+name: web-backend
+
+on:
+  push:
+    paths: ['web/backend/**', '.github/workflows/web-backend.yml']
+  pull_request:
+    paths: ['web/backend/**', '.github/workflows/web-backend.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Testcontainers поднимает PostgreSQL 17 в Docker раннера ubuntu-latest
+      - name: Сборка и тесты
+        run: chmod +x gradlew && ./gradlew build --no-daemon
+
+      - name: Отчёты тестов
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: web/backend/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Контракт API
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: web/backend/build/openapi.json

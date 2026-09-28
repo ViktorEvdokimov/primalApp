@@ -1,0 +1,29 @@
+# Адрес сайта: локально ":80" (HTTP), на сервере — домен, и Caddy сам получает HTTPS-сертификат
+# (doc/setup.md). Запросы /api/* уходят в бэкенд, остальное — статика SPA с откатом на index.html.
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	# Заголовки безопасности (задача 7.3). HSTS браузеры учитывают только по HTTPS — локально он безвреден
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		Content-Security-Policy "frame-ancestors 'none'"
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		root * /srv
+		@assets path /assets/*
+		@pages not path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header @pages Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

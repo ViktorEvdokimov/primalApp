@@ -1,0 +1,15 @@
+# Профиль разработки: бэкенд из IDE, фронтенд — Vite на :5173 (doc/setup.md, раздел 4).
+primal:
+  public-url: ${PUBLIC_URL:http://localhost:5173}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    csrf:
+      enabled: true       # Swagger UI передаёт cookie XSRF-TOKEN в заголовке X-XSRF-TOKEN
+
+logging:
+  level:
+    com.primal: debug

@@ -1,0 +1,12 @@
+# Все текстовые файлы — с окончаниями строк LF, иначе gradlew и *.sh, выгруженные на Windows,
+# ломают сборку Docker-образов («/bin/sh^M: bad interpreter»).
+* text=auto eol=lf
+
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.jar  binary
+*.woff2 binary

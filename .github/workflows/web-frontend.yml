@@ -1,0 +1,82 @@
+# Фронтенд сайта (web/frontend): линтер (в том числе границы src/domain), типы, тесты, сборка.
+# Отдельно — клиент API: он перегенерируется из контракта бэкенда и должен совпасть с закоммиченным.
+name: web-frontend
+
+on:
+  push:
+    paths: ['web/frontend/**', 'web/backend/src/main/**', '.github/workflows/web-frontend.yml']
+  pull_request:
+    paths: ['web/frontend/**', 'web/backend/src/main/**', '.github/workflows/web-frontend.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      - run: npm ci
+      - name: Линтер
+        run: npm run lint
+      - name: Типы
+        run: npm run typecheck
+      - name: Тесты
+        run: npm test
+      - name: Сборка
+        run: npm run build
+
+  api-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Контракт — из того же интеграционного теста, что и в web-backend (build/openapi.json)
+      - name: Контракт API
+        working-directory: web/backend
+        run: ./gradlew test --no-daemon --tests com.primal.common.api.OpenApiContractIT
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/frontend/package-lock.json
+
+      - name: Перегенерировать клиент
+        working-directory: web/frontend
+        env:
+          OPENAPI: ../backend/build/openapi.json
+        run: |
+          npm ci
+          npm run api:generate
+
+      - name: Клиент совпадает с закоммиченным
+        run: |
+          if ! git diff --exit-code -- web/frontend/src/api/generated \
+             || [ -n "$(git status --porcelain -- web/frontend/src/api/generated)" ]; then
+            echo "::error::Клиент API устарел: запустите бэкенд (профиль dev) и npm run api:generate (doc/setup.md, раздел 4)"
+            exit 1
+          fi

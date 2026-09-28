@@ -1,0 +1,103 @@
+# Главы кампании (1–11): инструкции этапа сюжета на языке эффектов (doc/data-model.md §4.3–4.5).
+# Нумерация — по книге кампании: глава 1 применяется после победы в «Прологе» (глава 0).
+# Перенос app/shared/.../ChapterInfoSeed.kt и doc/compainInfo.md (C-8, C-9, R-6).
+# Задания из дополнений помечены expansion (в первой версии пометка на расчёт не влияет).
+
+- chapter: 1
+  effects:
+    - resources: { BONES: 1, SCALES: 1, BLOOD: 2, ALBALACEA: 1, ANTHEMON: 1, MELLIS: 1, NILLEA: 2 }
+    - openQuest: 1
+    - openQuest: 2
+    - { openQuest: 36, expansion: FEATHER }
+- chapter: 2
+  effects:
+    - openQuest: 3
+    - { openQuest: 41, expansion: POISON }
+    - { openQuest: 46, expansion: ICE }
+- chapter: 3
+  effects:
+    - expireQuests: [2, 36]
+    - hunterKitUpgrade: true
+- chapter: 4
+  effects:
+    - openQuest: 11
+    - if: { achievement: NAROD_ZOLOTYKH_GOR }
+      then: [ { openQuest: 7 } ]
+      else: [ { openQuest: 8 } ]
+    - if: { achievement: ZATISHE }
+      then: [ { openQuest: 9 } ]
+    - expireQuests: [1, 3, 4, 5, 31, 41, 46]
+    - forgeLevelUp: true
+    - labLevelUp: true
+    - if: { achievement: YAD_PAZISA }
+      then: [ { message: "Получите награду 25" } ]
+- chapter: 5
+  effects:
+    - if: { achievement: TAYNY_PROSHLOGO }
+      then: [ { openQuest: 12 } ]
+    - if: { achievement: PYL_ARKEUMA }
+      then: [ { openQuest: 13 } ]
+    - if: { achievement: LAGER_V_DZHUNGLYAKH }
+      then: [ { openQuest: 37, expansion: FEATHER } ]
+      else: [ { openQuest: 38, expansion: FEATHER } ]
+    - if: { achievement: UPAVSHAYA_ZVEZDA }
+      then: [ { openQuest: 15 } ]
+      else: [ { openQuest: 47, expansion: ICE } ]
+    - hunterKitUpgrade: true
+- chapter: 6
+  effects:
+    - openQuest: 22
+    - if: { achievement: ZMEINAYA_KROV }
+      then: [ { openQuest: 42, expansion: POISON } ]
+      else: [ { openQuest: 43, expansion: POISON } ]
+    - expireQuests: [10]
+- chapter: 7
+  decisions:
+    - code: TRAIN_WITH_VOLTYAR
+      question: "Хотите ли вы тренироваться в лагере у Волтьяра?"
+      options:
+        - { code: YES, label: "Да", effects: [ { grantAchievement: GOLOS_VOLTYARA } ] }
+        - { code: NO, label: "Нет" }
+  effects:
+    - if: { achievement: GERBARIY }
+      then: [ { openQuest: 24 } ]
+    - if: { achievement: FOLIANT_O_CHUDOVISHCHAKH }
+      then: [ { openQuest: 33, expansion: FEATHER } ]
+    - expireQuests: [7, 9, 11]
+    - hunterKitUpgrade: true
+- chapter: 8
+  effects:
+    - openQuest: 25
+    - if: { achievement: GERBARIY }
+      then: [ { openQuest: 44, expansion: POISON } ]
+    - expireQuests: [37, 47]
+    - forgeLevelUp: true
+    - labLevelUp: true
+    - if: { achievement: GOLOS_VOLTYARA }
+      then: [ { hunterKitUpgrade: true } ]
+- chapter: 9
+  effects:
+    - if: { not: { achievement: ZVEZDA_DRAKONA } }
+      then: [ { openQuest: 28 } ]
+    - if: { all: [{ achievement: UPAVSHAYA_ZVEZDA }, { achievement: ZVEZDA_DRAKONA }] }
+      then: [ { openQuest: 49, expansion: ICE } ]
+    - expireQuests: [8, 15, 20, 48]
+    - hunterKitUpgrade: true
+- chapter: 10
+  effects:
+    - if: { achievement: TRI_KOPYA }
+      then: [ { openQuest: 29 } ]
+    - if: { achievement: EKHO_VODOPADA }
+      then: [ { openQuest: 40 } ]
+    - if: { all: [{ achievement: NEOPLACHENNYY_DOLG }, { achievement: GERBARIY }] }
+      then: [ { openQuest: 35 } ]
+    - if: { not: { all: [{ achievement: TRI_KOPYA }, { achievement: EKHO_VODOPADA }] } }
+      then: [ { openQuest: 30 } ]
+    - expireQuests: [13]
+    - if: { achievement: GOLOS_VOLTYARA }
+      then: [ { hunterKitUpgrade: true } ]
+- chapter: 11
+  effects:
+    - message: "Истекло время всех заданий. Следующий бой — финальный: Пробуждённый"
+    - expireAllQuests: true
+    - finalBattle: AWAKENED

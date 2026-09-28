@@ -1,0 +1,91 @@
+# Полный стек — один и тот же локально и на сервере; различия задаёт .env (doc/setup.md).
+# Локально:   docker compose --profile local up -d --build   (с Mailpit)
+# На сервере: docker compose up -d --build
+name: primal
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-primal}
+      POSTGRES_USER: ${POSTGRES_USER:-primal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Задайте POSTGRES_PASSWORD в .env}
+    volumes:
+      - primal-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    logging: *logging
+
+  backend:
+    # Готовый образ из GHCR (IMAGE_TAG=web-v…) или локальная сборка (--build) — doc/setup.md, раздел 3.9
+    image: ${IMAGE_REGISTRY:-ghcr.io/viktorevdokimov}/primal-backend:${IMAGE_TAG:-local}
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-primal}
+      DB_USER: ${POSTGRES_USER:-primal}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8088}
+      PRIMAL_OTP_PEPPER: ${PRIMAL_OTP_PEPPER}
+      PRIMAL_SHARE_LINK_KEY: ${PRIMAL_SHARE_LINK_KEY}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_TLS: ${SMTP_TLS:-none}
+      MAIL_FROM: ${MAIL_FROM:-Primal <no-reply@primal.local>}
+      PRIMAL_CODES_PER_IP_HOUR: ${PRIMAL_CODES_PER_IP_HOUR:-20}
+      PRIMAL_VERIFICATIONS_PER_IP_HOUR: ${PRIMAL_VERIFICATIONS_PER_IP_HOUR:-60}
+      PRIMAL_JOINS_PER_IP_HOUR: ${PRIMAL_JOINS_PER_IP_HOUR:-30}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/api/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+    logging: *logging
+
+  web:
+    image: ${IMAGE_REGISTRY:-ghcr.io/viktorevdokimov}/primal-web:${IMAGE_TAG:-local}
+    build: ./frontend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${HTTP_PORT:-8088}:80"
+      - "${HTTPS_PORT:-8443}:443"
+    volumes:
+      - caddy-data:/data        # сертификаты Let's Encrypt
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  # Перехватчик писем для локального запуска: веб-интерфейс и HTTP API на http://localhost:8025
+  mailpit:
+    image: axllent/mailpit
+    profiles: [local]
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  primal-db:
+  caddy-data:
+  caddy-config:
