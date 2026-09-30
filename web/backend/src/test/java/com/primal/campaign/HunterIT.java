@@ -29,7 +29,7 @@ class HunterIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\", \"playerName\": \"Алиса\"},"
@@ -205,7 +205,7 @@ class HunterIT extends IntegrationTest {
         @DisplayName("охотник чужой кампании или другой кампании → 404")
         void foreign() throws Exception {
             // подготовка
-            Cookie bob = auth.login("bob@example.com");
+            Cookie bob = auth.login("bob");
 
             // вызов и проверка
             mockMvc.perform(post(hunterUrl() + "/skills").with(xsrf()).cookie(bob)

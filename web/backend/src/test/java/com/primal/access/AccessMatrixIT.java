@@ -34,7 +34,7 @@ class AccessMatrixIT extends IntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        owner = auth.login("alice@example.com");
+        owner = auth.login("alice");
         String created = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(owner)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}]}"))
@@ -48,9 +48,9 @@ class AccessMatrixIT extends IntegrationTest {
         guest = mockMvc.perform(post("/api/v1/share/" + token + "/join").with(xsrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"displayName\": \"Вадим\"}"))
                 .andReturn().getResponse().getCookie(DeviceCookies.NAME);
-        member = auth.login("mira@example.com");
+        member = auth.login("mira");
         mockMvc.perform(post("/api/v1/share/" + token + "/join").with(xsrf()).cookie(member)).andExpect(status().isOk());
-        stranger = auth.login("bob@example.com");
+        stranger = auth.login("bob");
     }
 
     @AfterEach

@@ -37,7 +37,6 @@ public class StartupSecretsCheck implements InitializingBean {
             return List.of();
         }
         List<String> problems = new ArrayList<>();
-        checkSecret("PRIMAL_OTP_PEPPER", properties.otp().pepper(), problems);
         checkSecret("PRIMAL_SHARE_LINK_KEY", properties.shareLink().key(), problems);
         return problems;
     }

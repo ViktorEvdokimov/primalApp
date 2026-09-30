@@ -31,7 +31,7 @@ class BattleResultIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}]}"))
@@ -487,7 +487,7 @@ class BattleResultIT extends IntegrationTest {
         void badRequests() throws Exception {
             // подготовка
             chapter(2);
-            Cookie bob = auth.login("bob@example.com");
+            Cookie bob = auth.login("bob");
 
             // вызов и проверка
             preview(UUID.randomUUID(), report(null, "OZEV", 2, 0, "DEFEAT", "").replace("\"ROUNDS\"", "null"))

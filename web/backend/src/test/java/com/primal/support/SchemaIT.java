@@ -25,7 +25,7 @@ class SchemaIT extends IntegrationTest {
     class Migration {
 
         @Test
-        @DisplayName("создаёт 19 таблиц из doc/data-model.md")
+        @DisplayName("создаёт 18 таблиц из doc/data-model.md")
         void createsAllTables() {
             // вызов
             Integer tables = jdbc.queryForObject("""
@@ -33,7 +33,7 @@ class SchemaIT extends IntegrationTest {
                     where table_schema = 'public' and table_name <> 'flyway_schema_history'""", Integer.class);
 
             // проверка
-            assertThat(tables).isEqualTo(19);
+            assertThat(tables).isEqualTo(18);
         }
 
         @Test
@@ -57,7 +57,7 @@ class SchemaIT extends IntegrationTest {
         void campaign() {
             // подготовка: пользователь и кампания; босс TORAMAT уже есть — каталог заполняет миграция R__Catalog
             long userId = jdbc.queryForObject(
-                    "insert into app_user (email) values ('alice@example.com') returning id", Long.class);
+                    "insert into app_user (phone) values ('+79000000001') returning id", Long.class);
             campaignId = jdbc.queryForObject(
                     "insert into campaign (owner_id, name) values (?, 'Тест') returning id", Long.class, userId);
         }

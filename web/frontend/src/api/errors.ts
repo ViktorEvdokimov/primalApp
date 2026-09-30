@@ -43,3 +43,16 @@ export class ApiError extends Error {
     return new ApiError(response.status, `HTTP_${response.status}`);
   }
 }
+
+/** Ошибки полей из `400 VALIDATION_FAILED` (`errors: [{field, message}]`): поле → сообщение. */
+export function fieldErrors(error: unknown): Record<string, string> {
+  if (!(error instanceof ApiError) || !Array.isArray(error.problem?.errors)) return {};
+  const result: Record<string, string> = {};
+  for (const item of error.problem.errors as unknown[]) {
+    if (typeof item !== 'object' || item === null) continue;
+    const { field, message } = item as { field?: unknown; message?: unknown };
+    if (typeof field === 'string' && typeof message === 'string' && !(field in result)) result[field] = message;
+  }
+  return result;
+}
+

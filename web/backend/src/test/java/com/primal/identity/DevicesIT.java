@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.primal.support.AuthHelper;
 import com.primal.support.IntegrationTest;
 import jakarta.servlet.http.Cookie;
 import java.sql.Timestamp;
@@ -84,7 +85,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("POST без X-XSRF-TOKEN → 403, с токеном из cookie XSRF-TOKEN — проходит")
         void csrf() throws Exception {
             // подготовка
-            Cookie device = auth.login("anna@example.com");
+            Cookie device = auth.login("anna");
             MvcResult csrfResult = mockMvc.perform(get("/api/v1/auth/csrf"))
                     .andExpect(status().isNoContent())
                     .andReturn();
@@ -111,14 +112,15 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("пользователь: аккаунт и текущее устройство")
         void user() throws Exception {
             // подготовка
-            Cookie device = auth.login("boris@example.com");
+            Cookie device = auth.login("boris");
 
             // вызов и проверка
             me(device)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.kind").value("USER"))
-                    .andExpect(jsonPath("$.user.email").value("boris@example.com"))
-                    .andExpect(jsonPath("$.user.displayName").isEmpty())
+                    .andExpect(jsonPath("$.user.phone").value(AuthHelper.phoneOf("boris")))
+                    .andExpect(jsonPath("$.user.passwordSet").value(true))
+                    .andExpect(jsonPath("$.user.displayName").value("boris"))
                     .andExpect(jsonPath("$.device.id").isString());
         }
 
@@ -126,7 +128,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("PATCH меняет имя пользователя; пустое имя сбрасывает его")
         void renameUser() throws Exception {
             // подготовка
-            Cookie device = auth.login("vera@example.com");
+            Cookie device = auth.login("vera");
 
             // вызов и проверка
             mockMvc.perform(patch("/api/v1/auth/me").with(xsrf()).cookie(device)
@@ -167,7 +169,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("«Выйти» стирает cookie, устройство больше не действует")
         void logout() throws Exception {
             // подготовка
-            Cookie device = auth.login("gleb@example.com");
+            Cookie device = auth.login("gleb");
 
             // вызов
             MvcResult result = mockMvc.perform(post("/api/v1/auth/logout").with(xsrf()).cookie(device))
@@ -183,8 +185,8 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("список устройств помечает текущее; отозванное устройство сразу получает 401")
         void revokeDevice() throws Exception {
             // подготовка: два браузера одного пользователя
-            Cookie phone = auth.login("dina@example.com");
-            Cookie laptop = auth.login("dina@example.com");
+            Cookie phone = auth.login("dina");
+            Cookie laptop = auth.login("dina");
             me(phone).andExpect(status().isOk()); // устройство попало в кэш
             String phoneId = deviceId(phone);
 
@@ -204,9 +206,9 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("«Выйти на всех других устройствах» оставляет рабочим только текущее")
         void revokeOthers() throws Exception {
             // подготовка
-            Cookie first = auth.login("egor@example.com");
-            Cookie second = auth.login("egor@example.com");
-            Cookie current = auth.login("egor@example.com");
+            Cookie first = auth.login("egor");
+            Cookie second = auth.login("egor");
+            Cookie current = auth.login("egor");
 
             // вызов
             mockMvc.perform(post("/api/v1/auth/devices/revoke-others").with(xsrf()).cookie(current))
@@ -223,8 +225,8 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("чужое устройство не отзывается → 404")
         void foreignDevice() throws Exception {
             // подготовка
-            Cookie mine = auth.login("zoya@example.com");
-            Cookie foreign = auth.login("ilya@example.com");
+            Cookie mine = auth.login("zoya");
+            Cookie foreign = auth.login("ilya");
 
             // вызов и проверка
             mockMvc.perform(delete("/api/v1/auth/devices/{id}", deviceId(foreign)).with(xsrf()).cookie(mine))
@@ -241,7 +243,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("через 30 дней cookie продлевается тем же токеном, дальше — нет")
         void cookieRenewal() throws Exception {
             // подготовка
-            Cookie device = auth.login("klim@example.com");
+            Cookie device = auth.login("klim");
             clock.advance(Duration.ofDays(29));
             me(device).andExpect(cookie().doesNotExist(DeviceCookies.NAME));
 
@@ -261,7 +263,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("устройство без визитов больше года отключается")
         void idleDeviceIsDisabled() throws Exception {
             // подготовка
-            Cookie device = auth.login("lida@example.com");
+            Cookie device = auth.login("lida");
             me(device).andExpect(status().isOk());
 
             // вызов
@@ -275,7 +277,7 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("время визита пишется в БД не чаще раза в час")
         void lastSeenIsThrottled() throws Exception {
             // подготовка
-            Cookie device = auth.login("mark@example.com");
+            Cookie device = auth.login("mark");
             Instant start = jdbc.queryForObject("select last_seen_at from device", Timestamp.class).toInstant();
 
             // вызов и проверка

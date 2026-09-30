@@ -13,15 +13,15 @@ from pytest_check import check
 
 from pages.campaign_sheet_page import CampaignSheetPage
 from pages.campaigns_page import CampaignsPage
-from tests.test_login import login, unique_email
+from tests.test_login import register
 
 CAMPAIGN_NAME = "SheetTest"
 
 
 @pytest.fixture
-def sheet(page: Page, mailpit) -> CampaignSheetPage:
+def sheet(page: Page) -> CampaignSheetPage:
     """Новая кампания (пролог) с Дареоном «Боец» и Мирой, открытая в листе."""
-    login(page, mailpit, unique_email())
+    register(page)
     CampaignsPage(page).open().create().create(CAMPAIGN_NAME, ["DAREON", "MIRA"], player_names={"DAREON": "Боец"})
     # после создания открывается подготовка пролога (задача 5.4) — лист открываем по адресу
     expect(page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))

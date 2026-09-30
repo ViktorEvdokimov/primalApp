@@ -30,7 +30,7 @@ class CampaignSheetIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\", \"playerName\": \"Алиса\"},"

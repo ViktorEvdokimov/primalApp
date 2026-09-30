@@ -1,5 +1,6 @@
 # Адрес сайта: локально ":80" (HTTP), на сервере — домен, и Caddy сам получает HTTPS-сертификат
 # (doc/setup.md). Запросы /api/* уходят в бэкенд, остальное — статика SPA с откатом на index.html.
+
 {$SITE_ADDRESS::80} {
 	encode zstd gzip
 

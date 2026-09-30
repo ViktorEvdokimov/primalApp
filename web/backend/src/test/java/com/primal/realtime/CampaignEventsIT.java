@@ -40,7 +40,7 @@ class CampaignEventsIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}]}"))
@@ -177,7 +177,7 @@ class CampaignEventsIT extends IntegrationTest {
     void deviceRevokedAndNoAccess() throws Exception {
         // подготовка
         MvcResult events = subscribe(alice);
-        Cookie bob = auth.login("bob@example.com");
+        Cookie bob = auth.login("bob");
 
         // вызов и проверка
         mockMvc.perform(get("/api/v1/campaigns/" + campaignId + "/events").cookie(bob).accept(MediaType.TEXT_EVENT_STREAM))

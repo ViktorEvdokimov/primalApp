@@ -15,16 +15,16 @@ from pages.main_page import MainPage
 from pages.rewards_page import OutcomePage, TransitionPage
 from pages.share_dialog import ShareDialog
 from tests.test_campaign_progression import play_prologue
-from tests.test_login import login, unique_email
+from tests.test_login import register
 
 
 @allure.feature("Совместная игра")
 class TestSharedCampaign:
 
     @allure.title("Владелец и гость: баннер боя, предупреждение, первая победа закрывает главу, отзыв ссылки")
-    def test_owner_and_guest(self, page: Page, browser: Browser, base_url: str, mailpit):
+    def test_owner_and_guest(self, page: Page, browser: Browser, base_url: str):
         # подготовка: владелец создаёт кампанию, проходит пролог и делится ссылкой
-        login(page, mailpit, unique_email(), name="Алиса")
+        register(page, name="Алиса")
         CampaignsPage(page).open().create().create("Общая", ["DAREON", "MIRA"])
         expect(page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))
         campaign_id = int(page.url.rstrip("/").split("/")[-3])

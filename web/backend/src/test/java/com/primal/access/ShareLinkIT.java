@@ -29,7 +29,7 @@ class ShareLinkIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания Алисы\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}]}"))
@@ -145,13 +145,13 @@ class ShareLinkIT extends IntegrationTest {
         Cookie guest = joinAsGuest(createLink(), "Вадим");
 
         // вызов
-        Cookie signedIn = auth.login("vadim@example.com", guest);
+        Cookie signedIn = auth.login("vadim", guest);
 
         // проверка
         assertThat(signedIn.getValue()).isEqualTo(guest.getValue());
         assertThat(jdbc.queryForObject("select count(*) from share_access where device_id is not null", Integer.class)).isZero();
         sheet(signedIn).andExpect(jsonPath("$.access").value("LINK"));
-        Cookie otherDevice = auth.login("vadim@example.com");
+        Cookie otherDevice = auth.login("vadim");
         sheet(otherDevice).andExpect(status().isOk()).andExpect(jsonPath("$.access").value("LINK"));
         mockMvc.perform(get("/api/v1/campaigns").cookie(otherDevice)).andExpect(jsonPath("$[0].id").value(campaignId));
     }
@@ -161,7 +161,7 @@ class ShareLinkIT extends IntegrationTest {
     void rateLimited() throws Exception {
         // подготовка
         String token = createLink();
-        Cookie bob = auth.login("bob@example.com");
+        Cookie bob = auth.login("bob");
         for (int i = 0; i < 30; i++) {
             mockMvc.perform(post("/api/v1/share/" + token + "/join").with(xsrf()).cookie(bob)).andExpect(status().isOk());
         }

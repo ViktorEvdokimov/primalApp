@@ -12,8 +12,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -21,13 +19,12 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
 /**
- * Письма в тестах: вместо SMTP сохраняются в памяти. Письмо с кодом уходит асинхронно после коммита,
- * поэтому методы {@code await…} ждут его до 5 секунд.
+ * Письма в тестах: вместо SMTP сохраняются в памяти, настоящий SMTP тесты не трогают.
+ * {@link #awaitMessageTo} ждёт письмо до 5 секунд — на случай асинхронной отправки.
  */
 public class MailCapture extends JavaMailSenderImpl {
 
     private static final Duration WAIT = Duration.ofSeconds(5);
-    private static final Pattern CODE = Pattern.compile("\\b(\\d{6})\\b");
 
     private final List<MimeMessage> sent = new CopyOnWriteArrayList<>();
     private volatile RuntimeException failure;
@@ -84,15 +81,6 @@ public class MailCapture extends JavaMailSenderImpl {
         }
         throw new AssertionError("Письмо на " + email + " не пришло за " + WAIT.toSeconds() + " с; получены письма на "
                 + sent.stream().map(MailCapture::recipients).toList());
-    }
-
-    /** Код из нового письма на адрес. */
-    public String awaitCode(String email, int alreadySent) {
-        Matcher matcher = CODE.matcher(text(awaitMessageTo(email, alreadySent)));
-        if (!matcher.find()) {
-            throw new AssertionError("В письме нет кода из 6 цифр");
-        }
-        return matcher.group(1);
     }
 
     /** Текстовая часть письма. */

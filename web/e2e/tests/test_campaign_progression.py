@@ -15,13 +15,13 @@ from pages.campaign_battle_page import CampaignBattleSetupPage, to_rewards, win
 from pages.campaign_sheet_page import CampaignSheetPage
 from pages.campaigns_page import CampaignsPage
 from pages.rewards_page import OutcomePage, TransitionPage
-from tests.test_login import login, unique_email
+from tests.test_login import register
 
 
 @pytest.fixture
-def campaign_id(page: Page, mailpit) -> int:
+def campaign_id(page: Page) -> int:
     """Новая кампания с Дареоном и Мирой: после создания открыта подготовка пролога."""
-    login(page, mailpit, unique_email())
+    register(page)
     CampaignsPage(page).open().create().create("Прогресс", ["DAREON", "MIRA"])
     expect(page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))
     return int(page.url.rstrip("/").split("/")[-3])

@@ -27,9 +27,9 @@ export function useMe() {
   };
 }
 
-/** Подпись без своего имени: часть почты до «@» или «Гость». */
+/** Подпись без своего имени: «Игрок» или «Гость» — номер телефона другим не показывается. */
 export function defaultNameOf(me: MeResponse): string {
-  return me.user === null ? ru.settings.guestName : (me.user.email.split('@')[0] ?? me.user.email);
+  return me.user === null ? ru.settings.guestName : ru.settings.playerName;
 }
 
 /** Имя для показа: своё имя (аккаунта или гостевого устройства), иначе подпись по умолчанию. */

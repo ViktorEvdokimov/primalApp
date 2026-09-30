@@ -8,16 +8,16 @@ from pytest_check import check
 
 from pages.campaigns_page import CampaignsPage
 from pages.main_page import MainPage
-from tests.test_login import login, unique_email
+from tests.test_login import register
 
 
 @allure.feature("Кампании")
 class TestCampaigns:
 
     @allure.title("Созданная кампания видна в списке с главой «Пролог» и удаляется после подтверждения")
-    def test_create_list_delete(self, page: Page, mailpit):
+    def test_create_list_delete(self, page: Page):
         # подготовка
-        login(page, mailpit, unique_email())
+        register(page)
         campaigns = CampaignsPage(page).open()
 
         # вызов
@@ -34,9 +34,9 @@ class TestCampaigns:
         campaigns.delete("Кампания E2E")
 
     @allure.title("Из списка кампаний — в главное меню")
-    def test_back_to_menu(self, page: Page, mailpit):
+    def test_back_to_menu(self, page: Page):
         # подготовка
-        login(page, mailpit, unique_email())
+        register(page)
         campaigns = CampaignsPage(page).open()
         campaigns.should_be_open()
 

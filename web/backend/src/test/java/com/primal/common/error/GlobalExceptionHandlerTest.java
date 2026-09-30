@@ -92,9 +92,9 @@ class GlobalExceptionHandlerTest {
             // вызов и проверка
             mockMvc.perform(get("/test/api-exception"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_CODE"))
-                    .andExpect(jsonPath("$.title").value("Неверный код"))
-                    .andExpect(jsonPath("$.detail").value("Код не подходит"))
+                    .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                    .andExpect(jsonPath("$.title").value("Неверный номер телефона или пароль"))
+                    .andExpect(jsonPath("$.detail").value("Пароль не подходит"))
                     .andExpect(jsonPath("$.attemptsLeft").value(3));
         }
 
@@ -124,7 +124,7 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/api-exception")
         void apiException() {
-            throw new ApiException(ErrorCode.INVALID_CODE, "Код не подходит").with("attemptsLeft", 3);
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "Пароль не подходит").with("attemptsLeft", 3);
         }
 
         @GetMapping("/test/unexpected")

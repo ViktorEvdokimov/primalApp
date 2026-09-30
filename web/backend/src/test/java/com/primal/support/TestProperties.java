@@ -8,18 +8,18 @@ public final class TestProperties {
     private TestProperties() {
     }
 
-    public static PrimalProperties primal(String publicUrl, String pepper, String shareKey) {
+    public static PrimalProperties primal(String publicUrl, String shareKey) {
         return new PrimalProperties(
                 publicUrl,
-                new PrimalProperties.Otp(pepper),
                 new PrimalProperties.ShareLink(shareKey),
                 new PrimalProperties.Campaign(10, new PrimalProperties.Hunters(2, 5), 24),
-                new PrimalProperties.Mail("localhost", 1025, "", "", PrimalProperties.MailTls.NONE,
-                        "Primal <no-reply@primal.local>"),
+                new PrimalProperties.Mail(PrimalProperties.MailProvider.SMTP, "localhost", 1025, "", "",
+                        PrimalProperties.MailTls.NONE, "Primal <no-reply@primal.local>",
+                        new PrimalProperties.Mailgun("https://api.mailgun.net", "", "")),
                 new PrimalProperties.RateLimit(20, 60, 30));
     }
 
     public static PrimalProperties primal(String publicUrl) {
-        return primal(publicUrl, "test-otp-pepper", "test-share-link-key");
+        return primal(publicUrl, "test-share-link-key");
     }
 }

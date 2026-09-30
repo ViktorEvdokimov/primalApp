@@ -29,6 +29,57 @@ export interface QuestLists {
   expired: QuestItem[];
 }
 
+export interface PhoneRequest {
+  /**
+     * @minLength 0
+     * @maxLength 24
+     */
+  phone: string;
+}
+
+export interface MeDevice {
+  id: string;
+  /** @nullable */
+  displayName: string | null;
+}
+
+export type MeResponseKind = typeof MeResponseKind[keyof typeof MeResponseKind];
+
+
+export const MeResponseKind = {
+  USER: 'USER',
+  GUEST: 'GUEST',
+} as const;
+
+export interface UserView {
+  id: number;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  displayName: string | null;
+  passwordSet: boolean;
+}
+
+export interface MeResponse {
+  kind: MeResponseKind;
+  user: UserView | null;
+  device: MeDevice;
+}
+
+export interface PasswordChangeRequest {
+  /**
+     * @minLength 0
+     * @maxLength 128
+     * @nullable
+     */
+  currentPassword: string | null;
+  /**
+     * @minLength 8
+     * @maxLength 64
+     */
+  newPassword: string;
+}
+
 export interface JoinRequest {
   /**
      * @minLength 0
@@ -546,27 +597,22 @@ export interface AchievementView {
   matchedCatalog: boolean;
 }
 
-export interface CodeRequest {
+export interface RegisterRequest {
   /**
      * @minLength 0
-     * @maxLength 254
+     * @maxLength 24
      */
-  email: string;
-}
-
-export interface CodeResponse {
-  challengeId: string;
-  expiresAt: string;
-  resendAfter: string;
-}
-
-export interface VerifyRequest {
-  challengeId: string;
+  phone: string;
   /**
-     * @minLength 1
-     * @pattern \d{6}
+     * @minLength 8
+     * @maxLength 64
      */
-  code: string;
+  password: string;
+  /**
+     * @minLength 0
+     * @maxLength 60
+     */
+  displayName: string;
 }
 
 export interface DeviceView {
@@ -574,17 +620,22 @@ export interface DeviceView {
   userAgent: string;
 }
 
-export interface UserView {
-  id: number;
-  email: string;
-  /** @nullable */
-  displayName: string | null;
-}
-
 export interface SignInResponse {
   user: UserView;
-  isNewUser: boolean;
   device: DeviceView;
+}
+
+export interface LoginRequest {
+  /**
+     * @minLength 0
+     * @maxLength 24
+     */
+  phone: string;
+  /**
+     * @minLength 0
+     * @maxLength 128
+     */
+  password: string;
 }
 
 export interface UpdateCampaignRequest {
@@ -621,26 +672,6 @@ export interface RenameRequest {
      * @maxLength 60
      */
   displayName: string;
-}
-
-export interface MeDevice {
-  id: string;
-  /** @nullable */
-  displayName: string | null;
-}
-
-export type MeResponseKind = typeof MeResponseKind[keyof typeof MeResponseKind];
-
-
-export const MeResponseKind = {
-  USER: 'USER',
-  GUEST: 'GUEST',
-} as const;
-
-export interface MeResponse {
-  kind: MeResponseKind;
-  user: UserView | null;
-  device: MeDevice;
 }
 
 export type InvitationViewKind = typeof InvitationViewKind[keyof typeof InvitationViewKind];

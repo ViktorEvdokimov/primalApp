@@ -17,7 +17,7 @@ from pages.campaigns_page import CampaignsPage
 from pages.expedition_page import ExpeditionPage
 from pages.main_page import MainPage
 from tests.test_campaign_progression import play_prologue
-from tests.test_login import login, unique_email
+from tests.test_login import register
 
 LAN_HOST = "primal.lan"
 
@@ -60,9 +60,9 @@ class TestInsecureOrigin:
             assert win(battle).result() == "VICTORY"
 
     @allure.title("Кампания по HTTP с адреса в сети: бой пролога начинается, ссылка копируется")
-    def test_campaign_battle_and_copy(self, lan_page: Page, mailpit):
+    def test_campaign_battle_and_copy(self, lan_page: Page):
         # подготовка
-        login(lan_page, mailpit, unique_email())
+        register(lan_page)
         CampaignsPage(lan_page).open().create().create("По сети", ["DAREON", "MIRA"])
         expect(lan_page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))
         campaign_id = int(lan_page.url.rstrip("/").split("/")[-3])

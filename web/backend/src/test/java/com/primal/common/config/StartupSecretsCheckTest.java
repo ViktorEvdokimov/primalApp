@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Test;
 @DisplayName("Проверка секретов при запуске")
 class StartupSecretsCheckTest {
 
-    private static final String EXAMPLE_PEPPER = "local-dev-otp-pepper-change-me";
     private static final String EXAMPLE_KEY = "local-dev-share-key-change-me";
     private static final String STRONG_SECRET = "9f2c4e7a1b8d3f60c5e2a9b47d1f8c3e6a0b5d2f";
 
@@ -25,13 +24,12 @@ class StartupSecretsCheckTest {
         @DisplayName("секреты из .env.example не дают запустить приложение")
         void exampleSecretsAreRejected() {
             // подготовка
-            PrimalProperties properties = properties("https://primal.example.ru", EXAMPLE_PEPPER, EXAMPLE_KEY);
+            PrimalProperties properties = properties("https://primal.example.ru", EXAMPLE_KEY);
             StartupSecretsCheck check = new StartupSecretsCheck(properties);
 
             // вызов и проверка
             assertThatThrownBy(check::afterPropertiesSet)
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining("PRIMAL_OTP_PEPPER — значение из примера")
                     .hasMessageContaining("PRIMAL_SHARE_LINK_KEY — значение из примера");
         }
 
@@ -39,20 +37,20 @@ class StartupSecretsCheckTest {
         @DisplayName("секрет короче 32 символов не принимается")
         void shortSecretIsRejected() {
             // подготовка
-            PrimalProperties properties = properties("https://primal.example.ru", "short-secret", STRONG_SECRET);
+            PrimalProperties properties = properties("https://primal.example.ru", "short-secret");
 
             // вызов
             List<String> problems = StartupSecretsCheck.findProblems(properties);
 
             // проверка
-            assertThat(problems).containsExactly("PRIMAL_OTP_PEPPER — короче 32 символов");
+            assertThat(problems).containsExactly("PRIMAL_SHARE_LINK_KEY — короче 32 символов");
         }
 
         @Test
         @DisplayName("надёжные секреты разрешают запуск")
         void strongSecretsAreAccepted() {
             // подготовка
-            PrimalProperties properties = properties("https://primal.example.ru", STRONG_SECRET, STRONG_SECRET + "0");
+            PrimalProperties properties = properties("https://primal.example.ru", STRONG_SECRET);
             StartupSecretsCheck check = new StartupSecretsCheck(properties);
 
             // вызов и проверка
@@ -68,7 +66,7 @@ class StartupSecretsCheckTest {
         @DisplayName("секреты из .env.example разрешены")
         void exampleSecretsAreAllowed() {
             // подготовка
-            PrimalProperties properties = properties("http://localhost:8088", EXAMPLE_PEPPER, EXAMPLE_KEY);
+            PrimalProperties properties = properties("http://localhost:8088", EXAMPLE_KEY);
 
             // вызов
             List<String> problems = StartupSecretsCheck.findProblems(properties);
@@ -78,7 +76,7 @@ class StartupSecretsCheckTest {
         }
     }
 
-    private static PrimalProperties properties(String publicUrl, String pepper, String shareKey) {
-        return TestProperties.primal(publicUrl, pepper, shareKey);
+    private static PrimalProperties properties(String publicUrl, String shareKey) {
+        return TestProperties.primal(publicUrl, shareKey);
     }
 }

@@ -80,33 +80,30 @@ erDiagram
     CHAPTER_DEF }o..o{ CAMPAIGN : "applied on transition"
 ```
 
-### 3.1 Пользователи, коды входа, устройства
+### 3.1 Пользователи и устройства
 
-Паролей нет. Пользователь создаётся при первом верном коде из письма, поэтому почта в `app_user` всегда
-подтверждена. HTTP-сессий нет: браузер предъявляет токен устройства.
+Вход — по номеру телефона и паролю: номер — логин (миграции `V3__password_login.sql`, `V4__phone_login.sql`,
+задачи 8.1–8.2). Пароль хранится только хешем bcrypt с префиксом алгоритма (`{bcrypt}$2a$10$…`).
+HTTP-сессий нет: браузер предъявляет токен устройства.
 
 ```sql
 create table app_user (
-    id            bigint generated always as identity primary key,
-    email         varchar(254) not null,                -- нормализованный: trim + lower
-    display_name  varchar(60),                          -- null: показывается часть почты до «@»
-    created_at    timestamptz  not null default now()
-);
-create unique index ux_app_user_email on app_user (email);
-
-create table login_challenge (                           -- запрос кода входа
-    id             uuid         primary key,
-    email          varchar(254) not null,               -- нормализованный
-    code_hash      bytea        not null,               -- HMAC-SHA256(pepper, id ‖ code)
-    expires_at     timestamptz  not null,               -- создание + 10 минут
-    attempts_left  smallint     not null default 5 check (attempts_left >= 0),
-    consumed_at    timestamptz,                         -- код введён верно или заменён новым запросом
-    requested_ip   inet,
+    id             bigint generated always as identity primary key,
+    phone          varchar(16),                         -- логин: +79123456789; null — аккаунт по почте без номера
+    password_hash  varchar(100),                        -- {bcrypt}…; null — пароль не задан (аккаунт по почте)
+    email          varchar(254),                        -- только у аккаунтов, созданных входом по почте; не используется
+    display_name   varchar(60),                         -- обязательно при регистрации; null (аккаунт по почте) — «Игрок»
     created_at     timestamptz  not null default now()
 );
-create index ix_login_challenge_email on login_challenge (email, created_at desc);
--- Фоновая задача удаляет запросы старше суток.
+create unique index ux_app_user_phone on app_user (phone);
+create unique index ux_app_user_email on app_user (email);
+```
 
+Аккаунты, созданные входом по коду из письма, остались без номера и пароля: они работают на запомненных
+устройствах и задают номер и пароль в настройках. V4 при введении уникальности оставила повторяющийся номер
+только у самого раннего аккаунта. Таблица кодов `login_challenge` удалена (V3).
+
+```sql
 create table device (                                    -- запомненный браузер
     id            uuid         primary key,
     user_id       bigint       references app_user(id) on delete cascade,   -- null: гость по ссылке
@@ -373,7 +370,8 @@ create unique index ux_share_access_device on share_access (share_link_id, devic
 | Класс охотника уникален в кампании | UNIQUE |
 | В отряде кампании 2–5 охотников | максимум — CHECK `position` 1–5 + UNIQUE; минимум — сервис |
 | Одна действующая ссылка на кампанию | частичный UNIQUE `ux_share_link_campaign` |
-| Код входа: 10 минут, 5 попыток, одноразовый | сервис по `login_challenge` |
+| Номер телефона (логин) уникален в любом написании | UNIQUE `ux_app_user_phone` + хранение в формате `+79123456789` |
+| Не больше 10 попыток входа по номеру за 15 минут | сервис (`RateLimiter`, в памяти) |
 | Задание в кампании один раз | PK `campaign_quest` |
 | Достижение в кампании один раз (с учётом написания) | UNIQUE `normalized_name` + частичный UNIQUE по коду |
 | Результат боя применяется один раз | PK `campaign_battle.id` (UUID из браузера) |

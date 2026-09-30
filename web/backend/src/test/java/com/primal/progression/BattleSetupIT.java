@@ -27,7 +27,7 @@ class BattleSetupIT extends IntegrationTest {
 
     @BeforeEach
     void createCampaign() throws Exception {
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String body = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Кампания\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}, {\"class\": \"KARA\"}]}"))
@@ -195,7 +195,7 @@ class BattleSetupIT extends IntegrationTest {
         @DisplayName("чужая кампания → 404")
         void foreignCampaign() throws Exception {
             // подготовка
-            Cookie bob = auth.login("bob@example.com");
+            Cookie bob = auth.login("bob");
 
             // вызов и проверка
             mockMvc.perform(get("/api/v1/campaigns/" + campaignId + "/battle-setup").cookie(bob))

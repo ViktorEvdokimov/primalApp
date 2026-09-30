@@ -15,7 +15,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 /**
  * Базовый класс интеграционных тестов: приложение целиком, MockMvc и настоящая PostgreSQL 17 в Docker.
  * Контейнер один на весь прогон тестов, Flyway применяет миграции при старте контекста. Письма
- * перехватывает {@link MailCapture}, часы можно переводить ({@link MutableClock}).
+ * (если модуль почты что-то отправит) перехватывает {@link MailCapture}, часы можно переводить
+ * ({@link MutableClock}).
  * Нужен запущенный Docker Desktop.
  */
 @SpringBootTest
@@ -61,10 +62,9 @@ public abstract class IntegrationTest {
         rateLimiter.reset();
     }
 
-    /** Удаляет пользователей, устройства и коды входа — для тестов без {@code @Transactional}. */
+    /** Удаляет пользователей и устройства — для тестов без {@code @Transactional}. */
     protected void deleteIdentityData() {
         jdbc.update("delete from device");
-        jdbc.update("delete from login_challenge");
         jdbc.update("delete from app_user");
     }
 }

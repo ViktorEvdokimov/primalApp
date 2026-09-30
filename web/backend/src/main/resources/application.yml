@@ -50,8 +50,6 @@ springdoc:
 
 primal:
   public-url: ${PUBLIC_URL:http://localhost:8088}
-  otp:
-    pepper: ${PRIMAL_OTP_PEPPER:local-dev-otp-pepper-change-me}
   share-link:
     key: ${PRIMAL_SHARE_LINK_KEY:local-dev-share-key-change-me}
   campaign:
@@ -61,15 +59,20 @@ primal:
       max: 5
     battle-warning-hours: 24
   mail:
+    provider: ${MAIL_PROVIDER:smtp}  # smtp — SMTP_* (локально Mailpit) | mailgun — HTTP API Mailgun
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
     username: ${SMTP_USERNAME:}
     password: ${SMTP_PASSWORD:}
     tls: ${SMTP_TLS:none}          # none | starttls | ssl
     from: ${MAIL_FROM:Primal <no-reply@primal.local>}
+    mailgun:
+      base-url: ${MAILGUN_BASE_URL:https://api.mailgun.net}
+      domain: ${MAILGUN_DOMAIN:}
+      api-key: ${MAILGUN_API_KEY:}
   rate-limit:
-    codes-per-ip-hour: ${PRIMAL_CODES_PER_IP_HOUR:20}
-    verifications-per-ip-hour: ${PRIMAL_VERIFICATIONS_PER_IP_HOUR:60}
+    registrations-per-ip-hour: ${PRIMAL_REGISTRATIONS_PER_IP_HOUR:20}
+    logins-per-ip-hour: ${PRIMAL_LOGINS_PER_IP_HOUR:60}
     joins-per-ip-hour: ${PRIMAL_JOINS_PER_IP_HOUR:30}
 
 logging:

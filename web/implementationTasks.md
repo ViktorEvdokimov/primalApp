@@ -1210,6 +1210,73 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 
 ---
 
+## Задача 8.1: Вход по логину и паролю вместо кода из письма ✅ ВЫПОЛНЕНО (29.09.2026)
+
+**Объём:** L · **Зависит от:** 3.1–3.3
+
+> Бесплатный sandbox-домен Mailgun доставляет письма только на заранее разрешённые адреса, поэтому вход по
+> коду из письма пока убран. Модуль `mail` (SMTP и Mailgun, `MAIL_PROVIDER`) остался для будущих писем.
+> Решения — `qa.md` № 127.
+
+**Файлы:**
+- Бэкенд: `identity/{Credentials, PasswordAuthService, AccountService, AuthController, AppUser,
+  AppUserRepository, SecurityConfig}.java`, `common/{ratelimit/RateLimiter, error/ErrorCode,
+  config/PrimalProperties, config/StartupSecretsCheck}.java`, миграция `V3__password_login.sql`; удалены
+  `LoginChallenge*`, `LoginCode*`, `mail/LoginCodeMail` и шаблоны писем, секрет `PRIMAL_OTP_PEPPER`
+- Тесты бэкенда: `identity/{PasswordAuthIT, CredentialsTest}`, `support/AuthHelper` (вход или регистрация
+  с общим паролем), обновлены `DevicesIT`, `SchemaIT`, `StartupSecretsCheckTest`, вызовы `auth.login(…)`
+- Фронтенд: `features/auth/{LoginPage, SettingsPage, credentials, useMe}`, `api/errors.ts` (`fieldErrors`),
+  `shared/i18n/ru.ts`, перегенерированный клиент API; удалён `CodeInput`
+- E2E: `pages/login_page.py`, `tests/test_login.py` (помощник `register`), остальные тесты — без Mailpit
+- Окружение и документация: `.env.example`, `docker-compose.yml`, `api.md` §3, `data-model.md` §3.1,
+  `architecture.md`, `behavior.md` §5, `setup.md`, `README.md`
+
+**Описание:**
+- `POST /auth/register` (логин, пароль, имя и телефон — необязательно) и `POST /auth/login`; оба
+  запоминают браузер, гостевое устройство переходит к аккаунту.
+- Логин 3–32 символа `[A-Za-z0-9._-]`, хранится в нижнем регистре; пароль 8–64 символа и ≤ 72 байт,
+  хеш bcrypt; телефон приводится к `+79123456789`.
+- `PUT /auth/me/phone`, `PUT /auth/me/password`; аккаунты, созданные по почте, получают логин `user<id>`
+  и задают пароль без текущего.
+- Лимиты: 20 регистраций и 60 входов в час с IP, 10 попыток на логин за 15 минут.
+
+**Тесты:** бэкенд 289, фронтенд 337, E2E 62 — зелёные.
+
+**Критерии приёмки:**
+- Регистрация и вход работают без почты; в БД нет паролей в открытом виде; перебор пароля ограничен.
+- Телефон необязателен, сохраняется в едином формате и меняется в настройках.
+
+---
+
+## Задача 8.2: Номер телефона — логин ✅ ВЫПОЛНЕНО (29.09.2026)
+
+**Объём:** S · **Зависит от:** 8.1
+
+> Отдельного логина нет: регистрация и вход — по номеру телефона и паролю. Решения — `qa.md` № 128.
+
+**Файлы:**
+- Бэкенд: `identity/{AppUser, AppUserRepository, Credentials, PasswordAuthService, AccountService,
+  AuthController}.java`, `common/error/ErrorCode.java` (`PHONE_TAKEN` вместо `LOGIN_TAKEN`), миграция
+  `V4__phone_login.sql` (уникальный номер, без столбца `login`)
+- Тесты: `PasswordAuthIT`, `CredentialsTest`, `DevicesIT`, `SchemaIT`, `AuthHelper` (номер на имя),
+  фронтенд `LoginPage.test.tsx`, E2E `test_login.py`, `pages/login_page.py`
+- Фронтенд: `features/auth/{LoginPage, SettingsPage, credentials, useMe}`, `ru.ts`, клиент API
+- Документация: `api.md` §3, `data-model.md` §3.1, `architecture.md`, `behavior.md` §5, `setup.md`, `README.md`
+
+**Описание:**
+- `POST /auth/register` — номер, пароль и имя (обязательно: номер другим участникам не показывается);
+  `POST /auth/login` — номер и пароль. Номер в любом написании приводится к `+79123456789`.
+- `PUT /auth/me/phone` меняет логин: занятый номер — `409 PHONE_TAKEN`, удалить номер нельзя.
+- Имя без имени (аккаунт по почте) показывается как «Игрок».
+
+**Тесты:** бэкенд 287, фронтенд 338, E2E 62 — зелёные.
+
+**Критерии приёмки:**
+- Регистрация и вход — по номеру и паролю; `8 912 …` и `+7 912 …` — один аккаунт.
+- Номер не виден другим участникам кампаний.
+
+---
+
 ## Приоритет выполнения
 
 | Порядок | Задачи | Результат |
@@ -1222,3 +1289,4 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 | 6 | 5.1 → 5.2 → 5.3 → 5.4 | **Кампания целиком — паритет с `app`** |
 | 7 | 6.1 → 6.2 → 6.3 | Совместная игра по ссылкам |
 | 8 | 7.1, 7.2 (можно раньше — после 2.1), 7.3 → 7.4 → 7.5 | Готово к работе на сервере |
+| 9 | 8.1 → 8.2 | Вход по номеру телефона и паролю вместо кода из письма |

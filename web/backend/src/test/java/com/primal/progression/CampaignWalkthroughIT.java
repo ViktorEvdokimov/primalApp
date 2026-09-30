@@ -95,7 +95,7 @@ class CampaignWalkthroughIT extends IntegrationTest {
     @DisplayName("создание → пролог → главы 1–11 → Пробуждённый → COMPLETED")
     void walkthrough() throws Exception {
         // подготовка
-        alice = auth.login("alice@example.com");
+        alice = auth.login("alice");
         String created = mockMvc.perform(post("/api/v1/campaigns").with(xsrf()).cookie(alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\": \"Путь\", \"hunters\": [{\"class\": \"DAREON\"}, {\"class\": \"MIRA\"}, {\"class\": \"KARA\"}]}"))

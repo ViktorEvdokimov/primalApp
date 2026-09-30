@@ -25,12 +25,12 @@ public class RateLimiter {
 
     /** Ограничения {@code doc/architecture.md} §6. */
     public enum Limit {
-        /** Письмо с кодом на адрес: 1 в минуту и 5 в час. */
-        CODE_PER_EMAIL,
-        /** Письма с кодом с одного IP: по умолчанию 20 в час. */
-        CODE_PER_IP,
-        /** Проверка кода с одного IP: по умолчанию 60 в час. */
-        VERIFY_PER_IP,
+        /** Регистрации с одного IP: по умолчанию 20 в час. */
+        REGISTER_PER_IP,
+        /** Попытки входа с одного IP: по умолчанию 60 в час. */
+        LOGIN_PER_IP,
+        /** Попытки входа и смены пароля по одному аккаунту (номеру): 10 за 15 минут — перебор пароля не пройдёт. */
+        LOGIN_PER_ACCOUNT,
         /** Вход по ссылке-приглашению с одного IP: по умолчанию 30 в час. */
         JOIN_PER_IP
     }
@@ -43,9 +43,9 @@ public class RateLimiter {
 
     public RateLimiter(PrimalProperties properties) {
         PrimalProperties.RateLimit perIp = properties.rateLimit();
-        bandwidths.put(Limit.CODE_PER_EMAIL, List.of(per(1, Duration.ofMinutes(1)), per(5, Duration.ofHours(1))));
-        bandwidths.put(Limit.CODE_PER_IP, List.of(per(perIp.codesPerIpHour(), Duration.ofHours(1))));
-        bandwidths.put(Limit.VERIFY_PER_IP, List.of(per(perIp.verificationsPerIpHour(), Duration.ofHours(1))));
+        bandwidths.put(Limit.REGISTER_PER_IP, List.of(per(perIp.registrationsPerIpHour(), Duration.ofHours(1))));
+        bandwidths.put(Limit.LOGIN_PER_IP, List.of(per(perIp.loginsPerIpHour(), Duration.ofHours(1))));
+        bandwidths.put(Limit.LOGIN_PER_ACCOUNT, List.of(per(10, Duration.ofMinutes(15))));
         bandwidths.put(Limit.JOIN_PER_IP, List.of(per(perIp.joinsPerIpHour(), Duration.ofHours(1))));
     }
 

@@ -65,7 +65,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("новая кампания — глава 0 «Пролог», отряд в порядке выбора, пустое имя игрока — название класса")
         void createsPrologue() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
 
             // вызов и проверка
             create(alice, """
@@ -99,7 +99,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("в отряде от 2 до 5 охотников")
         void squadSize(String caseName) throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
             String hunters = caseName.startsWith("1")
                     ? squad("DAREON")
                     : squad("DAREON", "MIRA", "TOREG", "LIONAR", "KARA", "HELEREN");
@@ -117,7 +117,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("классы не повторяются")
         void duplicateClass() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
 
             // вызов и проверка
             create(alice, "{\"name\": \"Отряд\", \"hunters\": " + squad("DAREON", "DAREON") + "}")
@@ -129,7 +129,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("пустое название → 400")
         void blankName() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
 
             // вызов и проверка
             create(alice, "{\"name\": \"  \", \"hunters\": " + squad("DAREON", "MIRA") + "}")
@@ -141,7 +141,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("11-я кампания → 422 CAMPAIGN_LIMIT_REACHED")
         void limit() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
             for (int i = 1; i <= 10; i++) {
                 createCampaign(alice, "Кампания " + i);
             }
@@ -182,8 +182,8 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("список: своя кампания с главой «Пролог» и отрядом; чужие не видны")
         void list() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
-            Cookie bob = auth.login("bob@example.com");
+            Cookie alice = auth.login("alice");
+            Cookie bob = auth.login("bob");
             long id = createCampaign(alice, "Кампания Алисы");
             createCampaign(bob, "Кампания Боба");
 
@@ -202,8 +202,8 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("чужая кампания → 404 при просмотре, правке и удалении")
         void foreignCampaign() throws Exception {
             // подготовка
-            Cookie alice = auth.login("alice@example.com");
-            Cookie bob = auth.login("bob@example.com");
+            Cookie alice = auth.login("alice");
+            Cookie bob = auth.login("bob");
             long id = createCampaign(alice, "Кампания Алисы");
 
             // вызов и проверка
@@ -224,7 +224,7 @@ class CampaignIT extends IntegrationTest {
         @DisplayName("удаление убирает все данные кампании")
         void deletesEverything() throws Exception {
             // подготовка: у кампании есть навыки, ресурсы, задания, достижения, трофеи
-            Cookie alice = auth.login("alice@example.com");
+            Cookie alice = auth.login("alice");
             long id = createCampaign(alice, "Кампания Алисы");
             long hunterId = jdbc.queryForObject("select min(id) from campaign_hunter where campaign_id = ?", Long.class, id);
             jdbc.update("insert into hunter_skill (hunter_id, branch, tier) values (?, 'A', 1)", hunterId);

@@ -5,14 +5,13 @@ import allure
 import httpx
 import pytest
 
-from support.mailpit import MailpitClient
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
 
 @pytest.fixture(scope="session")
 def config():
-    """Настройки из config.json: адрес сайта и Mailpit (по умолчанию — локальный стек, doc/setup.md, раздел 2)."""
+    """Настройки из config.json: адрес сайта (по умолчанию — локальный стек, doc/setup.md, раздел 2)."""
     with CONFIG_PATH.open(encoding="utf-8") as config_file:
         return json.load(config_file)
 
@@ -33,13 +32,6 @@ def browser_context_args(browser_context_args):
 def api(config):
     """HTTP-клиент к API сайта (через Caddy, как у браузера)."""
     with httpx.Client(base_url=config["base_url"], timeout=10) as client:
-        yield client
-
-
-@pytest.fixture(scope="session")
-def mailpit(config):
-    """Письма из Mailpit: коды входа."""
-    with MailpitClient(config["mailpit_url"]) as client:
         yield client
 
 

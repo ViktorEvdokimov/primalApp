@@ -28,7 +28,7 @@ class RequestIdLoggingIT extends IntegrationTest {
     @DisplayName("ошибка сервера пишется в лог с номером запроса из X-Request-Id")
     void errorLogHasRequestId(CapturedOutput output) throws Exception {
         // подготовка
-        Cookie alice = auth.login("alice@example.com");
+        Cookie alice = auth.login("alice");
 
         // вызов
         mockMvc.perform(get("/test/unexpected").cookie(alice).header(RequestIdFilter.HEADER, "support-42"))

@@ -20,8 +20,8 @@ public enum ErrorCode {
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "Внутренняя ошибка сервера"),
 
     // Вход и доступ
-    INVALID_CODE(HttpStatus.BAD_REQUEST, "Неверный код"),
-    CODE_EXPIRED(HttpStatus.BAD_REQUEST, "Код устарел"),
+    INVALID_CREDENTIALS(HttpStatus.BAD_REQUEST, "Неверный номер телефона или пароль"),
+    PHONE_TAKEN(HttpStatus.CONFLICT, "Номер уже зарегистрирован"),
     OWNER_ONLY(HttpStatus.FORBIDDEN, "Доступно только владельцу"),
     ACCOUNT_REQUIRED(HttpStatus.FORBIDDEN, "Нужен аккаунт"),
     SHARE_LINK_INVALID(HttpStatus.NOT_FOUND, "Ссылка недействительна"),
