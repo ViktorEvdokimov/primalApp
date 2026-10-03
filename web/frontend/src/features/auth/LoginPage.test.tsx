@@ -15,7 +15,7 @@ function problem(status: number, code: string, extra: Record<string, unknown> = 
   );
 }
 
-const alice: UserView = { id: 7, phone: '+79123456789', displayName: 'Алиса', passwordSet: true };
+const alice: UserView = { id: 7, login: 'alice', displayName: 'Алиса', passwordSet: true };
 
 function signIn(user: UserView = alice): SignInResponse {
   return { user, device: { id: userMe.device.id, userAgent: 'Chrome, Android' } };
@@ -37,37 +37,37 @@ async function openLogin(path = '/login') {
 
 async function toRegister(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByText('Регистрация'));
-  await screen.findByTestId('register-phone');
+  await screen.findByTestId('register-username');
 }
 
 async function fillRegistration(user: ReturnType<typeof userEvent.setup>, values: Partial<Record<string, string>> = {}) {
-  const filled = { phone: '+7 912 345-67-89', password: 'correct horse', repeat: 'correct horse', name: 'Алиса', ...values };
-  if (filled.phone !== '') await user.type(screen.getByTestId('register-phone'), filled.phone);
+  const filled = { username: 'alice', password: 'correct horse', repeat: 'correct horse', name: 'Алиса', ...values };
+  if (filled.username !== '') await user.type(screen.getByTestId('register-username'), filled.username);
   if (filled.password !== '') await user.type(screen.getByTestId('register-password'), filled.password);
   if (filled.repeat !== '') await user.type(screen.getByTestId('register-password-repeat'), filled.repeat);
   if (filled.name !== '') await user.type(screen.getByTestId('register-name'), filled.name);
   await user.click(screen.getByTestId('register-submit'));
 }
 
-describe('Вход по номеру телефона и паролю', () => {
-  it('номер без пробелов по краям, пароль как есть; вход — туда, откуда пришли', async () => {
+describe('Вход по логину и паролю', () => {
+  it('логин без пробелов по краям, пароль как есть; вход — туда, откуда пришли', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(accepts('login', bodies), signedIn());
     const { user, router } = await openLogin('/login?next=%2Fcampaigns');
 
     // вызов
-    await user.type(screen.getByTestId('login-phone'), '  8 912 345-67-89 ');
+    await user.type(screen.getByTestId('login-username'), '  Alice  ');
     await user.type(screen.getByTestId('login-password'), ' secret pass ');
     await user.click(screen.getByTestId('login-submit'));
 
     // проверка
     expect(await screen.findByTestId('page-campaigns')).toBeInTheDocument();
-    expect(bodies).toEqual([{ phone: '8 912 345-67-89', password: ' secret pass ' }]);
+    expect(bodies).toEqual([{ login: 'Alice', password: ' secret pass ' }]);
     expect(router.state.location.pathname).toBe('/campaigns');
   });
 
-  it('пустые поля и неразборчивый номер — подсказки у полей, запрос не отправляется', async () => {
+  it('пустые поля и недопустимый логин — подсказки у полей, запрос не отправляется', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(accepts('login', bodies));
@@ -79,18 +79,18 @@ describe('Вход по номеру телефона и паролю', () => {
     // проверка
     expect(await screen.findAllByText('Заполните поле.')).toHaveLength(2);
 
-    // вызов: номер из букв
-    await user.type(screen.getByTestId('login-phone'), 'alice');
+    // вызов: логин с пробелом
+    await user.type(screen.getByTestId('login-username'), 'a b');
     await user.type(screen.getByTestId('login-password'), 'secret pass');
     await user.click(screen.getByTestId('login-submit'));
 
     // проверка
-    expect(await screen.findByText('Номер — от 10 до 15 цифр, например +7 912 345-67-89.')).toBeInTheDocument();
+    expect(await screen.findByText('Логин — от 3 до 32 символов: латиница, цифры, «.», «_», «-».')).toBeInTheDocument();
     expect(bodies).toEqual([]);
   });
 
   it.each([
-    [problem(400, 'INVALID_CREDENTIALS', { detail: 'Неверный номер телефона или пароль.' }), 'Неверный номер телефона или пароль.'],
+    [problem(400, 'INVALID_CREDENTIALS', { detail: 'Неверный логин или пароль.' }), 'Неверный логин или пароль.'],
     [problem(429, 'RATE_LIMITED', { retryAfter: 42 }), 'Слишком много попыток. Повторите через 42 с.'],
   ])('ошибка сервера показывается понятным текстом (%#)', async (response, message) => {
     // подготовка
@@ -98,7 +98,7 @@ describe('Вход по номеру телефона и паролю', () => {
     const { user } = await openLogin();
 
     // вызов
-    await user.type(screen.getByTestId('login-phone'), '+79123456789');
+    await user.type(screen.getByTestId('login-username'), 'alice');
     await user.type(screen.getByTestId('login-password'), 'wrong-pass');
     await user.click(screen.getByTestId('login-submit'));
 
@@ -109,7 +109,7 @@ describe('Вход по номеру телефона и паролю', () => {
 });
 
 describe('Регистрация', () => {
-  it('?mode=register открывает регистрацию; номер, пароль и имя уходят на сервер, дальше — главное меню', async () => {
+  it('?mode=register открывает регистрацию; логин, пароль и имя уходят на сервер, дальше — главное меню', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(accepts('register', bodies), signedIn());
@@ -120,7 +120,7 @@ describe('Регистрация', () => {
 
     // проверка
     expect(await screen.findByTestId('main-menu')).toBeInTheDocument();
-    expect(bodies).toEqual([{ phone: '+7 912 345-67-89', password: 'correct horse', displayName: 'Алиса' }]);
+    expect(bodies).toEqual([{ login: 'alice', password: 'correct horse', displayName: 'Алиса' }]);
     expect(router.state.location.pathname).toBe('/');
   });
 
@@ -138,28 +138,28 @@ describe('Регистрация', () => {
     await waitFor(() => expect(bodies).toHaveLength(1));
   });
 
-  it('до отправки проверяются номер, длина пароля, совпадение паролей и имя', async () => {
+  it('до отправки проверяются логин, длина пароля, совпадение паролей и имя', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(accepts('register', bodies));
     const { user } = await openLogin('/login?mode=register');
 
     // вызов
-    await fillRegistration(user, { phone: '12-34', password: 'short', repeat: 'other', name: '' });
+    await fillRegistration(user, { username: 'a b', password: 'short', repeat: 'other', name: '' });
 
     // проверка
-    expect(await screen.findByText('Номер — от 10 до 15 цифр, например +7 912 345-67-89.')).toBeInTheDocument();
+    expect(await screen.findByText('Логин — от 3 до 32 символов: латиница, цифры, «.», «_», «-».')).toBeInTheDocument();
     expect(screen.getByText('Пароль — от 8 до 64 символов.')).toBeInTheDocument();
     expect(screen.getByText('Пароли не совпадают.')).toBeInTheDocument();
     expect(screen.getByText('Заполните поле.')).toBeInTheDocument();
     expect(bodies).toEqual([]);
   });
 
-  it('номер уже зарегистрирован — сообщение у поля номера', async () => {
+  it('логин уже зарегистрирован — сообщение у поля логина', async () => {
     // подготовка
     server.use(
       http.post('*/api/v1/auth/register', () =>
-        problem(409, 'PHONE_TAKEN', { detail: 'Номер +79123456789 уже зарегистрирован. Войдите по нему.' }),
+        problem(409, 'LOGIN_TAKEN', { detail: 'Логин alice уже зарегистрирован. Войдите по нему.' }),
       ),
     );
     const { user } = await openLogin('/login?mode=register');
@@ -168,8 +168,8 @@ describe('Регистрация', () => {
     await fillRegistration(user);
 
     // проверка
-    expect(await screen.findByText('Номер +79123456789 уже зарегистрирован. Войдите по нему.')).toBeInTheDocument();
-    expect(screen.getByTestId('register-phone')).toHaveAttribute('aria-invalid', 'true');
+    expect(await screen.findByText('Логин alice уже зарегистрирован. Войдите по нему.')).toBeInTheDocument();
+    expect(screen.getByTestId('register-username')).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('ошибка сервера по полю — у этого поля', async () => {
@@ -190,63 +190,63 @@ describe('Регистрация', () => {
   });
 });
 
-describe('Номер и пароль в настройках', () => {
+describe('Логин и пароль в настройках', () => {
   function settings(me: MeResponse = userMe) {
     server.use(signedIn(me), http.get('*/api/v1/auth/devices', () => HttpResponse.json([])));
     renderRoutes(routes, '/settings');
     return userEvent.setup();
   }
 
-  it('номер в заголовке; смена номера — в формате сервера', async () => {
+  it('логин в заголовке; смена логина — в нижнем регистре', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(
-      http.put('*/api/v1/auth/me/phone', async ({ request }) => {
+      http.put('*/api/v1/auth/me/login', async ({ request }) => {
         bodies.push(await request.json());
-        return HttpResponse.json({ ...userMe, user: { ...alice, phone: '+79001234567' } });
+        return HttpResponse.json({ ...userMe, user: { ...alice, login: 'alice_new' } });
       }),
     );
     const user = settings();
-    expect(await screen.findByTestId('settings-account')).toHaveTextContent('Вы вошли по номеру +79123456789');
-    expect(screen.getByTestId('settings-phone')).toHaveValue('+79123456789');
+    expect(await screen.findByTestId('settings-account')).toHaveTextContent('Вы вошли по логину alice');
+    expect(screen.getByTestId('settings-username')).toHaveValue('alice');
 
     // вызов
-    await user.clear(screen.getByTestId('settings-phone'));
-    await user.type(screen.getByTestId('settings-phone'), '8 900 123 45 67');
-    await user.click(screen.getByTestId('settings-phone-save'));
+    await user.clear(screen.getByTestId('settings-username'));
+    await user.type(screen.getByTestId('settings-username'), 'Alice_New');
+    await user.click(screen.getByTestId('settings-username-save'));
 
     // проверка
-    expect(await screen.findByTestId('settings-notice')).toHaveTextContent('Номер сохранён. Входите по нему.');
-    expect(screen.getByTestId('settings-phone')).toHaveValue('+79001234567');
-    expect(bodies).toEqual([{ phone: '8 900 123 45 67' }]);
+    expect(await screen.findByTestId('settings-notice')).toHaveTextContent('Логин сохранён. Входите по нему.');
+    expect(screen.getByTestId('settings-username')).toHaveValue('alice_new');
+    expect(bodies).toEqual([{ login: 'Alice_New' }]);
   });
 
-  it('номер занят другим аккаунтом — сообщение у поля; пустой номер не отправляется', async () => {
+  it('логин занят другим аккаунтом — сообщение у поля; пустой логин не отправляется', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(
-      http.put('*/api/v1/auth/me/phone', async ({ request }) => {
+      http.put('*/api/v1/auth/me/login', async ({ request }) => {
         bodies.push(await request.json());
-        return problem(409, 'PHONE_TAKEN', { detail: 'Номер +79001234567 уже зарегистрирован. Войдите по нему.' });
+        return problem(409, 'LOGIN_TAKEN', { detail: 'Логин bob уже зарегистрирован. Войдите по нему.' });
       }),
     );
     const user = settings();
-    const field = await screen.findByTestId('settings-phone');
+    const field = await screen.findByTestId('settings-username');
 
     // вызов: пусто
     await user.clear(field);
-    await user.click(screen.getByTestId('settings-phone-save'));
+    await user.click(screen.getByTestId('settings-username-save'));
 
     // проверка
     expect(await screen.findByText('Заполните поле.')).toBeInTheDocument();
     expect(bodies).toEqual([]);
 
-    // вызов: занятый номер
-    await user.type(field, '+79001234567');
-    await user.click(screen.getByTestId('settings-phone-save'));
+    // вызов: занятый логин
+    await user.type(field, 'bob');
+    await user.click(screen.getByTestId('settings-username-save'));
 
     // проверка
-    expect(await screen.findByText('Номер +79001234567 уже зарегистрирован. Войдите по нему.')).toBeInTheDocument();
+    expect(await screen.findByText('Логин bob уже зарегистрирован. Войдите по нему.')).toBeInTheDocument();
   });
 
   it('смена пароля: текущий и новый дважды; неверный текущий — сообщение', async () => {
@@ -303,7 +303,7 @@ describe('Номер и пароль в настройках', () => {
     expect(bodies).toEqual([]);
   });
 
-  it('аккаунт по почте: без номера — подсказка; «Задать пароль» без текущего', async () => {
+  it('аккаунт по почте: логин user<id>, «Задать пароль» без текущего', async () => {
     // подготовка
     const bodies: unknown[] = [];
     server.use(
@@ -312,8 +312,8 @@ describe('Номер и пароль в настройках', () => {
         return new HttpResponse(null, { status: 204 });
       }),
     );
-    const user = settings({ ...userMe, user: { ...alice, phone: null, passwordSet: false } });
-    expect(await screen.findByTestId('settings-account')).toHaveTextContent('У аккаунта ещё нет номера телефона');
+    const user = settings({ ...userMe, user: { ...alice, login: 'user-old', passwordSet: false } });
+    expect(await screen.findByTestId('settings-account')).toHaveTextContent('Вы вошли по логину user-old');
     expect(screen.getByTestId('settings-password-not-set')).toBeInTheDocument();
     expect(screen.queryByTestId('settings-password-current')).not.toBeInTheDocument();
 
@@ -427,7 +427,7 @@ describe('Главное меню и настройки', () => {
     expect(await screen.findByTestId('menu-login')).toBeInTheDocument();
   });
 
-  it('гость: имя устройства, без списка устройств, телефона и пароля; предложение войти', async () => {
+  it('гость: имя устройства, без списка устройств, логина и пароля; предложение войти', async () => {
     // подготовка
     server.use(signedIn(guestMe));
 
@@ -438,7 +438,7 @@ describe('Главное меню и настройки', () => {
     expect(await screen.findByTestId('settings-name')).toHaveValue('Вадим');
     expect(screen.getByTestId('settings-login')).toHaveTextContent('Войти или зарегистрироваться');
     expect(screen.queryByTestId('settings-devices')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('settings-phone')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('settings-username')).not.toBeInTheDocument();
     expect(screen.queryByTestId('settings-password')).not.toBeInTheDocument();
   });
 });

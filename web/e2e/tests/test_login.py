@@ -1,4 +1,4 @@
-"""Регистрация и вход по номеру телефона и паролю, запоминание браузера и защищённые экраны (задачи 3.3, 8.1, 8.2)."""
+"""Регистрация и вход по логину и паролю, запоминание браузера и защищённые экраны (задачи 3.3, 8.1, 8.2, 8.3)."""
 
 import random
 
@@ -13,32 +13,26 @@ from pages.main_page import MainPage
 PASSWORD = "e2e-password"
 
 
-def unique_phone() -> str:
-    """Свой номер у каждого теста: номера уникальны, лимит попыток на номер не мешает."""
-    return f"+79{random.randrange(10**9):09d}"
+def unique_login() -> str:
+    """Свой логин у каждого теста: логины уникальны, лимит попыток на логин не мешает."""
+    return f"u{random.randrange(10**9):09d}"
 
 
-def register(page: Page, phone: str | None = None, name: str = "Охотник", password: str = PASSWORD) -> str:
-    """Регистрация через интерфейс; после неё открывается главное меню. Возвращает номер (+7…)."""
-    phone = phone or unique_phone()
-    LoginPage(page).open().to_register().register(phone, password, name=name)
+def register(page: Page, login: str | None = None, name: str = "Охотник", password: str = PASSWORD) -> str:
+    """Регистрация через интерфейс; после неё открывается главное меню. Возвращает логин."""
+    login = login or unique_login()
+    LoginPage(page).open().to_register().register(login, password, name=name)
     MainPage(page).should_be_open()
-    return phone
-
-
-def spaced(phone: str) -> str:
-    """Тот же номер в привычном написании: 8 912 345-67-89."""
-    digits = phone.removeprefix("+7")
-    return f"8 {digits[:3]} {digits[3:6]}-{digits[6:8]}-{digits[8:]}"
+    return login
 
 
 @allure.feature("Регистрация и вход")
 class TestLogin:
 
-    @allure.title("Регистрация: имя в меню, «Настройки» вместо «Войти», номер в настройках")
+    @allure.title("Регистрация: имя в меню, «Настройки» вместо «Войти», логин в настройках")
     def test_register(self, page: Page):
         # вызов
-        phone = register(page, name="Алиса")
+        login = register(page, name="Алиса")
 
         # проверка
         main_page = MainPage(page)
@@ -47,19 +41,19 @@ class TestLogin:
             expect(main_page.by_test_id("menu-settings")).to_be_visible()
             expect(main_page.by_test_id("menu-login")).to_be_hidden()
         settings = SettingsPage(page).open()
-        with check("В настройках — номер, по которому выполнен вход"):
-            assert settings.account_text() == f"Вы вошли по номеру {phone}"
-            assert settings.phone() == phone
+        with check("В настройках — логин, по которому выполнен вход"):
+            assert settings.account_text() == f"Вы вошли по логину {login}"
+            assert settings.login() == login
 
-    @allure.title("Вход в другом браузере по номеру в любом написании и паролю")
+    @allure.title("Вход в другом браузере по логину и паролю")
     def test_login_in_other_browser(self, page: Page, browser: Browser, base_url: str):
         # подготовка
-        phone = register(page, name="Борис")
+        login = register(page, name="Борис")
         other = browser.new_context(base_url=base_url, locale="ru-RU")
         other_page = other.new_page()
 
         # вызов
-        LoginPage(other_page).open().login(spaced(phone), PASSWORD)
+        LoginPage(other_page).open().login(login, PASSWORD)
 
         # проверка
         with check("Вход выполнен: в меню имя пользователя"):
@@ -73,67 +67,67 @@ class TestLogin:
     @allure.title("Неверный пароль — сообщение, вход не выполнен")
     def test_wrong_password(self, page: Page, browser: Browser, base_url: str):
         # подготовка
-        phone = register(page)
+        login = register(page)
         other = browser.new_context(base_url=base_url, locale="ru-RU")
         login_page = LoginPage(other.new_page()).open()
 
         # вызов
-        login_page.login(phone, "not-the-password")
+        login_page.login(login, "not-the-password")
 
         # проверка
-        with check("Сообщение о неверном номере или пароле"):
-            assert login_page.error_text() == "Неверный номер телефона или пароль."
+        with check("Сообщение о неверном логине или пароле"):
+            assert login_page.error_text() == "Неверный логин или пароль."
             login_page.should_be_open()
         other.close()
 
-    @allure.title("Номер уже зарегистрирован и несовпадающие пароли — сообщения у полей")
+    @allure.title("Логин уже зарегистрирован и несовпадающие пароли — сообщения у полей")
     def test_register_errors(self, page: Page, browser: Browser, base_url: str):
         # подготовка
-        phone = register(page)
+        login = register(page)
         other = browser.new_context(base_url=base_url, locale="ru-RU")
         other_page = other.new_page()
         login_page = LoginPage(other_page).open().to_register()
 
         # вызов: пароли не совпадают
-        login_page.register(unique_phone(), PASSWORD, name="Вера", repeat=PASSWORD + "!")
+        login_page.register(unique_login(), PASSWORD, name="Вера", repeat=PASSWORD + "!")
 
         # проверка
         with check("Пароли не совпадают"):
             expect(other_page.get_by_text("Пароли не совпадают.")).to_be_visible()
 
-        # вызов: номер уже зарегистрирован (в другом написании)
-        login_page.register(spaced(phone), PASSWORD, name="Вера")
+        # вызов: логин уже зарегистрирован (в другом регистре)
+        login_page.register(login.upper(), PASSWORD, name="Вера")
 
         # проверка
-        with check("Номер занят — сообщение у поля"):
-            expect(other_page.get_by_text(f"Номер {phone} уже зарегистрирован. Войдите по нему.")).to_be_visible()
+        with check("Логин занят — сообщение у поля"):
+            expect(other_page.get_by_text(f"Логин {login} уже зарегистрирован. Войдите по нему.")).to_be_visible()
             login_page.should_be_open()
         other.close()
 
-    @allure.title("Смена номера и пароля: вход только по новым")
-    def test_change_phone_and_password(self, page: Page, browser: Browser, base_url: str):
+    @allure.title("Смена логина и пароля: вход только по новым")
+    def test_change_login_and_password(self, page: Page, browser: Browser, base_url: str):
         # подготовка
-        old_phone = register(page)
-        new_phone = unique_phone()
+        old_login = register(page)
+        new_login = unique_login()
         settings = SettingsPage(page).open()
 
         # вызов
-        settings.save_phone(new_phone)
+        settings.save_login(new_login)
         settings.change_password(PASSWORD, "brand-new-password")
 
         # проверка
-        with check("Сообщение «Пароль изменён.» после «Номер сохранён»"):
+        with check("Сообщение «Пароль изменён.» после «Логин сохранён»"):
             expect(page.get_by_test_id("settings-notice")).to_have_text("Пароль изменён.")
         other = browser.new_context(base_url=base_url, locale="ru-RU")
         login_page = LoginPage(other.new_page()).open()
-        login_page.login(old_phone, "brand-new-password")
-        with check("Старый номер больше не логин"):
-            assert login_page.error_text() == "Неверный номер телефона или пароль."
-        login_page.login(new_phone, PASSWORD)
+        login_page.login(old_login, "brand-new-password")
+        with check("Старый логин больше не подходит"):
+            assert login_page.error_text() == "Неверный логин или пароль."
+        login_page.login(new_login, PASSWORD)
         with check("Старый пароль не подходит"):
-            assert login_page.error_text() == "Неверный номер телефона или пароль."
-        login_page.login(new_phone, "brand-new-password")
-        with check("Новые номер и пароль подходят"):
+            assert login_page.error_text() == "Неверный логин или пароль."
+        login_page.login(new_login, "brand-new-password")
+        with check("Новые логин и пароль подходят"):
             MainPage(login_page.page).should_be_open()
         other.close()
 

@@ -9,9 +9,9 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * Пользователь: номер телефона — логин, пароль хранится только хешем. У аккаунтов, созданных входом по
- * почте, телефона и пароля может не быть: они задают их в настройках на запомненном устройстве. Почта
- * осталась у таких аккаунтов и больше не используется.
+ * Пользователь: логин (свободное поле) и пароль, пароль хранится только хешем. У аккаунтов, созданных
+ * входом по почте, пароля может не быть: они задают его в настройках на запомненном устройстве, а логин
+ * получают вида {@code user<id>}. Почта осталась у таких аккаунтов и больше не используется.
  */
 @Entity
 @Table(name = "app_user")
@@ -25,9 +25,9 @@ public class AppUser {
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
-    /** Логин: {@code +79123456789} ({@link Credentials#normalizePhone}); {@code null} — ещё не задан. */
-    @Column(length = 16)
-    private String phone;
+    /** Логин: нижний регистр ({@link Credentials#normalizeLogin}); у аккаунта по почте — {@code user<id>}. */
+    @Column(length = 32, nullable = false)
+    private String login;
 
     @Column(name = "display_name", length = 60)
     private String displayName;
@@ -38,8 +38,8 @@ public class AppUser {
     protected AppUser() {
     }
 
-    AppUser(String phone, String passwordHash, String displayName, Instant createdAt) {
-        this.phone = phone;
+    AppUser(String login, String passwordHash, String displayName, Instant createdAt) {
+        this.login = login;
         this.passwordHash = passwordHash;
         this.displayName = displayName;
         this.createdAt = createdAt;
@@ -57,12 +57,12 @@ public class AppUser {
         this.passwordHash = passwordHash;
     }
 
-    public String getPhone() {
-        return phone;
+    public String getLogin() {
+        return login;
     }
 
-    void setPhone(String phone) {
-        this.phone = phone;
+    void setLogin(String login) {
+        this.login = login;
     }
 
     public String getDisplayName() {

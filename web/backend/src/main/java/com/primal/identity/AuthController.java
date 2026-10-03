@@ -26,18 +26,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Регистрация и вход по номеру телефона и паролю, «кто я» ({@code doc/api.md} §3). */
-@Tag(name = "auth", description = "Регистрация, вход по номеру телефона и паролю, устройства")
+/** Регистрация и вход по логину и паролю, «кто я» ({@code doc/api.md} §3). */
+@Tag(name = "auth", description = "Регистрация, вход по логину и паролю, устройства")
 @RestController
 @RequestMapping("/api/v1/auth")
 class AuthController {
 
+    private static final String LOGIN_RULE = "Логин — от 3 до 32 символов: латиница, цифры, «.», «_», «-»";
     private static final String PASSWORD_RULE = "Пароль — от 8 до 64 символов";
 
-    /** Номер — логин, формат приводится к {@code +79123456789}; имя обязательно: его видят участники кампаний. */
+    /** Логин — свободное поле: латиница, цифры, «.», «_», «-», хранится в нижнем регистре. */
     record RegisterRequest(
-            @NotBlank(message = "Укажите номер телефона") @Size(max = 24, message = "Слишком длинный номер")
-            String phone,
+            @NotBlank(message = "Укажите логин")
+            @Size(min = Credentials.LOGIN_MIN, max = Credentials.LOGIN_MAX, message = LOGIN_RULE)
+            String login,
             @NotBlank(message = "Укажите пароль")
             @Size(min = Credentials.PASSWORD_MIN, max = Credentials.PASSWORD_MAX, message = PASSWORD_RULE)
             String password,
@@ -45,26 +47,27 @@ class AuthController {
 
         @Override
         public String toString() {
-            return "RegisterRequest[phone=" + phone + "]";
+            return "RegisterRequest[login=" + login + "]";
         }
     }
 
     record LoginRequest(
-            @NotBlank(message = "Укажите номер телефона") @Size(max = 24, message = "Слишком длинный номер")
-            String phone,
+            @NotBlank(message = "Укажите логин")
+            @Size(max = Credentials.LOGIN_MAX, message = LOGIN_RULE)
+            String login,
             @NotBlank(message = "Укажите пароль") @Size(max = 128, message = "Слишком длинный пароль") String password) {
 
         @Override
         public String toString() {
-            return "LoginRequest[phone=" + phone + "]";
+            return "LoginRequest[login=" + login + "]";
         }
     }
 
     /**
-     * {@code phone} — логин; {@code null} и {@code passwordSet = false} бывают у аккаунта, созданного по почте:
-     * он задаёт номер и пароль в настройках (пароль — без текущего).
+     * {@code passwordSet = false} бывает у аккаунта, созданного по почте: он задаёт пароль в настройках
+     * (пароль — без текущего). Логин у такого аккаунта — {@code user<id>}.
      */
-    record UserView(long id, @ApiNullable String phone, @ApiNullable String displayName, boolean passwordSet) {
+    record UserView(long id, String login, @ApiNullable String displayName, boolean passwordSet) {
     }
 
     record DeviceView(UUID id, String userAgent) {
@@ -86,10 +89,11 @@ class AuthController {
     record RenameRequest(@Size(max = 60, message = "Не длиннее 60 символов") String displayName) {
     }
 
-    /** Новый номер — новый логин; удалить номер нельзя. */
-    record PhoneRequest(
-            @NotBlank(message = "Укажите номер телефона") @Size(max = 24, message = "Слишком длинный номер")
-            String phone) {
+    /** Новый логин; удалить логин нельзя. */
+    record LoginChangeRequest(
+            @NotBlank(message = "Укажите логин")
+            @Size(min = Credentials.LOGIN_MIN, max = Credentials.LOGIN_MAX, message = LOGIN_RULE)
+            String login) {
     }
 
     /** {@code currentPassword} не нужен, если пароля ещё нет ({@code passwordSet = false}). */
@@ -133,7 +137,7 @@ class AuthController {
     @ApiResponse(responseCode = "201", description = "Аккаунт создан, браузер запомнен")
     @PostMapping("/register")
     ResponseEntity<SignInResponse> register(@Valid @RequestBody RegisterRequest body, HttpServletRequest request) {
-        SignIn signIn = auth.register(new Registration(body.phone(), body.password(), body.displayName()),
+        SignIn signIn = auth.register(new Registration(body.login(), body.password(), body.displayName()),
                 clientIp(request), cookies.read(request), request.getHeader(HttpHeaders.USER_AGENT));
         return signedIn(HttpStatus.CREATED, signIn);
     }
@@ -141,7 +145,7 @@ class AuthController {
     @Operation(operationId = "login")
     @PostMapping("/login")
     ResponseEntity<SignInResponse> login(@Valid @RequestBody LoginRequest body, HttpServletRequest request) {
-        SignIn signIn = auth.login(body.phone(), body.password(), clientIp(request), cookies.read(request),
+        SignIn signIn = auth.login(body.login(), body.password(), clientIp(request), cookies.read(request),
                 request.getHeader(HttpHeaders.USER_AGENT));
         return signedIn(HttpStatus.OK, signIn);
     }
@@ -158,10 +162,11 @@ class AuthController {
         return toResponse(accounts.rename(principal, body.displayName()));
     }
 
-    @Operation(operationId = "updatePhone")
-    @PutMapping("/me/phone")
-    MeResponse changePhone(@AuthenticationPrincipal PrimalPrincipal principal, @Valid @RequestBody PhoneRequest body) {
-        return toResponse(accounts.changePhone(principal, body.phone()));
+    @Operation(operationId = "updateLogin")
+    @PutMapping("/me/login")
+    MeResponse changeLogin(@AuthenticationPrincipal PrimalPrincipal principal,
+                           @Valid @RequestBody LoginChangeRequest body) {
+        return toResponse(accounts.changeLogin(principal, body.login()));
     }
 
     @Operation(operationId = "changePassword")
@@ -191,7 +196,7 @@ class AuthController {
     }
 
     private static UserView userView(AppUser user) {
-        return new UserView(user.getId(), user.getPhone(), user.getDisplayName(), user.getPasswordHash() != null);
+        return new UserView(user.getId(), user.getLogin(), user.getDisplayName(), user.getPasswordHash() != null);
     }
 
     private static MeResponse toResponse(AccountService.Me me) {

@@ -57,7 +57,7 @@ class SchemaIT extends IntegrationTest {
         void campaign() {
             // подготовка: пользователь и кампания; босс TORAMAT уже есть — каталог заполняет миграция R__Catalog
             long userId = jdbc.queryForObject(
-                    "insert into app_user (phone) values ('+79000000001') returning id", Long.class);
+                    "insert into app_user (login) values ('schema-owner') returning id", Long.class);
             campaignId = jdbc.queryForObject(
                     "insert into campaign (owner_id, name) values (?, 'Тест') returning id", Long.class, userId);
         }

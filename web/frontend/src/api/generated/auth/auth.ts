@@ -25,10 +25,10 @@ import type {
 
 import type {
   DeviceSummary,
+  LoginChangeRequest,
   LoginRequest,
   MeResponse,
   PasswordChangeRequest,
-  PhoneRequest,
   RegisterRequest,
   RenameRequest,
   SignInResponse
@@ -56,88 +56,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getUpdatePhoneUrl = () => {
-
-
-
-
-  return `/api/v1/auth/me/phone`
-}
-
-export const updatePhone = async (phoneRequest: PhoneRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MeResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<MeResponse>(getUpdatePhoneUrl(),
-  {
-    ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(phoneRequest)
-  }
-);}
-
-
-
-
-
-export const getUpdatePhoneMutationKey = () => ['updatePhone'] as const;
-
-export const getUpdatePhoneMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePhone>>, TError,UpdatePhoneMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof updatePhone>>, TError,UpdatePhoneMutationVariables, TContext> => {
-
-const mutationKey = getUpdatePhoneMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePhone>>, UpdatePhoneMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  updatePhone(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UpdatePhoneMutationResult = NonNullable<Awaited<ReturnType<typeof updatePhone>>>
-    export type UpdatePhoneMutationBody = PhoneRequest
-    export type UpdatePhoneMutationError = unknown
-    export type UpdatePhoneMutationVariables = {data: PhoneRequest}
-
-    export const useUpdatePhone = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePhone>>, TError,UpdatePhoneMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof updatePhone>>,
-        TError,
-        UpdatePhoneMutationVariables,
-        TContext
-      > => {
-      return useMutation(getUpdatePhoneMutationOptions(options), queryClient);
-    }
-    export const getChangePasswordUrl = () => {
+export const getChangePasswordUrl = () => {
 
 
 
@@ -217,6 +136,87 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getChangePasswordMutationOptions(options), queryClient);
+    }
+    export const getUpdateLoginUrl = () => {
+
+
+
+
+  return `/api/v1/auth/me/login`
+}
+
+export const updateLogin = async (loginChangeRequest: LoginChangeRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<MeResponse>(getUpdateLoginUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(loginChangeRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateLoginMutationKey = () => ['updateLogin'] as const;
+
+export const getUpdateLoginMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLogin>>, TError,UpdateLoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateLogin>>, TError,UpdateLoginMutationVariables, TContext> => {
+
+const mutationKey = getUpdateLoginMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateLogin>>, UpdateLoginMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateLogin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateLoginMutationResult = NonNullable<Awaited<ReturnType<typeof updateLogin>>>
+    export type UpdateLoginMutationBody = LoginChangeRequest
+    export type UpdateLoginMutationError = unknown
+    export type UpdateLoginMutationVariables = {data: LoginChangeRequest}
+
+    export const useUpdateLogin = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateLogin>>, TError,UpdateLoginMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateLogin>>,
+        TError,
+        UpdateLoginMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateLoginMutationOptions(options), queryClient);
     }
     export const getRegisterUrl = () => {
 

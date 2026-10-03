@@ -5,32 +5,32 @@ from pages.base_page import BasePage
 
 
 class LoginPage(BasePage):
-    """Вход и регистрация по номеру телефона и паролю: номер — логин (задачи 8.1, 8.2)."""
+    """Вход и регистрация по логину и паролю: логин — свободное поле (задачи 8.1, 8.2, 8.3)."""
 
     path = "/login"
     root_test_id = "page-login"
 
-    PHONE = "login-phone"
+    USERNAME = "login-username"
     PASSWORD = "login-password"
     SUBMIT = "login-submit"
     ERROR = "login-error"
 
-    @allure.step("Войти по номеру {phone}")
-    def login(self, phone: str, password: str) -> None:
-        self.by_test_id(self.PHONE).fill(phone)
+    @allure.step("Войти по логину {login}")
+    def login(self, login: str, password: str) -> None:
+        self.by_test_id(self.USERNAME).fill(login)
         self.by_test_id(self.PASSWORD).fill(password)
         self.click(self.SUBMIT)
 
     @allure.step("Перейти к регистрации")
     def to_register(self) -> "LoginPage":
         self.by_test_id("login-mode").get_by_text("Регистрация", exact=True).click()
-        expect(self.by_test_id("register-phone")).to_be_visible()
+        expect(self.by_test_id("register-username")).to_be_visible()
         return self
 
-    @allure.step("Зарегистрироваться по номеру {phone}")
-    def register(self, phone: str, password: str, name: str, repeat: str | None = None) -> None:
+    @allure.step("Зарегистрироваться по логину {login}")
+    def register(self, login: str, password: str, name: str, repeat: str | None = None) -> None:
         """`repeat` — другой повтор пароля, чтобы проверить несовпадение."""
-        self.by_test_id("register-phone").fill(phone)
+        self.by_test_id("register-username").fill(login)
         self.by_test_id("register-password").fill(password)
         self.by_test_id("register-password-repeat").fill(password if repeat is None else repeat)
         self.by_test_id("register-name").fill(name)
@@ -42,7 +42,7 @@ class LoginPage(BasePage):
 
 
 class SettingsPage(BasePage):
-    """Настройки: имя, номер телефона (логин), пароль, устройства, выход."""
+    """Настройки: имя, логин, пароль, устройства, выход."""
 
     path = "/settings"
     root_test_id = "page-settings"
@@ -53,13 +53,13 @@ class SettingsPage(BasePage):
     def account_text(self) -> str:
         return self.by_test_id("settings-account").inner_text()
 
-    def phone(self) -> str:
-        return self.by_test_id("settings-phone").input_value()
+    def login(self) -> str:
+        return self.by_test_id("settings-username").input_value()
 
-    @allure.step("Сохранить номер «{phone}»")
-    def save_phone(self, phone: str) -> None:
-        self.by_test_id("settings-phone").fill(phone)
-        self.click("settings-phone-save")
+    @allure.step("Сохранить логин «{login}»")
+    def save_login(self, login: str) -> None:
+        self.by_test_id("settings-username").fill(login)
+        self.click("settings-username-save")
         expect(self.by_test_id("settings-notice")).to_be_visible()
 
     @allure.step("Сменить пароль")

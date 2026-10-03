@@ -118,7 +118,7 @@ class DevicesIT extends IntegrationTest {
             me(device)
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.kind").value("USER"))
-                    .andExpect(jsonPath("$.user.phone").value(AuthHelper.phoneOf("boris")))
+                    .andExpect(jsonPath("$.user.login").value(AuthHelper.loginOf("boris")))
                     .andExpect(jsonPath("$.user.passwordSet").value(true))
                     .andExpect(jsonPath("$.user.displayName").value("boris"))
                     .andExpect(jsonPath("$.device.id").isString());
@@ -185,20 +185,20 @@ class DevicesIT extends IntegrationTest {
         @DisplayName("список устройств помечает текущее; отозванное устройство сразу получает 401")
         void revokeDevice() throws Exception {
             // подготовка: два браузера одного пользователя
-            Cookie phone = auth.login("dina");
+            Cookie desktop = auth.login("dina");
             Cookie laptop = auth.login("dina");
-            me(phone).andExpect(status().isOk()); // устройство попало в кэш
-            String phoneId = deviceId(phone);
+            me(desktop).andExpect(status().isOk()); // устройство попало в кэш
+            String desktopId = deviceId(desktop);
 
             // вызов
             mockMvc.perform(get("/api/v1/auth/devices").cookie(laptop))
                     .andExpect(jsonPath("$.length()").value(2))
                     .andExpect(jsonPath("$[?(@.current == true)].id").value(deviceId(laptop)));
-            mockMvc.perform(delete("/api/v1/auth/devices/{id}", phoneId).with(xsrf()).cookie(laptop))
+            mockMvc.perform(delete("/api/v1/auth/devices/{id}", desktopId).with(xsrf()).cookie(laptop))
                     .andExpect(status().isNoContent());
 
             // проверка
-            me(phone).andExpect(status().isUnauthorized());
+            me(desktop).andExpect(status().isUnauthorized());
             me(laptop).andExpect(status().isOk());
         }
 

@@ -5,8 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
-    /** Телефон — в формате {@code +79123456789} ({@link Credentials#normalizePhone}). */
-    Optional<AppUser> findByPhone(String phone);
+    /** Логин — в нижнем регистре ({@link Credentials#normalizeLogin}). */
+    Optional<AppUser> findByLogin(String login);
 
-    boolean existsByPhone(String phone);
+    boolean existsByLogin(String login);
 }

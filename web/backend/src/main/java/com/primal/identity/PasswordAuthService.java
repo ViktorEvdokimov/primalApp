@@ -14,19 +14,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Регистрация и вход по номеру телефона и паролю ({@code doc/api.md} §3). Номер — логин, пароль хранится
- * только хешем (bcrypt). Браузер запоминается, как и раньше: гостевое устройство этого браузера становится
- * устройством пользователя.
+ * Регистрация и вход по логину и паролю ({@code doc/api.md} §3). Логин — свободное поле, пароль хранится
+ * только хешем (bcrypt). Браузер запоминается: гостевое устройство этого браузера становится устройством
+ * пользователя.
  */
 @Service
 public class PasswordAuthService {
 
     /** Регистрация; пароль в {@link #toString()} не попадает. */
-    public record Registration(String phone, String password, String displayName) {
+    public record Registration(String login, String password, String displayName) {
 
         @Override
         public String toString() {
-            return "Registration[phone=" + phone + "]";
+            return "Registration[login=" + login + "]";
         }
     }
 
@@ -38,7 +38,7 @@ public class PasswordAuthService {
     private final PasswordEncoder encoder;
     private final RateLimiter rateLimiter;
     private final Clock clock;
-    /** Хеш для сравнения, когда номера нет: по времени ответа не понять, зарегистрирован ли номер. */
+    /** Хеш для сравнения, когда логина нет: по времени ответа не понять, зарегистрирован ли логин. */
     private final String missingUserHash;
 
     PasswordAuthService(AppUserRepository users, DeviceService devices, PasswordEncoder encoder,
@@ -55,34 +55,34 @@ public class PasswordAuthService {
     public SignIn register(Registration registration, InetAddress ip, Optional<String> currentDeviceToken,
                            String userAgent) {
         rateLimiter.check(Limit.REGISTER_PER_IP, ipKey(ip));
-        String phone = Credentials.normalizePhone(registration.phone());
+        String login = Credentials.normalizeLogin(registration.login());
         checkPasswordLength(registration.password(), "password");
-        if (users.existsByPhone(phone)) {
-            throw phoneTaken(phone);
+        if (users.existsByLogin(login)) {
+            throw loginTaken(login);
         }
         AppUser user;
         try {
-            user = users.saveAndFlush(new AppUser(phone, encoder.encode(registration.password()),
+            user = users.saveAndFlush(new AppUser(login, encoder.encode(registration.password()),
                     registration.displayName().strip(), clock.instant()));
         } catch (DataIntegrityViolationException exception) {
-            throw phoneTaken(phone); // тот же номер зарегистрировали одновременно
+            throw loginTaken(login); // тот же логин зарегистрировали одновременно
         }
         return new SignIn(user, devices.signIn(user.getId(), currentDeviceToken, userAgent));
     }
 
-    /** Незарегистрированный номер и неверный пароль неразличимы — ни по ответу, ни по времени. */
+    /** Незарегистрированный логин и неверный пароль неразличимы — ни по ответу, ни по времени. */
     @Transactional
-    public SignIn login(String phone, String password, InetAddress ip, Optional<String> currentDeviceToken,
+    public SignIn login(String login, String password, InetAddress ip, Optional<String> currentDeviceToken,
                         String userAgent) {
         rateLimiter.check(Limit.LOGIN_PER_IP, ipKey(ip));
-        String normalized = Credentials.normalizePhone(phone);
+        String normalized = Credentials.normalizeLogin(login);
         rateLimiter.check(Limit.LOGIN_PER_ACCOUNT, normalized);
-        Optional<AppUser> user = users.findByPhone(normalized).filter(account -> account.getPasswordHash() != null);
+        Optional<AppUser> user = users.findByLogin(normalized).filter(account -> account.getPasswordHash() != null);
         boolean matches = Credentials.passwordFitsHash(password)
                 && encoder.matches(password, user.map(AppUser::getPasswordHash).orElse(missingUserHash))
                 && user.isPresent();
         if (!matches) {
-            throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "Неверный номер телефона или пароль.");
+            throw new ApiException(ErrorCode.INVALID_CREDENTIALS, "Неверный логин или пароль.");
         }
         return new SignIn(user.get(), devices.signIn(user.get().getId(), currentDeviceToken, userAgent));
     }
@@ -94,8 +94,8 @@ public class PasswordAuthService {
         }
     }
 
-    static ApiException phoneTaken(String phone) {
-        return new ApiException(ErrorCode.PHONE_TAKEN, "Номер " + phone + " уже зарегистрирован. Войдите по нему.");
+    static ApiException loginTaken(String login) {
+        return new ApiException(ErrorCode.LOGIN_TAKEN, "Логин " + login + " уже зарегистрирован. Войдите по нему.");
     }
 
     private static String ipKey(InetAddress ip) {

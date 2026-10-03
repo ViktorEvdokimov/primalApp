@@ -8,7 +8,6 @@ import com.primal.identity.DeviceCookies;
 import jakarta.servlet.http.Cookie;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -16,17 +15,16 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * Вход в тестах тем же путём, что у пользователя: вход по номеру телефона и паролю, а если номера ещё нет —
- * регистрация. Тест называет пользователя именем («alice»): оно становится именем аккаунта, а номер
- * выдаётся один на имя ({@link #phoneOf}). Пароль у всех — {@link #PASSWORD}.
+ * Вход в тестах тем же путём, что у пользователя: вход по логину и паролю, а если аккаунта ещё нет —
+ * регистрация. Тест называет пользователя именем («alice»): оно становится именем аккаунта, а логин
+ * выдаётся один на имя ({@link #loginOf}). Пароль у всех — {@link #PASSWORD}.
  */
 @TestComponent
 public class AuthHelper {
 
     public static final String PASSWORD = "test-password";
 
-    private static final Map<String, String> PHONES = new ConcurrentHashMap<>();
-    private static final AtomicInteger NEXT_PHONE = new AtomicInteger(1);
+    private static final Map<String, String> LOGINS = new ConcurrentHashMap<>();
 
     private final MockMvc mockMvc;
     private final RateLimiter rateLimiter;
@@ -36,9 +34,9 @@ public class AuthHelper {
         this.rateLimiter = rateLimiter;
     }
 
-    /** Номер пользователя с этим именем: {@code +79000000001}, {@code +79000000002}… — один на весь прогон. */
-    public static String phoneOf(String name) {
-        return PHONES.computeIfAbsent(name, ignored -> "+7900%07d".formatted(NEXT_PHONE.getAndIncrement()));
+    /** Логин пользователя с этим именем: {@code user-alice}, {@code user-bob}… — один на весь прогон. */
+    public static String loginOf(String name) {
+        return LOGINS.computeIfAbsent(name, ignored -> "user-" + name);
     }
 
     /** Вход пользователя; возвращает cookie устройства. Ограничения частоты сбрасываются. */
@@ -49,11 +47,11 @@ public class AuthHelper {
     /** Вход в браузере, где уже есть cookie устройства (например, гостя по ссылке-приглашению). */
     public Cookie login(String name, Cookie current) throws Exception {
         rateLimiter.reset();
-        String phone = phoneOf(name);
+        String login = loginOf(name);
         MvcResult result = perform("/api/v1/auth/login",
-                "{\"phone\": \"" + phone + "\", \"password\": \"" + PASSWORD + "\"}", current);
+                "{\"login\": \"" + login + "\", \"password\": \"" + PASSWORD + "\"}", current);
         if (result.getResponse().getStatus() != 200) {
-            result = perform("/api/v1/auth/register", "{\"phone\": \"" + phone + "\", \"password\": \"" + PASSWORD
+            result = perform("/api/v1/auth/register", "{\"login\": \"" + login + "\", \"password\": \"" + PASSWORD
                     + "\", \"displayName\": \"" + name + "\"}", current);
         }
         int status = result.getResponse().getStatus();

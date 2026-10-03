@@ -29,12 +29,26 @@ export interface QuestLists {
   expired: QuestItem[];
 }
 
-export interface PhoneRequest {
+export interface PasswordChangeRequest {
   /**
      * @minLength 0
-     * @maxLength 24
+     * @maxLength 128
+     * @nullable
      */
-  phone: string;
+  currentPassword: string | null;
+  /**
+     * @minLength 8
+     * @maxLength 64
+     */
+  newPassword: string;
+}
+
+export interface LoginChangeRequest {
+  /**
+     * @minLength 3
+     * @maxLength 32
+     */
+  login: string;
 }
 
 export interface MeDevice {
@@ -53,8 +67,7 @@ export const MeResponseKind = {
 
 export interface UserView {
   id: number;
-  /** @nullable */
-  phone: string | null;
+  login: string;
   /** @nullable */
   displayName: string | null;
   passwordSet: boolean;
@@ -64,20 +77,6 @@ export interface MeResponse {
   kind: MeResponseKind;
   user: UserView | null;
   device: MeDevice;
-}
-
-export interface PasswordChangeRequest {
-  /**
-     * @minLength 0
-     * @maxLength 128
-     * @nullable
-     */
-  currentPassword: string | null;
-  /**
-     * @minLength 8
-     * @maxLength 64
-     */
-  newPassword: string;
 }
 
 export interface JoinRequest {
@@ -599,10 +598,10 @@ export interface AchievementView {
 
 export interface RegisterRequest {
   /**
-     * @minLength 0
-     * @maxLength 24
+     * @minLength 3
+     * @maxLength 32
      */
-  phone: string;
+  login: string;
   /**
      * @minLength 8
      * @maxLength 64
@@ -628,9 +627,9 @@ export interface SignInResponse {
 export interface LoginRequest {
   /**
      * @minLength 0
-     * @maxLength 24
+     * @maxLength 32
      */
-  phone: string;
+  login: string;
   /**
      * @minLength 0
      * @maxLength 128

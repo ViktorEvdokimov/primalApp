@@ -93,7 +93,7 @@ class GlobalExceptionHandlerTest {
             mockMvc.perform(get("/test/api-exception"))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
-                    .andExpect(jsonPath("$.title").value("Неверный номер телефона или пароль"))
+                    .andExpect(jsonPath("$.title").value("Неверный логин или пароль"))
                     .andExpect(jsonPath("$.detail").value("Пароль не подходит"))
                     .andExpect(jsonPath("$.attemptsLeft").value(3));
         }

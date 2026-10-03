@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /** «Мои устройства» ({@code doc/api.md} §3) — только у пользователя с аккаунтом. */
-@Tag(name = "auth", description = "Вход по коду из письма и устройства")
+@Tag(name = "auth", description = "Вход по логину и паролю и устройства")
 @RestController
 @RequestMapping("/api/v1/auth/devices")
 class DevicesController {
@@ -65,6 +65,6 @@ class DevicesController {
         if (principal instanceof UserPrincipal user) {
             return user;
         }
-        throw new ApiException(ErrorCode.ACCOUNT_REQUIRED, "Список устройств есть только у аккаунта. Войдите по почте.");
+        throw new ApiException(ErrorCode.ACCOUNT_REQUIRED, "Список устройств есть только у аккаунта. Войдите по логину и паролю.");
     }
 }

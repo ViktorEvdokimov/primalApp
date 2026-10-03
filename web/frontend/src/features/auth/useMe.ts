@@ -27,7 +27,7 @@ export function useMe() {
   };
 }
 
-/** Подпись без своего имени: «Игрок» или «Гость» — номер телефона другим не показывается. */
+/** Подпись без своего имени: «Игрок» или «Гость» — логин другим не показывается. */
 export function defaultNameOf(me: MeResponse): string {
   return me.user === null ? ru.settings.guestName : ru.settings.playerName;
 }

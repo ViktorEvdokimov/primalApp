@@ -2,15 +2,17 @@ import { ApiError } from '../../api/errors';
 import { ru } from '../../shared/i18n/ru';
 
 /** Правила как на сервере (doc/api.md §3): проверяются до отправки, сервер проверяет их снова. */
-const PHONE_SEPARATORS = /[\s().-]/g;
-const PHONE = /^\+?\d{10,15}$/;
+export const LOGIN_MIN = 3;
+export const LOGIN_MAX = 32;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 64;
 
-/** Номер телефона — логин: пробелы, скобки, точки и дефисы не важны, цифр 10–15, можно с «+». */
-export function phoneError(phone: string): string | undefined {
-  if (phone.trim() === '') return ru.auth.errors.required;
-  return PHONE.test(phone.replace(PHONE_SEPARATORS, '')) ? undefined : ru.auth.errors.phone;
+const LOGIN = new RegExp(`^[a-z0-9._-]{${LOGIN_MIN},${LOGIN_MAX}}$`);
+
+/** Логин — поле свободного ввода: латиница, цифры, «.», «_», «-», 3–32 символа; регистр не важен. */
+export function loginError(login: string): string | undefined {
+  if (login.trim() === '') return ru.auth.errors.required;
+  return LOGIN.test(login.trim().toLowerCase()) ? undefined : ru.auth.errors.login;
 }
 
 export function passwordError(password: string): string | undefined {

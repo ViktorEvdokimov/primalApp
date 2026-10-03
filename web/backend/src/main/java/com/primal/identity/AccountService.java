@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * «Кто я», имя, телефон и пароль ({@code doc/api.md} §3): у пользователя — имя аккаунта, у гостя — имя
- * устройства. Телефон (он же логин) и пароль есть только у аккаунта.
+ * «Кто я», имя, логин и пароль ({@code doc/api.md} §3): у пользователя — имя аккаунта, у гостя — имя
+ * устройства. Логин и пароль есть только у аккаунта.
  */
 @Service
 public class AccountService {
@@ -30,7 +30,7 @@ public class AccountService {
 
     /** Имя гостя без имени и автора, чьё устройство удалено. */
     static final String GUEST_NAME = "Гость";
-    /** Имя пользователя без имени (аккаунт по почте): телефон другим участникам не показывается. */
+    /** Имя пользователя без имени (аккаунт по почте): логин другим участникам не показывается. */
     static final String PLAYER_NAME = "Игрок";
     static final String UNKNOWN_NAME = "—";
 
@@ -54,7 +54,7 @@ public class AccountService {
         };
     }
 
-    /** Имя пользователя для других участников: своё имя или «Игрок» — номер телефона не показывается. */
+    /** Имя пользователя для других участников: своё имя или «Игрок» — логин не показывается. */
     @Transactional(readOnly = true)
     public String userName(long userId) {
         return users.findById(userId)
@@ -86,19 +86,19 @@ public class AccountService {
         return me(principal);
     }
 
-    /** Новый номер — новый логин; занятый другим аккаунтом — {@code 409 PHONE_TAKEN}. */
+    /** Новый логин; занятый другим аккаунтом — {@code 409 LOGIN_TAKEN}. */
     @Transactional
-    public Me changePhone(PrimalPrincipal principal, String phone) {
-        String normalized = Credentials.normalizePhone(phone);
+    public Me changeLogin(PrimalPrincipal principal, String login) {
+        String normalized = Credentials.normalizeLogin(login);
         AppUser user = account(principal);
-        if (!normalized.equals(user.getPhone()) && users.existsByPhone(normalized)) {
-            throw PasswordAuthService.phoneTaken(normalized);
+        if (!normalized.equals(user.getLogin()) && users.existsByLogin(normalized)) {
+            throw PasswordAuthService.loginTaken(normalized);
         }
-        user.setPhone(normalized);
+        user.setLogin(normalized);
         try {
-            users.flush(); // тот же номер одновременно у двух аккаунтов упрётся в уникальный индекс здесь
+            users.flush(); // тот же логин одновременно у двух аккаунтов упрётся в уникальный индекс здесь
         } catch (DataIntegrityViolationException exception) {
-            throw PasswordAuthService.phoneTaken(normalized);
+            throw PasswordAuthService.loginTaken(normalized);
         }
         return me(principal);
     }
@@ -111,7 +111,7 @@ public class AccountService {
     public void changePassword(PrimalPrincipal principal, String currentPassword, String newPassword) {
         AppUser user = account(principal);
         if (user.getPasswordHash() != null) {
-            rateLimiter.check(Limit.LOGIN_PER_ACCOUNT, user.getPhone() != null ? user.getPhone() : "id:" + user.getId());
+            rateLimiter.check(Limit.LOGIN_PER_ACCOUNT, user.getLogin());
             boolean matches = currentPassword != null && Credentials.passwordFitsHash(currentPassword)
                     && encoder.matches(currentPassword, user.getPasswordHash());
             if (!matches) {
@@ -125,7 +125,7 @@ public class AccountService {
     private AppUser account(PrimalPrincipal principal) {
         if (!(principal instanceof UserPrincipal user)) {
             throw new ApiException(ErrorCode.ACCOUNT_REQUIRED,
-                    "Телефон и пароль есть только у аккаунта. Зарегистрируйтесь.");
+                    "Логин и пароль есть только у аккаунта. Зарегистрируйтесь.");
         }
         return users.findById(user.userId())
                 .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHENTICATED, "Войдите, чтобы продолжить."));

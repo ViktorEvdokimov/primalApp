@@ -7,12 +7,12 @@ import { useLogin, useRegister } from '../../api/generated/auth/auth';
 import type { MeResponse, SignInResponse } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
 import { safeNext } from '../../shared/routing';
-import { authErrorText, PASSWORD_MAX, passwordError, phoneError, repeatError, requiredError } from './credentials';
+import { authErrorText, LOGIN_MAX, loginError, PASSWORD_MAX, passwordError, repeatError, requiredError } from './credentials';
 import { ME_QUERY_KEY } from './useMe';
 
 type Mode = 'login' | 'register';
 
-type Errors = Partial<Record<'phone' | 'password' | 'repeat' | 'displayName', string>>;
+type Errors = Partial<Record<'login' | 'password' | 'repeat' | 'displayName', string>>;
 
 /** Ошибки полей без `undefined`: пустой объект — всё верно. */
 function compact(errors: Errors): Errors {
@@ -20,8 +20,8 @@ function compact(errors: Errors): Errors {
 }
 
 /**
- * Вход и регистрация по номеру телефона и паролю (doc/api.md §3): номер — логин. Браузер запоминается: гость
- * по ссылке-приглашению, войдя, продолжает с тем же устройством. `?mode=register` открывает регистрацию.
+ * Вход и регистрация по логину и паролю (doc/api.md §3). Браузер запоминается: гость по ссылке-приглашению,
+ * войдя, продолжает с тем же устройством. `?mode=register` открывает регистрацию.
  */
 export function LoginPage() {
   const navigate = useNavigate();
@@ -77,17 +77,17 @@ interface FormProps {
 
 function LoginForm({ onSignedIn, onError }: FormProps) {
   const login = useLogin();
-  const [values, setValues] = useState({ phone: '', password: '' });
+  const [values, setValues] = useState({ login: '', password: '' });
   const [errors, setErrors] = useState<Errors>({});
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const found = compact({ phone: phoneError(values.phone), password: requiredError(values.password) });
+    const found = compact({ login: loginError(values.login), password: requiredError(values.password) });
     setErrors(found);
     if (Object.keys(found).length > 0) return;
     onError(null);
     try {
-      onSignedIn(await login.mutateAsync({ data: { phone: values.phone.trim(), password: values.password } }));
+      onSignedIn(await login.mutateAsync({ data: { login: values.login.trim(), password: values.password } }));
     } catch (cause) {
       setErrors(fieldErrors(cause));
       onError(authErrorText(cause));
@@ -98,15 +98,14 @@ function LoginForm({ onSignedIn, onError }: FormProps) {
     <form onSubmit={(event) => void submit(event)} noValidate>
       <Stack gap="md">
         <TextInput
-          label={ru.auth.phone}
-          placeholder={ru.auth.phonePlaceholder}
-          type="tel"
-          autoComplete="username tel"
-          maxLength={24}
-          value={values.phone}
-          error={errors.phone}
-          onChange={(event) => setValues({ ...values, phone: event.currentTarget.value })}
-          data-testid="login-phone"
+          label={ru.auth.login}
+          placeholder={ru.auth.loginPlaceholder}
+          autoComplete="username"
+          maxLength={LOGIN_MAX}
+          value={values.login}
+          error={errors.login}
+          onChange={(event) => setValues({ ...values, login: event.currentTarget.value })}
+          data-testid="login-username"
         />
         <PasswordInput
           label={ru.auth.password}
@@ -126,7 +125,7 @@ function LoginForm({ onSignedIn, onError }: FormProps) {
 
 function RegisterForm({ onSignedIn, onError }: FormProps) {
   const register = useRegister();
-  const [values, setValues] = useState({ phone: '', password: '', repeat: '', displayName: '' });
+  const [values, setValues] = useState({ login: '', password: '', repeat: '', displayName: '' });
   const [errors, setErrors] = useState<Errors>({});
   const set = (field: keyof typeof values) => (event: { currentTarget: { value: string } }) =>
     setValues({ ...values, [field]: event.currentTarget.value });
@@ -134,7 +133,7 @@ function RegisterForm({ onSignedIn, onError }: FormProps) {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const found = compact({
-      phone: phoneError(values.phone),
+      login: loginError(values.login),
       password: passwordError(values.password),
       repeat: repeatError(values.password, values.repeat),
       displayName: requiredError(values.displayName),
@@ -144,12 +143,12 @@ function RegisterForm({ onSignedIn, onError }: FormProps) {
     onError(null);
     try {
       const result = await register.mutateAsync({
-        data: { phone: values.phone.trim(), password: values.password, displayName: values.displayName.trim() },
+        data: { login: values.login.trim(), password: values.password, displayName: values.displayName.trim() },
       });
       onSignedIn(result);
     } catch (cause) {
-      if (cause instanceof ApiError && cause.code === 'PHONE_TAKEN') {
-        setErrors({ phone: cause.detail ?? ru.auth.errors.phone });
+      if (cause instanceof ApiError && cause.code === 'LOGIN_TAKEN') {
+        setErrors({ login: cause.detail ?? ru.auth.errors.login });
         onError(null);
         return;
       }
@@ -162,16 +161,15 @@ function RegisterForm({ onSignedIn, onError }: FormProps) {
     <form onSubmit={(event) => void submit(event)} noValidate>
       <Stack gap="md">
         <TextInput
-          label={ru.auth.phone}
-          description={ru.auth.phoneHint}
-          placeholder={ru.auth.phonePlaceholder}
-          type="tel"
-          autoComplete="username tel"
-          maxLength={24}
-          value={values.phone}
-          error={errors.phone}
-          onChange={set('phone')}
-          data-testid="register-phone"
+          label={ru.auth.login}
+          description={ru.auth.loginHint}
+          placeholder={ru.auth.loginPlaceholder}
+          autoComplete="username"
+          maxLength={LOGIN_MAX}
+          value={values.login}
+          error={errors.login}
+          onChange={set('login')}
+          data-testid="register-username"
         />
         <PasswordInput
           label={ru.auth.password}

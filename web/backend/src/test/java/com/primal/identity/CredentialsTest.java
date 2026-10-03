@@ -11,41 +11,41 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-@DisplayName("Правила телефона (логина) и пароля")
+@DisplayName("Правила логина и пароля")
 class CredentialsTest {
 
     @ParameterizedTest(name = "«{0}» → {1}")
     @CsvSource(delimiter = '|', value = {
-        "+7 912 345-67-89   | +79123456789",
-        "8 (912) 345-67-89  | +79123456789",
-        "79123456789        | +79123456789",
-        "+44 20 7946 0958   | +442079460958",
-        "380.44.123.45.67   | +380441234567",
+        "Alice       | alice",
+        "  Alice     | alice",
+        "a.b_c-d1    | a.b_c-d1",
+        "89123456789 | 89123456789",
     })
-    @DisplayName("телефон приводится к международному формату")
-    void normalizesPhone(String input, String expected) {
+    @DisplayName("логин приводится к нижнему регистру, пробелы по краям убираются")
+    void normalizesLogin(String input, String expected) {
         // вызов и проверка
-        assertThat(Credentials.normalizePhone(input)).isEqualTo(expected);
-    }
-
-    @Test
-    @DisplayName("пустой телефон — телефона нет")
-    void blankPhone() {
-        // вызов и проверка
-        assertThat(Credentials.normalizePhone(null)).isNull();
-        assertThat(Credentials.normalizePhone("   ")).isNull();
+        assertThat(Credentials.normalizeLogin(input)).isEqualTo(expected);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"12-34", "+7 912 abc 67 89", "+1234567890123456", "++79123456789"})
-    @DisplayName("неразборчивый телефон — ошибка поля phone")
-    void rejectsPhone(String input) {
+    @ValueSource(strings = {"", "   ", "ab", "a b", "alice!", "Алиса"})
+    @DisplayName("недопустимый логин — ошибка поля login")
+    void rejectsLogin(String input) {
         // вызов и проверка
-        assertThatThrownBy(() -> Credentials.normalizePhone(input))
+        assertThatThrownBy(() -> Credentials.normalizeLogin(input))
                 .isInstanceOfSatisfying(ApiException.class, error -> {
                     assertThat(error.code()).isEqualTo(ErrorCode.VALIDATION_FAILED);
-                    assertThat(error.properties().get("errors").toString()).contains("phone");
+                    assertThat(error.properties().get("errors").toString()).contains("login");
                 });
+    }
+
+    @Test
+    @DisplayName("логин длиннее 32 символов не принимается")
+    void rejectsLongLogin() {
+        // вызов и проверка
+        assertThatThrownBy(() -> Credentials.normalizeLogin("a".repeat(33)))
+                .isInstanceOfSatisfying(ApiException.class, error ->
+                        assertThat(error.code()).isEqualTo(ErrorCode.VALIDATION_FAILED));
     }
 
     @Test

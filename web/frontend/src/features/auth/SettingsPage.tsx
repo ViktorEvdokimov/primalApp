@@ -10,16 +10,16 @@ import {
   useLogout,
   useRevokeDevice,
   useRevokeOtherDevices,
+  useUpdateLogin,
   useUpdateMe,
-  useUpdatePhone,
 } from '../../api/generated/auth/auth';
 import type { DeviceSummary, MeResponse, UserView } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
-import { authErrorText, PASSWORD_MAX, passwordError, phoneError, repeatError } from './credentials';
+import { authErrorText, LOGIN_MAX, loginError, PASSWORD_MAX, passwordError, repeatError } from './credentials';
 import { DevicesList } from './DevicesList';
 import { defaultNameOf, ME_QUERY_KEY, useMe } from './useMe';
 
-/** Настройки: имя, телефон, пароль, устройства, выход (doc/api.md §3). Экран защищён — `me` уже загружен. */
+/** Настройки: имя, логин, пароль, устройства, выход (doc/api.md §3). Экран защищён — `me` уже загружен. */
 export function SettingsPage() {
   const { me } = useMe();
   if (me === null) return null;
@@ -67,9 +67,7 @@ function Settings({ me }: { me: MeResponse }) {
     <Stack gap="md" data-testid="page-settings">
       <Title order={2}>{ru.pages.settings}</Title>
       {me.user !== null ? (
-        <Text data-testid="settings-account">
-          {me.user.phone === null ? ru.settings.accountWithoutPhone : ru.settings.account(me.user.phone)}
-        </Text>
+        <Text data-testid="settings-account">{ru.settings.account(me.user.login)}</Text>
       ) : (
         <Stack gap="xs">
           <Text c="dimmed">{ru.settings.guest}</Text>
@@ -100,7 +98,7 @@ function Settings({ me }: { me: MeResponse }) {
 
       {me.user !== null && (
         <>
-          <PhoneSection user={me.user} onSaved={setNotice} />
+          <LoginSection user={me.user} onSaved={setNotice} />
           <Divider />
           <PasswordSection user={me.user} onSaved={setNotice} />
           <Divider />
@@ -140,44 +138,43 @@ interface SectionProps {
   onSaved: (notice: string) => void;
 }
 
-/** Номер телефона — логин: после смены вход по новому номеру. Удалить номер нельзя. */
-function PhoneSection({ user, onSaved }: SectionProps) {
+/** Логин: после смены вход по новому логину. Удалить логин нельзя. */
+function LoginSection({ user, onSaved }: SectionProps) {
   const queryClient = useQueryClient();
-  const updatePhone = useUpdatePhone();
-  const [phone, setPhone] = useState(user.phone ?? '');
+  const updateLogin = useUpdateLogin();
+  const [login, setLogin] = useState(user.login);
   const [error, setError] = useState<string | undefined>(undefined);
 
   const save = async () => {
-    const invalid = phoneError(phone);
+    const invalid = loginError(login);
     setError(invalid);
     if (invalid !== undefined) return;
     try {
-      const updated = await updatePhone.mutateAsync({ data: { phone: phone.trim() } });
+      const updated = await updateLogin.mutateAsync({ data: { login: login.trim() } });
       queryClient.setQueryData(ME_QUERY_KEY, updated);
-      setPhone(updated.user?.phone ?? '');
-      onSaved(ru.settings.phoneSaved);
+      setLogin(updated.user?.login ?? '');
+      onSaved(ru.settings.loginSaved);
     } catch (cause) {
-      const taken = cause instanceof ApiError && cause.code === 'PHONE_TAKEN' ? cause.detail : undefined;
-      setError(taken ?? fieldErrors(cause).phone ?? authErrorText(cause));
+      const taken = cause instanceof ApiError && cause.code === 'LOGIN_TAKEN' ? cause.detail : undefined;
+      setError(taken ?? fieldErrors(cause).login ?? authErrorText(cause));
     }
   };
 
   return (
     <Stack gap="xs">
       <TextInput
-        label={ru.settings.phone}
-        description={ru.settings.phoneHint}
-        placeholder={ru.auth.phonePlaceholder}
-        type="tel"
-        autoComplete="tel"
-        maxLength={24}
-        value={phone}
+        label={ru.settings.login}
+        description={ru.settings.loginHint}
+        placeholder={ru.auth.loginPlaceholder}
+        autoComplete="username"
+        maxLength={LOGIN_MAX}
+        value={login}
         error={error}
-        onChange={(event) => setPhone(event.currentTarget.value)}
-        data-testid="settings-phone"
+        onChange={(event) => setLogin(event.currentTarget.value)}
+        data-testid="settings-username"
       />
-      <Button variant="light" loading={updatePhone.isPending} onClick={() => void save()} data-testid="settings-phone-save">
-        {ru.settings.phoneSave}
+      <Button variant="light" loading={updateLogin.isPending} onClick={() => void save()} data-testid="settings-username-save">
+        {ru.settings.loginSave}
       </Button>
     </Stack>
   );

@@ -4,22 +4,25 @@ import com.primal.common.error.ApiException;
 import com.primal.common.error.ErrorCode;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Правила телефона (он же логин) и пароля ({@code doc/api.md} §3). Длину проверяют аннотации запросов,
- * здесь — приведение к виду для хранения и то, что аннотациями не выразить.
+ * Правила логина и пароля ({@code doc/api.md} §3). Длину проверяют аннотации запросов, здесь — приведение
+ * логина к виду для хранения и то, что аннотациями не выразить.
  */
 final class Credentials {
 
+    static final int LOGIN_MIN = 3;
+    static final int LOGIN_MAX = 32;
     static final int PASSWORD_MIN = 8;
     static final int PASSWORD_MAX = 64;
     /** bcrypt учитывает только первые 72 байта пароля — длиннее не принимаем (кириллица — 2 байта на букву). */
     static final int PASSWORD_MAX_BYTES = 72;
 
-    private static final Pattern PHONE_SEPARATORS = Pattern.compile("[\\s()\\-.]");
-    private static final Pattern PHONE_DIGITS = Pattern.compile("\\+?\\d{10,15}");
+    /** Логин: латиница, цифры, «.», «_», «-»; хранится в нижнем регистре. */
+    private static final Pattern LOGIN = Pattern.compile("[a-z0-9._-]{" + LOGIN_MIN + "," + LOGIN_MAX + "}");
 
     private Credentials() {
     }
@@ -29,26 +32,16 @@ final class Credentials {
     }
 
     /**
-     * Телефон в международном формате {@code +79123456789} — так он хранится и ищется при входе. Пробелы,
-     * скобки, точки и дефисы убираются; российский номер можно ввести с 8 или 7 в начале. Пусто — {@code null}.
+     * Логин для хранения и поиска: пробелы по краям убираются, регистр приводится к нижнему.
      *
-     * @throws ApiException {@code VALIDATION_FAILED} с ошибкой поля {@code phone}
+     * @throws ApiException {@code VALIDATION_FAILED} с ошибкой поля {@code login}
      */
-    static String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) {
-            return null;
+    static String normalizeLogin(String login) {
+        String normalized = login == null ? "" : login.strip().toLowerCase(Locale.ROOT);
+        if (!LOGIN.matcher(normalized).matches()) {
+            throw invalidField("login", "Логин — от 3 до 32 символов: латиница, цифры, «.», «_», «-»");
         }
-        String compact = PHONE_SEPARATORS.matcher(phone.strip()).replaceAll("");
-        if (!PHONE_DIGITS.matcher(compact).matches()) {
-            throw invalidField("phone", "Телефон — от 10 до 15 цифр, например +7 912 345-67-89");
-        }
-        if (compact.startsWith("+")) {
-            return compact;
-        }
-        if (compact.length() == 11 && (compact.startsWith("8") || compact.startsWith("7"))) {
-            return "+7" + compact.substring(1);
-        }
-        return "+" + compact;
+        return normalized;
     }
 
     /** Ошибка поля в том же виде, что у проверки аннотациями: {@code errors: [{field, message}]}. */
