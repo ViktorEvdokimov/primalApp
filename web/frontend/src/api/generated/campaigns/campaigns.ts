@@ -27,15 +27,25 @@ import type {
   AchievementView,
   AddAchievementRequest,
   AdjustResourcesRequest,
+  BrewRequest,
+  BrewResponse,
   CampaignSheet,
   CampaignSummary,
   CompleteQuestResponse,
+  ConvertRequest,
+  CraftRequest,
+  CraftResponse,
   CreateCampaignRequest,
+  ExchangeRequest,
+  ExchangeResponse,
   HunterSheet,
+  ItemChangeRequest,
+  ItemRequest,
   OpenQuestsRequest,
   QuestLists,
   RenameHunterRequest,
   ResourcesResponse,
+  SellRequest,
   SkillRequest,
   UpdateCampaignRequest
 } from '../primal.schemas';
@@ -625,6 +635,510 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getAdjustResourcesMutationOptions(options), queryClient);
     }
+    export const getBrewPotionUrl = (campaignId: number,
+    hunterId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/lab`
+}
+
+export const brewPotion = async (campaignId: number,
+    hunterId: number,
+    brewRequest: BrewRequest, options?: Parameters<typeof apiFetch>[1]): Promise<BrewResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<BrewResponse>(getBrewPotionUrl(campaignId,hunterId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(brewRequest)
+  }
+);}
+
+
+
+
+
+export const getBrewPotionMutationKey = () => ['brewPotion'] as const;
+
+export const getBrewPotionMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof brewPotion>>, TError,BrewPotionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof brewPotion>>, TError,BrewPotionMutationVariables, TContext> => {
+
+const mutationKey = getBrewPotionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof brewPotion>>, BrewPotionMutationVariables> = (props) => {
+          const {campaignId,hunterId,data} = props ?? {};
+
+          return  brewPotion(campaignId,hunterId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BrewPotionMutationResult = NonNullable<Awaited<ReturnType<typeof brewPotion>>>
+    export type BrewPotionMutationBody = BrewRequest
+    export type BrewPotionMutationError = unknown
+    export type BrewPotionMutationVariables = {campaignId: number;hunterId: number;data: BrewRequest}
+
+    export const useBrewPotion = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof brewPotion>>, TError,BrewPotionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof brewPotion>>,
+        TError,
+        BrewPotionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBrewPotionMutationOptions(options), queryClient);
+    }
+    export const getAddItemUrl = (campaignId: number,
+    hunterId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/items`
+}
+
+export const addItem = async (campaignId: number,
+    hunterId: number,
+    itemRequest: ItemRequest, options?: Parameters<typeof apiFetch>[1]): Promise<HunterSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<HunterSheet>(getAddItemUrl(campaignId,hunterId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(itemRequest)
+  }
+);}
+
+
+
+
+
+export const getAddItemMutationKey = () => ['addItem'] as const;
+
+export const getAddItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addItem>>, TError,AddItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addItem>>, TError,AddItemMutationVariables, TContext> => {
+
+const mutationKey = getAddItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addItem>>, AddItemMutationVariables> = (props) => {
+          const {campaignId,hunterId,data} = props ?? {};
+
+          return  addItem(campaignId,hunterId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddItemMutationResult = NonNullable<Awaited<ReturnType<typeof addItem>>>
+    export type AddItemMutationBody = ItemRequest
+    export type AddItemMutationError = unknown
+    export type AddItemMutationVariables = {campaignId: number;hunterId: number;data: ItemRequest}
+
+    export const useAddItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addItem>>, TError,AddItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addItem>>,
+        TError,
+        AddItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddItemMutationOptions(options), queryClient);
+    }
+    export const getSellItemUrl = (campaignId: number,
+    hunterId: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/items/${itemId}/sell`
+}
+
+export const sellItem = async (campaignId: number,
+    hunterId: number,
+    itemId: number,
+    sellRequest: SellRequest, options?: Parameters<typeof apiFetch>[1]): Promise<HunterSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<HunterSheet>(getSellItemUrl(campaignId,hunterId,itemId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(sellRequest)
+  }
+);}
+
+
+
+
+
+export const getSellItemMutationKey = () => ['sellItem'] as const;
+
+export const getSellItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sellItem>>, TError,SellItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sellItem>>, TError,SellItemMutationVariables, TContext> => {
+
+const mutationKey = getSellItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sellItem>>, SellItemMutationVariables> = (props) => {
+          const {campaignId,hunterId,itemId,data} = props ?? {};
+
+          return  sellItem(campaignId,hunterId,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SellItemMutationResult = NonNullable<Awaited<ReturnType<typeof sellItem>>>
+    export type SellItemMutationBody = SellRequest
+    export type SellItemMutationError = unknown
+    export type SellItemMutationVariables = {campaignId: number;hunterId: number;itemId: number;data: SellRequest}
+
+    export const useSellItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sellItem>>, TError,SellItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sellItem>>,
+        TError,
+        SellItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSellItemMutationOptions(options), queryClient);
+    }
+    export const getCraftEquipmentUrl = (campaignId: number,
+    hunterId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/forge`
+}
+
+export const craftEquipment = async (campaignId: number,
+    hunterId: number,
+    craftRequest: CraftRequest, options?: Parameters<typeof apiFetch>[1]): Promise<CraftResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<CraftResponse>(getCraftEquipmentUrl(campaignId,hunterId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(craftRequest)
+  }
+);}
+
+
+
+
+
+export const getCraftEquipmentMutationKey = () => ['craftEquipment'] as const;
+
+export const getCraftEquipmentMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof craftEquipment>>, TError,CraftEquipmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof craftEquipment>>, TError,CraftEquipmentMutationVariables, TContext> => {
+
+const mutationKey = getCraftEquipmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof craftEquipment>>, CraftEquipmentMutationVariables> = (props) => {
+          const {campaignId,hunterId,data} = props ?? {};
+
+          return  craftEquipment(campaignId,hunterId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CraftEquipmentMutationResult = NonNullable<Awaited<ReturnType<typeof craftEquipment>>>
+    export type CraftEquipmentMutationBody = CraftRequest
+    export type CraftEquipmentMutationError = unknown
+    export type CraftEquipmentMutationVariables = {campaignId: number;hunterId: number;data: CraftRequest}
+
+    export const useCraftEquipment = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof craftEquipment>>, TError,CraftEquipmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof craftEquipment>>,
+        TError,
+        CraftEquipmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCraftEquipmentMutationOptions(options), queryClient);
+    }
+    export const getConvertResourcesUrl = (campaignId: number,
+    hunterId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/convert`
+}
+
+export const convertResources = async (campaignId: number,
+    hunterId: number,
+    convertRequest: ConvertRequest, options?: Parameters<typeof apiFetch>[1]): Promise<HunterSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<HunterSheet>(getConvertResourcesUrl(campaignId,hunterId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(convertRequest)
+  }
+);}
+
+
+
+
+
+export const getConvertResourcesMutationKey = () => ['convertResources'] as const;
+
+export const getConvertResourcesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof convertResources>>, TError,ConvertResourcesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof convertResources>>, TError,ConvertResourcesMutationVariables, TContext> => {
+
+const mutationKey = getConvertResourcesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof convertResources>>, ConvertResourcesMutationVariables> = (props) => {
+          const {campaignId,hunterId,data} = props ?? {};
+
+          return  convertResources(campaignId,hunterId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConvertResourcesMutationResult = NonNullable<Awaited<ReturnType<typeof convertResources>>>
+    export type ConvertResourcesMutationBody = ConvertRequest
+    export type ConvertResourcesMutationError = unknown
+    export type ConvertResourcesMutationVariables = {campaignId: number;hunterId: number;data: ConvertRequest}
+
+    export const useConvertResources = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof convertResources>>, TError,ConvertResourcesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof convertResources>>,
+        TError,
+        ConvertResourcesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConvertResourcesMutationOptions(options), queryClient);
+    }
+    export const getExchangeResourcesUrl = (campaignId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/exchange`
+}
+
+export const exchangeResources = async (campaignId: number,
+    exchangeRequest: ExchangeRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ExchangeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ExchangeResponse>(getExchangeResourcesUrl(campaignId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(exchangeRequest)
+  }
+);}
+
+
+
+
+
+export const getExchangeResourcesMutationKey = () => ['exchangeResources'] as const;
+
+export const getExchangeResourcesMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exchangeResources>>, TError,ExchangeResourcesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exchangeResources>>, TError,ExchangeResourcesMutationVariables, TContext> => {
+
+const mutationKey = getExchangeResourcesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exchangeResources>>, ExchangeResourcesMutationVariables> = (props) => {
+          const {campaignId,data} = props ?? {};
+
+          return  exchangeResources(campaignId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExchangeResourcesMutationResult = NonNullable<Awaited<ReturnType<typeof exchangeResources>>>
+    export type ExchangeResourcesMutationBody = ExchangeRequest
+    export type ExchangeResourcesMutationError = unknown
+    export type ExchangeResourcesMutationVariables = {campaignId: number;data: ExchangeRequest}
+
+    export const useExchangeResources = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exchangeResources>>, TError,ExchangeResourcesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof exchangeResources>>,
+        TError,
+        ExchangeResourcesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getExchangeResourcesMutationOptions(options), queryClient);
+    }
     export const getAddAchievementUrl = (campaignId: number,) => {
 
 
@@ -1033,6 +1547,163 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getRenameHunterMutationOptions(options), queryClient);
+    }
+    export const getRemoveItemUrl = (campaignId: number,
+    hunterId: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/items/${itemId}`
+}
+
+export const removeItem = async (campaignId: number,
+    hunterId: number,
+    itemId: number, options?: Parameters<typeof apiFetch>[1]): Promise<HunterSheet> => {
+
+  return apiFetch<HunterSheet>(getRemoveItemUrl(campaignId,hunterId,itemId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveItemMutationKey = () => ['removeItem'] as const;
+
+export const getRemoveItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeItem>>, TError,RemoveItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeItem>>, TError,RemoveItemMutationVariables, TContext> => {
+
+const mutationKey = getRemoveItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeItem>>, RemoveItemMutationVariables> = (props) => {
+          const {campaignId,hunterId,itemId} = props ?? {};
+
+          return  removeItem(campaignId,hunterId,itemId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveItemMutationResult = NonNullable<Awaited<ReturnType<typeof removeItem>>>
+
+    export type RemoveItemMutationError = unknown
+    export type RemoveItemMutationVariables = {campaignId: number;hunterId: number;itemId: number}
+
+    export const useRemoveItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeItem>>, TError,RemoveItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeItem>>,
+        TError,
+        RemoveItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveItemMutationOptions(options), queryClient);
+    }
+    export const getEditItemUrl = (campaignId: number,
+    hunterId: number,
+    itemId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/hunters/${hunterId}/items/${itemId}`
+}
+
+export const editItem = async (campaignId: number,
+    hunterId: number,
+    itemId: number,
+    itemChangeRequest: ItemChangeRequest, options?: Parameters<typeof apiFetch>[1]): Promise<HunterSheet> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<HunterSheet>(getEditItemUrl(campaignId,hunterId,itemId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(itemChangeRequest)
+  }
+);}
+
+
+
+
+
+export const getEditItemMutationKey = () => ['editItem'] as const;
+
+export const getEditItemMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editItem>>, TError,EditItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof editItem>>, TError,EditItemMutationVariables, TContext> => {
+
+const mutationKey = getEditItemMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof editItem>>, EditItemMutationVariables> = (props) => {
+          const {campaignId,hunterId,itemId,data} = props ?? {};
+
+          return  editItem(campaignId,hunterId,itemId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EditItemMutationResult = NonNullable<Awaited<ReturnType<typeof editItem>>>
+    export type EditItemMutationBody = ItemChangeRequest
+    export type EditItemMutationError = unknown
+    export type EditItemMutationVariables = {campaignId: number;hunterId: number;itemId: number;data: ItemChangeRequest}
+
+    export const useEditItem = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof editItem>>, TError,EditItemMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof editItem>>,
+        TError,
+        EditItemMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEditItemMutationOptions(options), queryClient);
     }
     export const getLockSkillUrl = (campaignId: number,
     hunterId: number,

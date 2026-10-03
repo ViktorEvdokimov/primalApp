@@ -205,6 +205,42 @@ describe('Итог боя кампании', () => {
     });
   });
 
+  it('карты наград: кому выдать — выбор до «Принять», по умолчанию первый охотник', async () => {
+    // подготовка
+    const preview = resultPreviewFixture();
+    const { user, bodies } = openOutcome(
+      finishedCampaignBattle(),
+      resultPreviewFixture({ rewards: { ...preview.rewards, rewardCards: ['1', '7'] } }),
+    );
+    await screen.findByTestId('outcome-preview');
+    const selects = await screen.findAllByTestId('outcome-card-holder');
+    expect(selects.map((select) => select.dataset.card)).toEqual(['1', '7']);
+    expect(screen.getByText('Кому выдать «Карту награды №7»')).toBeInTheDocument();
+    expect(selects.map((select) => (select as HTMLSelectElement).value)).toEqual(['31', '31']);
+
+    // вызов: седьмую — Мире
+    await user.selectOptions(selects[1] as HTMLSelectElement, '32');
+    await user.click(screen.getByTestId('outcome-accept'));
+
+    // проверка
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(bodies[0]).toMatchObject({ action: 'ACCEPT', rewardCardHolders: [31, 32] });
+  });
+
+  it('без карт наград выбора нет, получатели не передаются', async () => {
+    // подготовка
+    const { user, bodies } = openOutcome(finishedCampaignBattle());
+    await screen.findByTestId('outcome-preview');
+
+    // вызов
+    await user.click(screen.getByTestId('outcome-accept'));
+
+    // проверка
+    await waitFor(() => expect(bodies).toHaveLength(1));
+    expect(screen.queryByTestId('outcome-card-holders')).not.toBeInTheDocument();
+    expect(bodies[0]).toMatchObject({ rewardCardHolders: null });
+  });
+
   it('без законченного боя этой кампании — сообщение, запросов нет', async () => {
     // вызов
     server.use(signedIn());

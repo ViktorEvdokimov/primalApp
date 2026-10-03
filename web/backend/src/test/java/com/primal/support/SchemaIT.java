@@ -25,7 +25,7 @@ class SchemaIT extends IntegrationTest {
     class Migration {
 
         @Test
-        @DisplayName("создаёт 18 таблиц из doc/data-model.md")
+        @DisplayName("создаёт 19 таблиц из doc/data-model.md")
         void createsAllTables() {
             // вызов
             Integer tables = jdbc.queryForObject("""
@@ -33,7 +33,7 @@ class SchemaIT extends IntegrationTest {
                     where table_schema = 'public' and table_name <> 'flyway_schema_history'""", Integer.class);
 
             // проверка
-            assertThat(tables).isEqualTo(18);
+            assertThat(tables).isEqualTo(19);
         }
 
         @Test

@@ -232,6 +232,19 @@ create table hunter_resource (
 -- Списание — update … set quantity = quantity - :amount (upsert с отрицательным количеством не годится:
 -- CHECK проверяется у вставляемой строки ещё до on conflict). Уход в минус ловит CHECK → 422 NOT_ENOUGH_RESOURCES.
 
+create table hunter_item (                               -- инвентарь (V6, задача 9.3)
+    id          bigint generated always as identity primary key,
+    hunter_id   bigint       not null references campaign_hunter(id) on delete cascade,
+    kind        varchar(16)  not null check (kind in ('EQUIPMENT','POTION','REWARD')),
+    name        varchar(100) not null,
+    level       smallint     check (level between 1 and 3),   -- у карты награды null
+    element     varchar(16),                                  -- стихия кузни созданного предмета
+    source      varchar(16),                                  -- FIRE_01, LAB_01, номер карты награды
+    created_at  timestamptz  not null default now()
+);
+create index ix_hunter_item_hunter on hunter_item (hunter_id, id);
+-- Стартовые предметы — при создании кампании; кампании, созданные до V6, строк не получают.
+
 create table campaign_quest (
     campaign_id        bigint      not null references campaign(id) on delete cascade,
     quest_number       smallint    not null references quest_def(number),
@@ -395,12 +408,20 @@ backend/src/main/resources/catalog/
 ├── bosses.yaml          боссы и стойки по сложностям (перенос из PrimalDatabase.kt: seedBosses)
 ├── achievements.yaml    коды и канонические названия
 ├── quests.yaml          49 заданий (перенос из doc/taskInfo.md и TaskInfoSeed.kt)
-└── chapters.yaml        11 глав (перенос из doc/compainInfo.md и ChapterInfoSeed.kt)
+├── chapters.yaml        11 глав (перенос из doc/compainInfo.md и ChapterInfoSeed.kt)
+├── forge.yaml           планшеты кузни: 9 стихий × 12 предметов, цены на 3 уровня (web/forge/*.pdf)
+└── lab.yaml             планшет лаборатории: 6 зелий, по 2 растения, одинаково на всех уровнях
 ```
 
 Загрузчик — Java-миграция Flyway `R__Catalog` (repeatable, контрольная сумма = хеш файлов). Она разбирает
 YAML в типы `rules` (ошибка формата останавливает запуск), делает upsert в таблицы §3.2 и обновляет
 `catalog_version`. Удалять записи каталога, на которые ссылаются кампании, запрещено — это ловят FK.
+
+Кузня в БД не хранится: планшеты читаются из `forge.yaml` в память (`CatalogService.forge()`), а открытые
+кузни кампании вычисляются по её трофеям — стихиям побеждённых боссов. Проверки при загрузке: каждая из
+9 стихий — один раз; на планшете 8 видов оружия по одному, шлем, доспех и 2 предмета; у каждого предмета
+на каждом уровне ровно 2 материи. Лаборатория так же: `lab.yaml` в память, 6 зелий по 2 растения;
+растение — код, «A/B» (одно на выбор) или `ANY` (любое).
 
 ### 4.2 Боссы
 

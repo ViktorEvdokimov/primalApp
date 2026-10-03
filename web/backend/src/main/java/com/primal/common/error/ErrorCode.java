@@ -38,7 +38,8 @@ public enum ErrorCode {
     QUEST_NOT_COMPLETED(HttpStatus.UNPROCESSABLE_CONTENT, "Задание не выполнено"),
     BOSS_REQUIRED(HttpStatus.UNPROCESSABLE_CONTENT, "Босс не выбран"),
     FINAL_BOSS_REQUIRED(HttpStatus.UNPROCESSABLE_CONTENT, "Доступен только финальный бой"),
-    DECISION_REQUIRED(HttpStatus.UNPROCESSABLE_CONTENT, "Нужно ответить на решение главы");
+    DECISION_REQUIRED(HttpStatus.UNPROCESSABLE_CONTENT, "Нужно ответить на решение главы"),
+    FORGE_UNAVAILABLE(HttpStatus.UNPROCESSABLE_CONTENT, "Снаряжение недоступно");
 
     private static final String TYPE_PREFIX = "https://primal.app/problems/";
 

@@ -3,6 +3,7 @@ package com.primal.campaign;
 import com.primal.campaign.CampaignSheetDto.HunterSheet;
 import com.primal.common.api.ApiOptional;
 import com.primal.identity.PrimalPrincipal;
+import com.primal.rules.model.Plant;
 import com.primal.rules.model.ResourceCode;
 import com.primal.rules.model.SkillBranch;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,9 +12,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,10 +52,33 @@ class HunterController {
     record ResourcesResponse(Map<String, Integer> resources) {
     }
 
-    private final HunterService hunters;
+    /** {@code item} — код предмета планшета кузни: {@code FIRE_01} (каталог {@code GET /catalog/forge}). */
+    record CraftRequest(@NotBlank(message = "Укажите снаряжение") @Size(max = 16, message = "Неизвестное снаряжение")
+                        String item) {
+    }
 
-    HunterController(HunterService hunters) {
+    /** Созданное снаряжение — карту {@code level}-го уровня игрок берёт из коробки; охотник после списания. */
+    record CraftResponse(String item, String name, int level, HunterSheet hunter) {
+    }
+
+    /** {@code potion} — код зелья ({@code LAB_02}); {@code plants} — потраченные растения по порядку цены. */
+    record BrewRequest(@NotBlank(message = "Укажите зелье") @Size(max = 16, message = "Неизвестное зелье") String potion,
+                       @NotNull(message = "Укажите растения") @Size(min = 1, max = 4, message = "Укажите растения")
+                       List<@NotNull(message = "Укажите растение") Plant> plants) {
+    }
+
+    /** Приготовленное зелье — карту {@code level}-го уровня игрок берёт из коробки; охотник после списания. */
+    record BrewResponse(String potion, String name, int level, HunterSheet hunter) {
+    }
+
+    private final HunterService hunters;
+    private final ForgeService forge;
+    private final LabService lab;
+
+    HunterController(HunterService hunters, ForgeService forge, LabService lab) {
         this.hunters = hunters;
+        this.forge = forge;
+        this.lab = lab;
     }
 
     @Operation(operationId = "renameHunter")
@@ -76,6 +102,26 @@ class HunterController {
     HunterSheet lockSkill(@AuthenticationPrincipal PrimalPrincipal principal, @PathVariable long campaignId,
                           @PathVariable long hunterId, @PathVariable SkillBranch branch, @PathVariable int tier) {
         return hunters.lockSkill(principal, campaignId, hunterId, branch, tier);
+    }
+
+    @Operation(operationId = "craftEquipment")
+    @ApiResponse(responseCode = "201", description = "Снаряжение создано, ресурсы списаны")
+    @PostMapping("/forge")
+    ResponseEntity<CraftResponse> craft(@AuthenticationPrincipal PrimalPrincipal principal, @PathVariable long campaignId,
+                                        @PathVariable long hunterId, @Valid @RequestBody CraftRequest body) {
+        ForgeService.Crafted crafted = forge.craft(principal, campaignId, hunterId, body.item());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new CraftResponse(crafted.code(), crafted.name(), crafted.level(), crafted.hunter()));
+    }
+
+    @Operation(operationId = "brewPotion")
+    @ApiResponse(responseCode = "201", description = "Зелье приготовлено, растения списаны")
+    @PostMapping("/lab")
+    ResponseEntity<BrewResponse> brew(@AuthenticationPrincipal PrimalPrincipal principal, @PathVariable long campaignId,
+                                      @PathVariable long hunterId, @Valid @RequestBody BrewRequest body) {
+        LabService.Brewed brewed = lab.brew(principal, campaignId, hunterId, body.potion(), body.plants());
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new BrewResponse(brewed.code(), brewed.name(), brewed.level(), brewed.hunter()));
     }
 
     @Operation(operationId = "adjustResources")

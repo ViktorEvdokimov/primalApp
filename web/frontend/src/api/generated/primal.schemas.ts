@@ -189,6 +189,21 @@ export const CampaignSheetAccess = {
   LINK: 'LINK',
 } as const;
 
+export type CampaignSheetOpenForgesItem = typeof CampaignSheetOpenForgesItem[keyof typeof CampaignSheetOpenForgesItem];
+
+
+export const CampaignSheetOpenForgesItem = {
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
 export type HunterSheetClass = typeof HunterSheetClass[keyof typeof HunterSheetClass];
 
 
@@ -219,6 +234,45 @@ export interface SkillStep {
   tier: number;
 }
 
+export type InventoryItemKind = typeof InventoryItemKind[keyof typeof InventoryItemKind];
+
+
+export const InventoryItemKind = {
+  EQUIPMENT: 'EQUIPMENT',
+  POTION: 'POTION',
+  REWARD: 'REWARD',
+} as const;
+
+/**
+ * @nullable
+ */
+export type InventoryItemElement = typeof InventoryItemElement[keyof typeof InventoryItemElement] | null;
+
+
+export const InventoryItemElement = {
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface InventoryItem {
+  id: number;
+  kind: InventoryItemKind;
+  name: string;
+  /** @nullable */
+  level: number | null;
+  /** @nullable */
+  element: InventoryItemElement;
+  /** @nullable */
+  source: string | null;
+}
+
 export type HunterSheetResources = {[key: string]: number};
 
 export interface HunterSheet {
@@ -229,6 +283,7 @@ export interface HunterSheet {
   skills: SkillStep[];
   unlockableSkills: SkillStep[];
   resources: HunterSheetResources;
+  items: InventoryItem[];
 }
 
 export interface TrophyItem {
@@ -258,6 +313,7 @@ export interface CampaignSheet {
   ownerName: string;
   difficulty: number;
   forgeLevel: number;
+  openForges: CampaignSheetOpenForgesItem[];
   labLevel: number;
   finalBoss: CampaignBoss | null;
   notes: string;
@@ -345,6 +401,186 @@ export type ResourcesResponseResources = {[key: string]: number};
 
 export interface ResourcesResponse {
   resources: ResourcesResponseResources;
+}
+
+export type BrewRequestPlantsItem = typeof BrewRequestPlantsItem[keyof typeof BrewRequestPlantsItem];
+
+
+export const BrewRequestPlantsItem = {
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+} as const;
+
+export interface BrewRequest {
+  /**
+     * @minLength 0
+     * @maxLength 16
+     */
+  potion: string;
+  /**
+     * @minItems 1
+     * @maxItems 4
+     */
+  plants: BrewRequestPlantsItem[];
+}
+
+export interface BrewResponse {
+  potion: string;
+  name: string;
+  level: number;
+  hunter: HunterSheet;
+}
+
+export type ItemRequestKind = typeof ItemRequestKind[keyof typeof ItemRequestKind];
+
+
+export const ItemRequestKind = {
+  EQUIPMENT: 'EQUIPMENT',
+  POTION: 'POTION',
+  REWARD: 'REWARD',
+} as const;
+
+export interface ItemRequest {
+  kind: ItemRequestKind;
+  /**
+     * @minLength 0
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 3
+     * @nullable
+     */
+  level: number | null;
+}
+
+export type SellRequestGain = typeof SellRequestGain[keyof typeof SellRequestGain];
+
+
+export const SellRequestGain = {
+  SCALES: 'SCALES',
+  BONES: 'BONES',
+  BLOOD: 'BLOOD',
+  ZIMIA: 'ZIMIA',
+  IRIDIA: 'IRIDIA',
+  ZLATIA: 'ZLATIA',
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface SellRequest {
+  gain: SellRequestGain;
+}
+
+export interface CraftRequest {
+  /**
+     * @minLength 0
+     * @maxLength 16
+     */
+  item: string;
+}
+
+export interface CraftResponse {
+  item: string;
+  name: string;
+  level: number;
+  hunter: HunterSheet;
+}
+
+export type ConvertRequestSpendItem = typeof ConvertRequestSpendItem[keyof typeof ConvertRequestSpendItem];
+
+
+export const ConvertRequestSpendItem = {
+  SCALES: 'SCALES',
+  BONES: 'BONES',
+  BLOOD: 'BLOOD',
+  ZIMIA: 'ZIMIA',
+  IRIDIA: 'IRIDIA',
+  ZLATIA: 'ZLATIA',
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export type ConvertRequestGain = typeof ConvertRequestGain[keyof typeof ConvertRequestGain];
+
+
+export const ConvertRequestGain = {
+  SCALES: 'SCALES',
+  BONES: 'BONES',
+  BLOOD: 'BLOOD',
+  ZIMIA: 'ZIMIA',
+  IRIDIA: 'IRIDIA',
+  ZLATIA: 'ZLATIA',
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface ConvertRequest {
+  /**
+     * @minItems 1
+     * @maxItems 2
+     */
+  spend: ConvertRequestSpendItem[];
+  gain: ConvertRequestGain;
+}
+
+export type ExchangeRequestGive = {[key: string]: number};
+
+export type ExchangeRequestReceive = {[key: string]: number};
+
+export interface ExchangeRequest {
+  fromHunterId: number;
+  toHunterId: number;
+  give: ExchangeRequestGive;
+  receive: ExchangeRequestReceive;
+}
+
+export interface ExchangeResponse {
+  hunters: HunterSheet[];
 }
 
 export type TransitionRequestAction = typeof TransitionRequestAction[keyof typeof TransitionRequestAction];
@@ -487,6 +723,12 @@ export interface BattleResultRequest {
   /** @nullable */
   action: BattleResultRequestAction;
   overrides: OverridesRequest | null;
+  /**
+     * @minItems 0
+     * @maxItems 16
+     * @nullable
+     */
+  rewardCardHolders: (number | null)[] | null;
 }
 
 export type ResultAppliedNext = typeof ResultAppliedNext[keyof typeof ResultAppliedNext];
@@ -665,6 +907,20 @@ export interface RenameHunterRequest {
   playerName?: string;
 }
 
+export interface ItemChangeRequest {
+  /**
+     * @minLength 0
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minimum 1
+     * @maximum 3
+     * @nullable
+     */
+  level: number | null;
+}
+
 export interface RenameRequest {
   /**
      * @minLength 0
@@ -712,6 +968,99 @@ export interface Quest {
   expansion: string | null;
   victory: Rewards;
   defeat: Rewards;
+}
+
+export type LabUnitOptionsItem = typeof LabUnitOptionsItem[keyof typeof LabUnitOptionsItem];
+
+
+export const LabUnitOptionsItem = {
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+} as const;
+
+export interface LabUnit {
+  options: LabUnitOptionsItem[];
+  any: boolean;
+}
+
+export interface LabPotion {
+  code: string;
+  name: string;
+  units: LabUnit[];
+}
+
+export type ForgeBoardElement = typeof ForgeBoardElement[keyof typeof ForgeBoardElement];
+
+
+export const ForgeBoardElement = {
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export type ForgeItemSlot = typeof ForgeItemSlot[keyof typeof ForgeItemSlot];
+
+
+export const ForgeItemSlot = {
+  GREATSWORD: 'GREATSWORD',
+  GREATBOW: 'GREATBOW',
+  HAMMER: 'HAMMER',
+  SWORD_AND_SHIELD: 'SWORD_AND_SHIELD',
+  DUAL_BLADES: 'DUAL_BLADES',
+  GUN: 'GUN',
+  SPEAR: 'SPEAR',
+  DRUM: 'DRUM',
+  HELMET: 'HELMET',
+  ARMOR: 'ARMOR',
+  ITEM: 'ITEM',
+} as const;
+
+/**
+ * @nullable
+ */
+export type ForgeItemHunterClass = typeof ForgeItemHunterClass[keyof typeof ForgeItemHunterClass] | null;
+
+
+export const ForgeItemHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export type ForgeCostMaterials = {[key: string]: number};
+
+export interface ForgeCost {
+  level: number;
+  materials: ForgeCostMaterials;
+}
+
+export interface ForgeItem {
+  code: string;
+  name: string;
+  slot: ForgeItemSlot;
+  /** @nullable */
+  hunterClass: ForgeItemHunterClass;
+  costs: ForgeCost[];
+}
+
+export interface ForgeBoard {
+  element: ForgeBoardElement;
+  items: ForgeItem[];
 }
 
 export interface Named {

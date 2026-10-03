@@ -8,6 +8,8 @@ import { CampaignCreatePage } from '../features/campaign/CampaignCreatePage';
 import { CampaignListPage } from '../features/campaign/CampaignListPage';
 import { CampaignSheetPage } from '../features/campaign/CampaignSheetPage';
 import { ExpeditionSetupPage } from '../features/expedition/ExpeditionSetupPage';
+import { ForgePage } from '../features/forge/ForgePage';
+import { LabPage } from '../features/lab/LabPage';
 import { MainMenuPage } from '../features/menu/MainMenuPage';
 import { CampaignBattleSetupPage } from '../features/progression/CampaignBattleSetupPage';
 import { OutcomePage } from '../features/progression/OutcomePage';
@@ -31,6 +33,8 @@ export const screens = [
   { path: '/campaigns/:id/battle/new', title: ru.pages.campaignBattleNew, testId: 'page-campaign-battle-new' },
   { path: '/campaigns/:id/outcome', title: ru.pages.campaignOutcome, testId: 'page-campaign-outcome' },
   { path: '/campaigns/:id/transition', title: ru.pages.campaignTransition, testId: 'page-campaign-transition' },
+  { path: '/campaigns/:id/forge', title: ru.pages.campaignForge, testId: 'page-campaign-forge' },
+  { path: '/campaigns/:id/lab', title: ru.pages.campaignLab, testId: 'page-campaign-lab' },
 ] as const;
 
 /** Готовые экраны; остальные пока показывают заглушку. */
@@ -46,6 +50,8 @@ const pages: Partial<Record<(typeof screens)[number]['path'], ReactNode>> = {
   '/campaigns/:id/battle/new': <CampaignBattleSetupPage />,
   '/campaigns/:id/outcome': <OutcomePage />,
   '/campaigns/:id/transition': <TransitionPage />,
+  '/campaigns/:id/forge': <ForgePage />,
+  '/campaigns/:id/lab': <LabPage />,
 };
 
 export const routes: RouteObject[] = [

@@ -3,6 +3,7 @@ package com.primal.catalog;
 import com.primal.rules.effects.EffectDescriber;
 import com.primal.rules.effects.EffectPlanner;
 import com.primal.rules.model.AchievementNames;
+import com.primal.rules.model.Element;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,28 @@ public class CatalogService {
 
     public Optional<ChapterDef> chapter(int number) {
         return catalog.chapter(number);
+    }
+
+    /** Планшеты кузни всех стихий: по 12 предметов в порядке планшета. */
+    public List<ForgeItemDef> forge() {
+        return catalog.forge();
+    }
+
+    public List<ForgeItemDef> forge(Element element) {
+        return catalog.forge(element);
+    }
+
+    public Optional<ForgeItemDef> forgeItem(String code) {
+        return catalog.forgeItem(code);
+    }
+
+    /** Планшет лаборатории: 6 зелий; цена одинакова на всех уровнях. */
+    public List<LabPotionDef> lab() {
+        return catalog.lab();
+    }
+
+    public Optional<LabPotionDef> labPotion(String code) {
+        return catalog.labPotion(code);
     }
 
     /** Формулировки правил для игроков (названия достижений и боссов — из каталога). */

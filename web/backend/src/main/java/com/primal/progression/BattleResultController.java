@@ -59,7 +59,9 @@ class BattleResultController {
             @NotNull Instant startedAt,
             @NotNull Instant finishedAt,
             @ApiNullable Action action,
-            @ApiNullable @Valid OverridesRequest overrides) {
+            @ApiNullable @Valid OverridesRequest overrides,
+            /* кому выдать карты наград: id охотника на каждую карту из превью по порядку */
+            @ApiNullable @Size(max = 16) List<@NotNull Long> rewardCardHolders) {
 
         BattleReport report() {
             if (result == Result.DEFEAT && defeatReason == null) {
@@ -92,6 +94,7 @@ class BattleResultController {
         }
         OverridesRequest o = body.overrides();
         Overrides overrides = o == null ? null : new Overrides(o.bossCode(), o.perHunter(), o.openQuests(), o.achievements());
-        return results.submit(principal, campaignId, battleId, body.report(), body.action(), overrides);
+        return results.submit(principal, campaignId, battleId, body.report(), body.action(), overrides,
+                body.rewardCardHolders());
     }
 }

@@ -24,6 +24,8 @@ import type {
   Boss,
   Chapter,
   Dictionaries,
+  ForgeBoard,
+  LabPotion,
   Quest
 } from '../primal.schemas';
 
@@ -226,6 +228,194 @@ export function useQuest<TData = Awaited<ReturnType<typeof quest>>, TError = unk
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getQuestQueryOptions(number,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getLabUrl = () => {
+
+
+
+
+  return `/api/v1/catalog/lab`
+}
+
+export const lab = async ( options?: Parameters<typeof apiFetch>[1]): Promise<LabPotion[]> => {
+
+  return apiFetch<LabPotion[]>(getLabUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLabQueryKey = () => {
+    return [
+    `/api/v1/catalog/lab`
+    ] as const;
+    }
+
+
+export const getLabQueryOptions = <TData = Awaited<ReturnType<typeof lab>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLabQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lab>>> = ({ signal }) => lab({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type LabQueryResult = NonNullable<Awaited<ReturnType<typeof lab>>>
+export type LabQueryError = unknown
+
+
+export function useLab<TData = Awaited<ReturnType<typeof lab>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lab>>,
+          TError,
+          Awaited<ReturnType<typeof lab>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLab<TData = Awaited<ReturnType<typeof lab>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof lab>>,
+          TError,
+          Awaited<ReturnType<typeof lab>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useLab<TData = Awaited<ReturnType<typeof lab>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useLab<TData = Awaited<ReturnType<typeof lab>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof lab>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getLabQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getForgeUrl = () => {
+
+
+
+
+  return `/api/v1/catalog/forge`
+}
+
+export const forge = async ( options?: Parameters<typeof apiFetch>[1]): Promise<ForgeBoard[]> => {
+
+  return apiFetch<ForgeBoard[]>(getForgeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getForgeQueryKey = () => {
+    return [
+    `/api/v1/catalog/forge`
+    ] as const;
+    }
+
+
+export const getForgeQueryOptions = <TData = Awaited<ReturnType<typeof forge>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getForgeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof forge>>> = ({ signal }) => forge({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ForgeQueryResult = NonNullable<Awaited<ReturnType<typeof forge>>>
+export type ForgeQueryError = unknown
+
+
+export function useForge<TData = Awaited<ReturnType<typeof forge>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof forge>>,
+          TError,
+          Awaited<ReturnType<typeof forge>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useForge<TData = Awaited<ReturnType<typeof forge>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof forge>>,
+          TError,
+          Awaited<ReturnType<typeof forge>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useForge<TData = Awaited<ReturnType<typeof forge>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useForge<TData = Awaited<ReturnType<typeof forge>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof forge>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getForgeQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

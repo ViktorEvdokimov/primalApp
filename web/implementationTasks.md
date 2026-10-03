@@ -1282,7 +1282,7 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 **Объём:** S · **Зависит от:** 8.2
 
 > Отдельного логина больше нет в смысле «номер»: логин — поле свободного ввода, не привязанное к телефону.
-> Телефоны уже зарегистрированных пользователей перенесены в логин. Решения — `qa.md` № 130.
+> Телефоны уже зарегистрированных пользователей перенесены в логин. Решения — `qa.md` № 131.
 
 **Файлы:**
 - Бэкенд: `identity/{AppUser, AppUserRepository, Credentials, PasswordAuthService, AccountService,
@@ -1308,6 +1308,86 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 
 ---
 
+## Задача 9.1: Кузница ✅ ВЫПОЛНЕНО (03.10.2026)
+
+**Объём:** M · **Зависит от:** 4.6, 5.2
+
+> Планшеты кузни из `web/forge/*.pdf` перенесены в каталог; кузница на листе кампании. Решения — `qa.md` № 131.
+
+**Файлы:**
+- Каталог: `catalog/forge.yaml`, `rules/model/ForgeSlot`, `catalog/{ForgeItemDef, Catalog, CatalogLoader,
+  CatalogService, CatalogDtos, CatalogController}` (`GET /catalog/forge`)
+- Кампания: `CampaignSheetService.openForges` и поле `openForges` листа, `ForgeService`,
+  `HunterController` (`POST …/hunters/{hunterId}/forge`), `ErrorCode.FORGE_UNAVAILABLE`
+- Фронтенд: `features/forge/{ForgePage, forge}`, маршрут `/campaigns/:id/forge`, кнопка «Кузница» на листе,
+  `ru.forge`, перегенерированный клиент API
+- Тесты: `ForgeCatalogTest`, `ForgeIT`, `ForgePage.test.tsx`, E2E `test_forge.py` и `pages/forge_page.py`
+- Документация: `api.md` §4 и §5.4, `data-model.md` §4.1, `behavior.md` §7.1
+
+**Описание:** открытые кузни — по трофеям; планшеты текущего уровня с оружием класса выбранного охотника,
+шлемом, доспехом и предметами; кнопки перехода к стихиям; «Создать» списывает 1 стихию и материи.
+
+**Тесты:** бэкенд 307, фронтенд 348, E2E 63 — зелёные.
+
+**Критерии приёмки:** кузня огня 1-го уровня совпадает с согласованной таблицей; оружие видит и создаёт
+только свой класс; закрытая кузня и нехватка ресурсов — понятные ошибки, ничего не списано.
+
+---
+
+## Задача 9.2: Лаборатория ✅ ВЫПОЛНЕНО (03.10.2026)
+
+**Объём:** S · **Зависит от:** 9.1
+
+> Планшет лаборатории с фото перенесён в каталог; лаборатория на листе кампании. Решения — `qa.md` № 132.
+
+**Файлы:**
+- Каталог: `catalog/lab.yaml`, `catalog/{LabPotionDef, Catalog, CatalogLoader, CatalogService, CatalogDtos,
+  CatalogController}` (`GET /catalog/lab`)
+- Кампания: `LabService`, `HunterController` (`POST …/hunters/{hunterId}/lab`)
+- Фронтенд: `features/lab/{LabPage, lab}`, `shared/ui/ResourceStock`, маршрут `/campaigns/:id/lab`, кнопка
+  «Лаборатория» на листе, `ru.lab`, клиент API
+- Тесты: `LabCatalogTest`, `LabIT`, `LabPage.test.tsx`, E2E `test_lab.py` и `pages/lab_page.py`
+- Документация: `api.md` §4 и §5.4, `data-model.md` §4.1, `behavior.md` §7.2
+
+**Тесты:** бэкенд 317, фронтенд 357, E2E 64 — зелёные.
+
+**Критерии приёмки:** пример правил («Имперум», «Эвок» с меллисом вместо антемона) проходит в браузере;
+растение не со своего места и нехватка — понятные ошибки, ничего не списано.
+
+---
+
+## Задача 9.3: Инвентарь и обмен ресурсов ✅ ВЫПОЛНЕНО (03.10.2026)
+
+**Объём:** M · **Зависит от:** 9.1, 9.2
+
+> Предметы охотников хранятся на сайте: стартовые при создании кампании, созданные в кузнице и лаборатории,
+> карты наград заданий; правка без оплаты. Обмен, преобразование и продажа по правилам. Решения — `qa.md` № 133.
+
+**Файлы:**
+- БД: `V6__inventory.sql` (`hunter_item`)
+- Кампания: `HunterItem`, `HunterItemRepository`, `InventoryService`, `ExchangeService`, `InventoryController`;
+  `CampaignService` (стартовые предметы), `ForgeService`/`LabService` (предмет в инвентарь, ответ — охотник),
+  `CampaignSheetDto.InventoryItem`
+- Прогрессия: `BattleResultRequest.rewardCardHolders`, `BattleResultService` (карты наград в инвентарь)
+- Фронтенд: `features/campaign/InventoryPanel`, `features/exchange/{ExchangeDialog, exchange}`, кнопки
+  «Обменять ресурсы» в кузнице и лаборатории, выбор получателя карт наград в `OutcomePage`, `ru.inventory`,
+  `ru.exchange`, клиент API
+- Тесты: `InventoryIT`, `ExchangeIT`, `BattleResultIT.RewardCards`, `ForgeIT`/`LabIT`, `SchemaIT`;
+  `ExchangeDialog.test.tsx`, `CampaignSheetPage.test.tsx` (инвентарь), `LabPage.test.tsx`, `OutcomePage.test.tsx`;
+  E2E `test_inventory.py` и `pages/inventory_panel.py`
+- Документация: `api.md` §5.4 и §7.3, `data-model.md` (`hunter_item`), `behavior.md` §7.1–7.4 и §9
+
+**Тесты:** бэкенд 332, фронтенд 371, E2E 66 — зелёные.
+
+**Доработка (03.10.2026, `qa.md` № 134):** обмен между охотниками — три списка: что получить, что взамен
+(того же типа), с кем (у кого есть). Тесты: фронтенд 372, E2E `test_inventory.py` (3 теста) — зелёные.
+
+**Критерии приёмки:** новая кампания — стартовые предметы у каждого охотника, у старых кампаний предметов нет;
+пример обмена из правил проходит, обмен не 1 к 1 внутри типа отклоняется; не хватает на предмет кузницы —
+«Обменять ресурсы» с подставленным недостающим; карта награды задания попадает выбранному охотнику.
+
+---
+
 ## Приоритет выполнения
 
 | Порядок | Задачи | Результат |
@@ -1321,3 +1401,4 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 | 7 | 6.1 → 6.2 → 6.3 | Совместная игра по ссылкам |
 | 8 | 7.1, 7.2 (можно раньше — после 2.1), 7.3 → 7.4 → 7.5 | Готово к работе на сервере |
 | 9 | 8.1 → 8.2 → 8.3 | Вход по логину и паролю вместо кода из письма |
+| 10 | 9.1 → 9.2 → 9.3 | Кузница, лаборатория, инвентарь и обмен ресурсов |

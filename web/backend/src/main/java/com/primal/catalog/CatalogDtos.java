@@ -1,7 +1,12 @@
 package com.primal.catalog;
 
 import com.primal.common.api.ApiNullable;
+import com.primal.rules.model.Element;
+import com.primal.rules.model.ForgeSlot;
+import com.primal.rules.model.HunterClass;
+import com.primal.rules.model.Plant;
 import com.primal.rules.model.StanceChangeMode;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +55,43 @@ public final class CatalogDtos {
                     def.element() == null ? null : def.element().name(),
                     def.expansion() == null ? null : def.expansion().name(),
                     def.sortOrder(), difficulties);
+        }
+    }
+
+    /** Материи предмета на планшете уровня {@code level}; кроме них, создание стоит 1 стихию кузни. */
+    public record ForgeCost(int level, Map<String, Integer> materials) {
+    }
+
+    /** @param hunterClass класс, которому принадлежит оружие; {@code null} — шлем, доспех, предмет */
+    public record ForgeItem(String code, String name, ForgeSlot slot, @ApiNullable HunterClass hunterClass,
+                            List<ForgeCost> costs) {
+
+        static ForgeItem of(ForgeItemDef def) {
+            List<ForgeCost> costs = new ArrayList<>();
+            for (int level = 1; level <= ForgeItemDef.LEVELS; level++) {
+                Map<String, Integer> materials = new LinkedHashMap<>();
+                def.cost(level).forEach((material, quantity) -> materials.put(material.name(), quantity));
+                costs.add(new ForgeCost(level, materials));
+            }
+            return new ForgeItem(def.code(), def.name(), def.slot(), def.slot().hunterClass(), costs);
+        }
+    }
+
+    /** Планшет кузни стихии: 12 предметов в порядке планшета. */
+    public record ForgeBoard(Element element, List<ForgeItem> items) {
+    }
+
+    /** Растение цены зелья: {@code options} — допустимые растения (одно на выбор); {@code any} — любое. */
+    public record LabUnit(List<Plant> options, boolean any) {
+    }
+
+    /** Зелье лаборатории: 2 растения, одинаково на всех уровнях. */
+    public record LabPotion(String code, String name, List<LabUnit> units) {
+
+        static LabPotion of(LabPotionDef def) {
+            return new LabPotion(def.code(), def.name(), def.units().stream()
+                    .map(unit -> new LabUnit(List.copyOf(unit), unit.size() == Plant.values().length))
+                    .toList());
         }
     }
 

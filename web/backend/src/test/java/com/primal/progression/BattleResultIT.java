@@ -499,4 +499,51 @@ class BattleResultIT extends IntegrationTest {
                     .andExpect(status().isNotFound());
         }
     }
+
+    @Nested
+    @DisplayName("Карты наград")
+    class RewardCards {
+
+        private List<Long> hunterIds() {
+            return jdbc.queryForList("select id from campaign_hunter where campaign_id = ? order by position", Long.class, campaignId);
+        }
+
+        private List<String> rewardItems(long hunterId) {
+            return jdbc.queryForList("select name from hunter_item where hunter_id = ? and kind = 'REWARD' order by id",
+                    String.class, hunterId);
+        }
+
+        @Test
+        @DisplayName("победа по заданию 5 — «Карта награды №1» выбранному охотнику")
+        void toChosenHunter() throws Exception {
+            // подготовка
+            chapter(1);
+            quest(5, "OPEN");
+            List<Long> ids = hunterIds();
+
+            // вызов
+            submit(UUID.randomUUID(), report(5, "YUROM", 1, 0, "VICTORY",
+                    "\"action\": \"ACCEPT\", \"rewardCardHolders\": [" + ids.get(1) + "]"))
+                    .andExpect(status().isOk());
+
+            // проверка
+            assertThat(rewardItems(ids.get(1))).containsExactly("Карта награды №1");
+            assertThat(rewardItems(ids.get(0))).isEmpty();
+        }
+
+        @Test
+        @DisplayName("держатель не указан или чужой — карта первому охотнику отряда")
+        void defaultHolder() throws Exception {
+            // подготовка
+            chapter(1);
+            quest(5, "OPEN");
+            List<Long> ids = hunterIds();
+
+            // вызов
+            accept(UUID.randomUUID(), 5, "YUROM", 1, 0, "VICTORY").andExpect(status().isOk());
+
+            // проверка
+            assertThat(rewardItems(ids.get(0))).containsExactly("Карта награды №1");
+        }
+    }
 }

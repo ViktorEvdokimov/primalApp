@@ -587,3 +587,124 @@ describe('Лист кампании: правки с версией', () => {
     expect(screen.queryByText(/Состояние обновилось/)).not.toBeInTheDocument();
   });
 });
+
+describe('Лист кампании: инвентарь', () => {
+  const kit = [
+    { id: 401, kind: 'EQUIPMENT' as const, name: 'Большой меч', level: 1, element: null, source: null },
+    { id: 404, kind: 'POTION' as const, name: 'Алемор', level: 1, element: null, source: 'LAB_01' },
+    { id: 405, kind: 'REWARD' as const, name: 'Карта награды №7', level: null, element: null, source: '7' },
+  ];
+  const withKit = (items = kit) =>
+    sheetFixture({
+      hunters: [hunterFixture({ items }), hunterFixture({ id: 32, class: 'MIRA', playerName: 'Мира', position: 2 })],
+    });
+  const inventoryItem = (name: string) => {
+    const found = screen.getAllByTestId('inventory-item').find((node) => node.dataset.name === name);
+    if (found === undefined) throw new Error(`Нет предмета «${name}»`);
+    return within(found);
+  };
+
+  it('предметы по видам: снаряжение, зелья, карты наград; у карты награды уровня нет', async () => {
+    // вызов
+    await openSheet(withKit());
+
+    // проверка
+    const groups = await screen.findAllByTestId('inventory-group');
+    expect(groups.map((group) => group.dataset.kind)).toEqual(['EQUIPMENT', 'POTION', 'REWARD']);
+    expect(inventoryItem('Большой меч').getByTestId('inventory-item-level')).toHaveTextContent('1 ур.');
+    expect(inventoryItem('Карта награды №7').queryByTestId('inventory-item-level')).not.toBeInTheDocument();
+  });
+
+  it('кампания без предметов (создана до инвентаря) — «Предметов нет»', async () => {
+    // вызов
+    await openSheet(withKit([]));
+
+    // проверка
+    expect(await screen.findByTestId('inventory-empty')).toHaveTextContent('Предметов нет.');
+  });
+
+  it('добавить без оплаты: вид, название, уровень; ответ — охотник целиком', async () => {
+    // подготовка
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('*/api/v1/campaigns/12/hunters/31/items', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json(
+          hunterFixture({ items: [...kit, { id: 406, kind: 'EQUIPMENT', name: 'Язык пламени', level: 2, element: null, source: null }] }),
+          { status: 201 },
+        );
+      }),
+    );
+    const { user } = await openSheet(withKit());
+
+    // вызов
+    await user.click(await screen.findByTestId('inventory-add'));
+    const form = within(await screen.findByTestId('inventory-form'));
+    expect(form.getByTestId('inventory-form-save')).toBeDisabled();
+    await user.type(form.getByTestId('inventory-form-name'), 'Язык пламени');
+    await user.selectOptions(form.getByTestId('inventory-form-level'), '2');
+    await user.click(form.getByTestId('inventory-form-save'));
+
+    // проверка
+    expect(await screen.findByText('Язык пламени')).toBeInTheDocument();
+    expect(bodies).toEqual([{ kind: 'EQUIPMENT', name: 'Язык пламени', level: 2 }]);
+  });
+
+  it('карта награды добавляется без уровня', async () => {
+    // подготовка
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('*/api/v1/campaigns/12/hunters/31/items', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json(hunterFixture({ items: kit }), { status: 201 });
+      }),
+    );
+    const { user } = await openSheet(withKit([]));
+
+    // вызов
+    await user.click(await screen.findByTestId('inventory-add'));
+    const form = within(await screen.findByTestId('inventory-form'));
+    await user.selectOptions(form.getByTestId('inventory-form-kind'), 'REWARD');
+    expect(form.queryByTestId('inventory-form-level')).not.toBeInTheDocument();
+    await user.type(form.getByTestId('inventory-form-name'), 'Карта награды №3');
+    await user.click(form.getByTestId('inventory-form-save'));
+
+    // проверка
+    await waitFor(() => expect(bodies).toEqual([{ kind: 'REWARD', name: 'Карта награды №3', level: null }]));
+  });
+
+  it('правка уровня и удаление', async () => {
+    // подготовка
+    const edits: unknown[] = [];
+    let removed = 0;
+    server.use(
+      http.patch('*/api/v1/campaigns/12/hunters/31/items/401', async ({ request }) => {
+        edits.push(await request.json());
+        return HttpResponse.json(hunterFixture({ items: [{ ...kit[0]!, level: 3 }, ...kit.slice(1)] }));
+      }),
+      http.delete('*/api/v1/campaigns/12/hunters/31/items/404', () => {
+        removed += 1;
+        return HttpResponse.json(hunterFixture({ items: [kit[0]!, kit[2]!] }));
+      }),
+    );
+    const { user } = await openSheet(withKit());
+
+    // вызов: правка
+    await user.click(await screen.findByLabelText('Изменить: Большой меч'));
+    const form = within(await screen.findByTestId('inventory-form'));
+    expect(form.getByTestId('inventory-form-name')).toHaveValue('Большой меч');
+    await user.selectOptions(form.getByTestId('inventory-form-level'), '3');
+    await user.click(form.getByTestId('inventory-form-save'));
+
+    // проверка
+    await waitFor(() => expect(inventoryItem('Большой меч').getByTestId('inventory-item-level')).toHaveTextContent('3 ур.'));
+    expect(edits).toEqual([{ name: 'Большой меч', level: 3 }]);
+
+    // вызов: удаление
+    await user.click(screen.getByLabelText('Убрать: Алемор'));
+
+    // проверка
+    await waitFor(() => expect(screen.queryByText('Алемор')).not.toBeInTheDocument());
+    expect(removed).toBe(1);
+  });
+});

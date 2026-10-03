@@ -34,7 +34,7 @@ class CatalogIntegrityTest {
                 List.of(), null));
         List<QuestDef> quests = new ArrayList<>(CATALOG.quests());
         quests.set(0, new QuestDef(1, original.name(), original.bossCode(), null, victory, original.defeat(), "[]", "[]"));
-        Catalog broken = new Catalog(CATALOG.bosses(), CATALOG.achievements(), quests, CATALOG.chapters(), CATALOG.checksum());
+        Catalog broken = new Catalog(CATALOG.bosses(), CATALOG.achievements(), quests, CATALOG.chapters(), CATALOG.forge(), CATALOG.lab(), CATALOG.checksum());
 
         // вызов
         List<String> problems = CatalogIntegrity.problems(broken);
@@ -54,7 +54,7 @@ class CatalogIntegrityTest {
     void missingChapter() {
         // подготовка
         Catalog broken = new Catalog(CATALOG.bosses(), CATALOG.achievements(), CATALOG.quests(),
-                CATALOG.chapters().subList(0, 10), CATALOG.checksum());
+                CATALOG.chapters().subList(0, 10), CATALOG.forge(), CATALOG.lab(), CATALOG.checksum());
 
         // вызов и проверка
         assertThat(CatalogIntegrity.problems(broken)).anyMatch(problem -> problem.startsWith("главы должны идти по порядку 1–11"));

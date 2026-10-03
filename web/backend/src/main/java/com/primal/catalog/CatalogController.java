@@ -4,6 +4,9 @@ import com.primal.catalog.CatalogDtos.Achievement;
 import com.primal.catalog.CatalogDtos.Boss;
 import com.primal.catalog.CatalogDtos.DifficultyRange;
 import com.primal.catalog.CatalogDtos.Dictionaries;
+import com.primal.catalog.CatalogDtos.ForgeBoard;
+import com.primal.catalog.CatalogDtos.ForgeItem;
+import com.primal.catalog.CatalogDtos.LabPotion;
 import com.primal.catalog.CatalogDtos.Named;
 import com.primal.common.error.ApiException;
 import com.primal.common.error.ErrorCode;
@@ -87,6 +90,20 @@ public class CatalogController {
     @GetMapping("/chapters")
     public ResponseEntity<List<CatalogViews.Chapter>> chapters() {
         return cached(catalog.chapters().stream().map(views::chapter).toList());
+    }
+
+    /** Планшеты кузни всех стихий в порядке справочника, со ценами на 3 уровня (doc/api.md §4). */
+    @GetMapping("/forge")
+    public ResponseEntity<List<ForgeBoard>> forge() {
+        return cached(Arrays.stream(Element.values())
+                .map(element -> new ForgeBoard(element, catalog.forge(element).stream().map(ForgeItem::of).toList()))
+                .toList());
+    }
+
+    /** Планшет лаборатории: 6 зелий с растениями (doc/api.md §4). */
+    @GetMapping("/lab")
+    public ResponseEntity<List<LabPotion>> lab() {
+        return cached(catalog.lab().stream().map(LabPotion::of).toList());
     }
 
     private <T> ResponseEntity<T> cached(T body) {

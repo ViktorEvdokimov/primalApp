@@ -1,4 +1,4 @@
-import type { Boss, Dictionaries } from '../../api/generated/primal.schemas';
+import type { Boss, Dictionaries, ForgeBoard, ForgeItem, LabPotion, LabUnit } from '../../api/generated/primal.schemas';
 
 /** Ответы API каталога для тестов — фрагмент настоящего каталога (backend/src/main/resources/catalog). */
 export const bossesFixture: Boss[] = [
@@ -130,3 +130,53 @@ export const dictionariesFixture: Dictionaries = {
     { chapters: [8, 9, 10, 11], difficulty: 3 },
   ],
 };
+
+type Costs = [Record<string, number>, Record<string, number>, Record<string, number>];
+
+function forgeItem(code: string, name: string, slot: ForgeItem['slot'], hunterClass: ForgeItem['hunterClass'], costs: Costs): ForgeItem {
+  return { code, name, slot, hunterClass, costs: costs.map((materials, index) => ({ level: index + 1, materials })) };
+}
+
+/** Планшеты кузни: огонь целиком, как в каталоге; коралл — меч Дареона и шлем. */
+export const forgeFixture: ForgeBoard[] = [
+  {
+    element: 'FIRE',
+    items: [
+      forgeItem('FIRE_01', 'Язык пламени', 'GREATSWORD', 'DAREON', [{ BONES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }, { BONES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_02', 'Лук-испепелитель', 'GREATBOW', 'MIRA', [{ SCALES: 1, BLOOD: 1 }, { BLOOD: 2 }, { BONES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_03', 'Молот пламени', 'HAMMER', 'TOREG', [{ BLOOD: 2 }, { SCALES: 1, BLOOD: 1 }, { BLOOD: 1, IRIDIA: 1 }]),
+      forgeItem('FIRE_04', 'Вулканический щит', 'SWORD_AND_SHIELD', 'LIONAR', [{ BLOOD: 1, IRIDIA: 1 }, { BLOOD: 1, IRIDIA: 1 }, { BONES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_05', 'Крылья дракона', 'DUAL_BLADES', 'KARA', [{ SCALES: 1, BLOOD: 1 }, { SCALES: 1, IRIDIA: 1 }, { BLOOD: 1, IRIDIA: 1 }]),
+      forgeItem('FIRE_06', 'Игнис', 'GUN', 'HELEREN', [{ BLOOD: 1, IRIDIA: 1 }, { BONES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_07', 'Магматическое копьё', 'SPEAR', 'ZARAIA', [{ SCALES: 1, BLOOD: 1 }, { SCALES: 2 }, { BLOOD: 2 }]),
+      forgeItem('FIRE_08', 'Лавовый барабан', 'DRUM', 'DRUSK', [{ SCALES: 2 }, { SCALES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_09', 'Чешуйчатый шлем', 'HELMET', null, [{ SCALES: 1, BLOOD: 1 }, { BONES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_10', 'Чешуйчатый доспех', 'ARMOR', null, [{ SCALES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }]),
+      forgeItem('FIRE_11', 'Перчатка Волтьяра', 'ITEM', null, [{ SCALES: 1, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }, { SCALES: 2 }]),
+      forgeItem('FIRE_12', 'Лавовый щит', 'ITEM', null, [{ SCALES: 2 }, { BLOOD: 2 }, { BONES: 1, BLOOD: 1 }]),
+    ],
+  },
+  {
+    element: 'CORAL',
+    items: [
+      forgeItem('CORAL_01', 'Кровавый риф', 'GREATSWORD', 'DAREON', [{ SCALES: 1, ZIMIA: 1 }, { ZIMIA: 2 }, { ZIMIA: 2 }]),
+      forgeItem('CORAL_09', 'Рифовый шлем', 'HELMET', null, [{ SCALES: 1, ZIMIA: 1 }, { ZIMIA: 2 }, { BONES: 1, ZIMIA: 1 }]),
+    ],
+  },
+];
+
+type PlantCode = LabUnit['options'][number];
+const ALL_PLANTS: PlantCode[] = ['NILLEA', 'TARMARET', 'ALBALACEA', 'MELLIS', 'ANTHEMON', 'SELICORNIA'];
+const one = (...options: PlantCode[]): LabUnit => ({ options, any: false });
+const any: LabUnit = { options: ALL_PLANTS, any: true };
+
+/** Планшет лаборатории — как в каталоге. */
+export const labFixture: LabPotion[] = [
+  { code: 'LAB_01', name: 'Алемор', units: [any, any] },
+  { code: 'LAB_02', name: 'Имперум', units: [one('ANTHEMON'), one('NILLEA')] },
+  { code: 'LAB_03', name: 'Ирден', units: [one('TARMARET'), one('ALBALACEA', 'SELICORNIA')] },
+  { code: 'LAB_04', name: 'Хатрокс', units: [one('NILLEA'), one('SELICORNIA')] },
+  { code: 'LAB_05', name: 'Эвок', units: [one('TARMARET'), one('ANTHEMON', 'MELLIS')] },
+  { code: 'LAB_06', name: 'Видья', units: [one('ALBALACEA'), one('MELLIS')] },
+];
+

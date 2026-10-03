@@ -1,5 +1,6 @@
 package com.primal.catalog;
 
+import com.primal.rules.model.Element;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +14,22 @@ public record Catalog(
         List<AchievementDef> achievements,
         List<QuestDef> quests,
         List<ChapterDef> chapters,
+        List<ForgeItemDef> forge,
+        List<LabPotionDef> lab,
         String checksum) {
+
+    public Optional<LabPotionDef> labPotion(String code) {
+        return lab.stream().filter(potion -> potion.code().equals(code)).findFirst();
+    }
+
+    /** Предметы кузни стихии в порядке планшета. */
+    public List<ForgeItemDef> forge(Element element) {
+        return forge.stream().filter(item -> item.element() == element).toList();
+    }
+
+    public Optional<ForgeItemDef> forgeItem(String code) {
+        return forge.stream().filter(item -> item.code().equals(code)).findFirst();
+    }
 
     public Optional<BossDef> boss(String code) {
         return bosses.stream().filter(boss -> boss.code().equals(code)).findFirst();

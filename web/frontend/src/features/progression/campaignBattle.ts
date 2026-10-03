@@ -42,6 +42,7 @@ export function resultRequest(
   battle: CampaignLocalBattle,
   action: BattleResultRequest['action'] = null,
   overrides: OverridesRequest | null = null,
+  rewardCardHolders: number[] | null = null,
 ): BattleResultRequest {
   const { state } = battle;
   return {
@@ -57,6 +58,7 @@ export function resultRequest(
     finishedAt: battle.finishedAt ?? battle.updatedAt,
     action,
     overrides,
+    rewardCardHolders,
   };
 }
 

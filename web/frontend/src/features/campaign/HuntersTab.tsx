@@ -1,6 +1,7 @@
 import { SegmentedControl, Stack } from '@mantine/core';
 import { useState } from 'react';
 import type { Dictionaries, HunterSheet } from '../../api/generated/primal.schemas';
+import { InventoryPanel } from './InventoryPanel';
 import { ResourcesGrid } from './ResourcesGrid';
 import { SkillTree } from './SkillTree';
 import type { SheetActions } from './useCampaignSheet';
@@ -12,7 +13,7 @@ interface HuntersTabProps {
   actions: SheetActions;
 }
 
-/** Охотники отряда: переключатель, древо навыков и ресурсы выбранного охотника. */
+/** Охотники отряда: переключатель, древо навыков, ресурсы и инвентарь выбранного охотника. */
 export function HuntersTab({ campaignId, hunters, dictionaries, actions }: HuntersTabProps) {
   const [selectedId, setSelectedId] = useState(hunters[0]?.id);
   const hunter = hunters.find((item) => item.id === selectedId) ?? hunters[0];
@@ -49,6 +50,7 @@ export function HuntersTab({ campaignId, hunters, dictionaries, actions }: Hunte
         elements={dictionaries.elements}
         actions={actions}
       />
+      <InventoryPanel campaignId={campaignId} hunter={hunter} hunters={hunters} dictionaries={dictionaries} actions={actions} />
     </Stack>
   );
 }

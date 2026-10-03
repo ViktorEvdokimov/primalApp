@@ -5,18 +5,21 @@ import com.primal.campaign.CampaignSheetDto.AchievementItem;
 import com.primal.campaign.CampaignSheetDto.CampaignBoss;
 import com.primal.campaign.CampaignSheetDto.CampaignSheet;
 import com.primal.campaign.CampaignSheetDto.HunterSheet;
+import com.primal.campaign.CampaignSheetDto.InventoryItem;
 import com.primal.campaign.CampaignSheetDto.QuestItem;
 import com.primal.campaign.CampaignSheetDto.QuestLists;
 import com.primal.campaign.CampaignSheetDto.SkillStep;
 import com.primal.campaign.CampaignSheetDto.TrophyItem;
 import com.primal.identity.AccountService;
 import com.primal.rules.model.Difficulty;
+import com.primal.rules.model.Element;
 import com.primal.rules.model.ResourceCode;
 import com.primal.rules.model.SkillTree;
 import com.primal.rules.model.SkillTree.Skill;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,13 +38,14 @@ public class CampaignSheetService {
     private final CampaignQuestRepository quests;
     private final CampaignAchievementRepository achievements;
     private final CampaignTrophyRepository trophies;
+    private final HunterItemRepository items;
     private final CampaignViews views;
     private final CampaignBattles battles;
     private final AccountService accounts;
 
     CampaignSheetService(CampaignHunterRepository hunters, HunterSkillRepository skills,
                          HunterResourceRepository resources, CampaignQuestRepository quests,
-                         CampaignAchievementRepository achievements, CampaignTrophyRepository trophies,
+                         CampaignAchievementRepository achievements, CampaignTrophyRepository trophies, HunterItemRepository items,
                          CampaignViews views, CampaignBattles battles, AccountService accounts) {
         this.hunters = hunters;
         this.skills = skills;
@@ -49,6 +53,7 @@ public class CampaignSheetService {
         this.quests = quests;
         this.achievements = achievements;
         this.trophies = trophies;
+        this.items = items;
         this.views = views;
         this.battles = battles;
         this.accounts = accounts;
@@ -67,6 +72,7 @@ public class CampaignSheetService {
                 accounts.userName(campaign.getOwnerId()),
                 Difficulty.forChapter(campaign.getChapter()),
                 campaign.getForgeLevel(),
+                openForges(id),
                 campaign.getLabLevel(),
                 campaign.getFinalBossCode() == null ? null : boss(campaign.getFinalBossCode()),
                 campaign.getNotes(),
@@ -95,6 +101,10 @@ public class CampaignSheetService {
         List<Long> ids = squad.stream().map(CampaignHunter::getId).toList();
         Map<Long, Set<Skill>> skillsByHunter = skills.findByKeyHunterIdIn(ids).stream()
                 .collect(Collectors.groupingBy(HunterSkill::getHunterId, Collectors.mapping(HunterSkill::toSkill, Collectors.toSet())));
+        Map<Long, List<InventoryItem>> itemsByHunter = items.findByHunterIdInOrderById(ids).stream()
+                .collect(Collectors.groupingBy(HunterItem::getHunterId, Collectors.mapping(item -> new InventoryItem(
+                        item.getId(), item.getKind(), item.getName(), item.getLevel(), item.getElement(), item.getSource()),
+                        Collectors.toList())));
         Map<Long, Map<ResourceCode, Integer>> resourcesByHunter = new LinkedHashMap<>();
         for (HunterResource resource : resources.findByKeyHunterIdIn(ids)) {
             if (resource.getQuantity() != 0) {
@@ -116,7 +126,8 @@ public class CampaignSheetService {
                             .map(skill -> new SkillStep(skill.branch(), skill.tier()))
                             .toList(),
                     SkillTree.unlockable(unlocked).stream().map(skill -> new SkillStep(skill.branch(), skill.tier())).toList(),
-                    owned);
+                    owned,
+                    itemsByHunter.getOrDefault(hunter.getId(), List.of()));
         }).toList();
     }
 
@@ -148,6 +159,14 @@ public class CampaignSheetService {
         return chaptersByBoss.entrySet().stream()
                 .map(entry -> new TrophyItem(boss(entry.getKey()), entry.getValue()))
                 .toList();
+    }
+
+    /** Кузня стихии открывается победой над боссом этой стихии (правила, «Кузня») — по трофеям кампании. */
+    List<Element> openForges(long campaignId) {
+        Set<Element> open = EnumSet.noneOf(Element.class);
+        trophies.findByCampaignIdOrderByChapterAscIdAsc(campaignId)
+                .forEach(trophy -> views.bossElement(trophy.getBossCode()).ifPresent(open::add));
+        return List.copyOf(open);
     }
 
     CampaignBoss boss(String code) {

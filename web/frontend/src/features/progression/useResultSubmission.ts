@@ -20,7 +20,7 @@ export type SubmissionState =
   | { kind: 'IDLE' }
   | { kind: 'SENDING'; action: ResultAction }
   /** Нет сети: результат остался в браузере, «Отправить снова». */
-  | { kind: 'OFFLINE'; action: ResultAction; overrides: OverridesRequest | null }
+  | { kind: 'OFFLINE'; action: ResultAction; overrides: OverridesRequest | null; holders: number[] | null }
   /** Кампания изменилась, пока шёл бой: принять нельзя, только «Отклонить результат». */
   | { kind: 'CHANGED'; changed: CampaignChanged }
   | { kind: 'ERROR'; message: string }
@@ -51,10 +51,14 @@ export function useResultSubmission(battle: CampaignLocalBattle) {
   const { update, clear, getBattle } = active;
 
   const submit = useCallback(
-    async (action: ResultAction, overrides: OverridesRequest | null = null): Promise<ResultAppliedNext | null> => {
+    async (
+      action: ResultAction,
+      overrides: OverridesRequest | null = null,
+      holders: number[] | null = null,
+    ): Promise<ResultAppliedNext | null> => {
       setState({ kind: 'SENDING', action });
       try {
-        const applied = await submitBattleResult(campaignId, battle.id, resultRequest(battle, action, overrides));
+        const applied = await submitBattleResult(campaignId, battle.id, resultRequest(battle, action, overrides, holders));
         update(battle.id, (current) => ({ ...current, submission: { status: 'SENT', lastError: null } }));
         if (getBattle()?.id === battle.id) clear();
         queryClient.setQueryData(getGetCampaignQueryKey(campaignId), applied.campaign);
@@ -67,7 +71,7 @@ export function useResultSubmission(battle: CampaignLocalBattle) {
           setState({ kind: 'CHANGED', changed });
         } else if (error instanceof ApiError && error.code === 'NETWORK_ERROR') {
           update(battle.id, (current) => ({ ...current, submission: { status: 'NOT_SENT', lastError: ru.errors.network } }));
-          setState({ kind: 'OFFLINE', action, overrides });
+          setState({ kind: 'OFFLINE', action, overrides, holders });
         } else {
           setState({
             kind: 'ERROR',
@@ -81,7 +85,7 @@ export function useResultSubmission(battle: CampaignLocalBattle) {
   );
 
   const retry = useCallback(
-    () => (state.kind === 'OFFLINE' ? submit(state.action, state.overrides) : Promise.resolve(null)),
+    () => (state.kind === 'OFFLINE' ? submit(state.action, state.overrides, state.holders) : Promise.resolve(null)),
     [state, submit],
   );
 

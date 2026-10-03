@@ -1,0 +1,13 @@
+# Планшет лаборатории (doc/data-model.md §4, задача 9.2) — по web/forge/photo_2026-10-03_15-44-04.jpg.
+# Цены одинаковы на всех уровнях лаборатории; уровень определяет только уровень карты зелья.
+#
+# cost — растения по одному: NILLEA ниллея, TARMARET тармарет, ALBALACEA альбалацея, MELLIS меллис,
+# ANTHEMON антемон, SELICORNIA селикорния. «A/B» — одно из двух на выбор игрока (косая черта на планшете),
+# ANY — любое растение. Стихий зелья не требуют (правила, «Лаборатория»).
+
+- { name: Алемор, cost: [ANY, ANY] }
+- { name: Имперум, cost: [ANTHEMON, NILLEA] }
+- { name: Ирден, cost: [TARMARET, ALBALACEA/SELICORNIA] }
+- { name: Хатрокс, cost: [NILLEA, SELICORNIA] }
+- { name: Эвок, cost: [TARMARET, ANTHEMON/MELLIS] }
+- { name: Видья, cost: [ALBALACEA, MELLIS] }

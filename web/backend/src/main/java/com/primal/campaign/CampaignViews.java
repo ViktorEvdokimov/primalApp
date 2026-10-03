@@ -5,6 +5,8 @@ import com.primal.campaign.CampaignSheetDto.QuestItem;
 import com.primal.catalog.BossDef;
 import com.primal.catalog.CatalogService;
 import com.primal.catalog.QuestDef;
+import com.primal.rules.model.Element;
+import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 /** Боссы и задания каталога в том виде, в каком их показывает лист кампании. */
@@ -20,6 +22,11 @@ public class CampaignViews {
     public CampaignBoss boss(String code) {
         BossDef def = catalog.boss(code).orElseThrow();
         return new CampaignBoss(def.code(), def.name(), def.element() == null ? null : def.element().name());
+    }
+
+    /** Стихия босса; у Пробуждённого стихии нет. */
+    public Optional<Element> bossElement(String code) {
+        return catalog.boss(code).map(BossDef::element);
     }
 
     /** Задание каталога; {@code closedInChapter} — у выполненного или истёкшего задания кампании. */

@@ -2,12 +2,14 @@ import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import type { MeResponse } from '../api/generated/primal.schemas';
 import { userMe } from './fixtures/auth';
-import { bossesFixture, dictionariesFixture } from './fixtures/catalog';
+import { bossesFixture, dictionariesFixture, forgeFixture, labFixture } from './fixtures/catalog';
 
 /** Каталог нужен многим экранам, поэтому отвечает по умолчанию; тест может подменить ответ через `server.use(...)`. */
 export const catalogHandlers = [
   http.get('*/api/v1/catalog/bosses', () => HttpResponse.json(bossesFixture)),
   http.get('*/api/v1/catalog/dictionaries', () => HttpResponse.json(dictionariesFixture)),
+  http.get('*/api/v1/catalog/forge', () => HttpResponse.json(forgeFixture)),
+  http.get('*/api/v1/catalog/lab', () => HttpResponse.json(labFixture)),
 ];
 
 /** Как сервер: `GET /auth/csrf` выдаёт cookie `XSRF-TOKEN` (в jsdom — через `document.cookie`). */

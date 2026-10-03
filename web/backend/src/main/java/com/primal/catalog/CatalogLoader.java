@@ -2,6 +2,9 @@ package com.primal.catalog;
 
 import com.primal.rules.model.Element;
 import com.primal.rules.model.Expansion;
+import com.primal.rules.model.ForgeSlot;
+import com.primal.rules.model.Material;
+import com.primal.rules.model.Plant;
 import com.primal.rules.model.StanceChangeMode;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,9 +13,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,7 +37,8 @@ public final class CatalogLoader {
 
     /** Файлы каталога; все входят в контрольную сумму. */
     public static final List<String> FILES = List.of(
-            "catalog/bosses.yaml", "catalog/achievements.yaml", "catalog/quests.yaml", "catalog/chapters.yaml");
+            "catalog/bosses.yaml", "catalog/achievements.yaml", "catalog/quests.yaml", "catalog/chapters.yaml",
+            "catalog/forge.yaml", "catalog/lab.yaml");
 
     private static final YAMLMapper YAML = new YAMLMapper();
     private static final JsonMapper JSON = new JsonMapper();
@@ -49,6 +56,8 @@ public final class CatalogLoader {
                 parseAchievements(tree(files, "catalog/achievements.yaml")),
                 parseQuests(tree(files, "catalog/quests.yaml")),
                 parseChapters(tree(files, "catalog/chapters.yaml")),
+                parseForge(tree(files, "catalog/forge.yaml")),
+                parseLab(tree(files, "catalog/lab.yaml")),
                 checksum(files));
         validate(catalog);
         return catalog;
@@ -161,6 +170,123 @@ public final class CatalogLoader {
             throw new CatalogException(where + ": стоек должно быть от 3 до 9, а их " + stances.size());
         }
         return List.copyOf(stances);
+    }
+
+    /** Состав планшета: 8 видов оружия по одному, шлем, доспех и 2 предмета (правила, «Кузня»). */
+    private static final Map<ForgeSlot, Integer> BOARD = boardSlots();
+
+    private static Map<ForgeSlot, Integer> boardSlots() {
+        Map<ForgeSlot, Integer> slots = new EnumMap<>(ForgeSlot.class);
+        for (ForgeSlot slot : ForgeSlot.values()) {
+            slots.put(slot, slot == ForgeSlot.ITEM ? 2 : 1);
+        }
+        return Collections.unmodifiableMap(slots);
+    }
+
+    /**
+     * Планшеты кузни: каждая стихия ровно один раз, на планшете — состав {@link #BOARD}, у каждого предмета
+     * цены на 3 уровня по 2 материи. Код предмета — стихия и место на планшете: {@code FIRE_01}.
+     */
+    static List<ForgeItemDef> parseForge(JsonNode root) {
+        List<ForgeItemDef> items = new ArrayList<>();
+        Set<Element> elements = new HashSet<>();
+        for (JsonNode board : list(root, "forge.yaml")) {
+            Element element = enumOrNull(Element.class, board.path("element"), "forge.yaml");
+            String where = "forge.yaml, " + element;
+            if (element == null || !elements.add(element)) {
+                throw new CatalogException(where + ": стихия не указана или повторяется");
+            }
+            Map<ForgeSlot, Integer> slots = new EnumMap<>(ForgeSlot.class);
+            int position = 0;
+            for (JsonNode node : board.path("items")) {
+                position++;
+                String name = text(node, "name");
+                String at = where + ", " + name;
+                ForgeSlot slot = enumOrNull(ForgeSlot.class, node.path("slot"), at);
+                if (slot == null) {
+                    throw new CatalogException(at + ": не указан slot");
+                }
+                slots.merge(slot, 1, Integer::sum);
+                items.add(new ForgeItemDef("%s_%02d".formatted(element, position), element, name, slot,
+                        parseCosts(node.path("cost"), at)));
+            }
+            if (!slots.equals(BOARD)) {
+                throw new CatalogException(where + ": на планшете должны быть " + BOARD + ", а есть " + slots);
+            }
+        }
+        if (elements.size() != Element.values().length) {
+            throw new CatalogException("forge.yaml: нужны планшеты всех " + Element.values().length + " стихий, а есть "
+                    + elements.size());
+        }
+        return List.copyOf(items);
+    }
+
+    private static List<Map<Material, Integer>> parseCosts(JsonNode cost, String where) {
+        if (!cost.isArray() || cost.size() != ForgeItemDef.LEVELS) {
+            throw new CatalogException(where + ": cost — цены на " + ForgeItemDef.LEVELS + " уровня");
+        }
+        List<Map<Material, Integer>> costs = new ArrayList<>();
+        int level = 0;
+        for (JsonNode units : cost) {
+            level++;
+            if (!units.isArray() || units.size() != 2) {
+                throw new CatalogException(where + ", уровень " + level + ": на планшете 2 материи");
+            }
+            Map<Material, Integer> materials = new EnumMap<>(Material.class);
+            for (JsonNode unit : units) {
+                Material material = enumOrNull(Material.class, unit, where + ", уровень " + level);
+                if (material == null) {
+                    throw new CatalogException(where + ", уровень " + level + ": пустая материя");
+                }
+                materials.merge(material, 1, Integer::sum);
+            }
+            costs.add(Collections.unmodifiableMap(materials));
+        }
+        return List.copyOf(costs);
+    }
+
+    /** Зелий на планшете лаборатории (правила, «Лаборатория»). */
+    static final int LAB_POTIONS = 6;
+
+    /**
+     * Планшет лаборатории: 6 зелий, у каждого 2 растения. Растение — код, «A/B» (одно на выбор) или {@code ANY}
+     * (любое). Код зелья — место на планшете: {@code LAB_01}.
+     */
+    static List<LabPotionDef> parseLab(JsonNode root) {
+        List<LabPotionDef> potions = new ArrayList<>();
+        for (JsonNode node : list(root, "lab.yaml")) {
+            String name = text(node, "name");
+            String where = "lab.yaml, " + name;
+            JsonNode cost = node.path("cost");
+            if (!cost.isArray() || cost.size() != 2) {
+                throw new CatalogException(where + ": на планшете 2 растения");
+            }
+            List<Set<Plant>> units = new ArrayList<>();
+            for (JsonNode unit : cost) {
+                units.add(parsePlants(unit.asString(), where));
+            }
+            potions.add(new LabPotionDef("LAB_%02d".formatted(potions.size() + 1), name, List.copyOf(units)));
+        }
+        if (potions.size() != LAB_POTIONS) {
+            throw new CatalogException("lab.yaml: зелий должно быть " + LAB_POTIONS + ", а их " + potions.size());
+        }
+        return List.copyOf(potions);
+    }
+
+    private static Set<Plant> parsePlants(String unit, String where) {
+        if ("ANY".equals(unit)) {
+            return Collections.unmodifiableSet(EnumSet.allOf(Plant.class));
+        }
+        // Порядок планшета: «Антемон / Меллис» — так и подпись, и выбор по умолчанию
+        Set<Plant> plants = new LinkedHashSet<>();
+        for (String code : unit.split("/")) {
+            try {
+                plants.add(Plant.valueOf(code.strip()));
+            } catch (IllegalArgumentException e) {
+                throw new CatalogException(where + ": неизвестное растение " + code, e);
+            }
+        }
+        return Collections.unmodifiableSet(plants);
     }
 
     static List<AchievementDef> parseAchievements(JsonNode root) {

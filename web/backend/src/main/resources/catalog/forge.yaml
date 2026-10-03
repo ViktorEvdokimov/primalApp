@@ -1,0 +1,145 @@
+# Планшеты кузни (doc/data-model.md §4, задача 9.1) — по web/forge/PRM_FORGE_HEARTOFTHEWILD_Level{1,2,3}.
+# У каждой стихии 12 предметов в порядке планшета: 8 видов оружия (по одному на класс), шлем, доспех и
+# 2 предмета. Названия одинаковы на всех уровнях, меняются только материи.
+#
+# cost — материи по уровням кузни [1-й, 2-й, 3-й], каждая единица отдельно: [BLOOD, BLOOD] — 2 крови.
+# Кроме материй, создание стоит 1 стихию кузни (правила, «Кузня»). Коды материй — ResourceCode:
+# SCALES чешуя, BONES кости, BLOOD кровь, ZIMIA зимия, IRIDIA иридия, ZLATIA златия.
+#
+# slot — ForgeSlot: оружие класса (GREATSWORD Дареон, GREATBOW Мира, HAMMER Торег, SWORD_AND_SHIELD Льонар,
+# DUAL_BLADES Кара, GUN Хелерен, SPEAR Зарайа, DRUM Друск), HELMET, ARMOR, ITEM.
+
+- element: FIRE
+  items:
+    - { name: Язык пламени, slot: GREATSWORD, cost: [[BONES, BLOOD], [SCALES, BLOOD], [BONES, BLOOD]] }
+    - { name: Лук-испепелитель, slot: GREATBOW, cost: [[SCALES, BLOOD], [BLOOD, BLOOD], [BONES, BLOOD]] }
+    - { name: Молот пламени, slot: HAMMER, cost: [[BLOOD, BLOOD], [SCALES, BLOOD], [BLOOD, IRIDIA]] }
+    - { name: Вулканический щит, slot: SWORD_AND_SHIELD, cost: [[BLOOD, IRIDIA], [BLOOD, IRIDIA], [BONES, BLOOD]] }
+    - { name: Крылья дракона, slot: DUAL_BLADES, cost: [[SCALES, BLOOD], [SCALES, IRIDIA], [BLOOD, IRIDIA]] }
+    - { name: Игнис, slot: GUN, cost: [[BLOOD, IRIDIA], [BONES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Магматическое копьё, slot: SPEAR, cost: [[SCALES, BLOOD], [SCALES, SCALES], [BLOOD, BLOOD]] }
+    - { name: Лавовый барабан, slot: DRUM, cost: [[SCALES, SCALES], [SCALES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Чешуйчатый шлем, slot: HELMET, cost: [[SCALES, BLOOD], [BONES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Чешуйчатый доспех, slot: ARMOR, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Перчатка Волтьяра, slot: ITEM, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [SCALES, SCALES]] }
+    - { name: Лавовый щит, slot: ITEM, cost: [[SCALES, SCALES], [BLOOD, BLOOD], [BONES, BLOOD]] }
+
+- element: HORN
+  items:
+    - { name: Коготь дракона, slot: GREATSWORD, cost: [[BONES, ZLATIA], [BONES, BONES], [BONES, ZLATIA]] }
+    - { name: Лук-бивень, slot: GREATBOW, cost: [[BONES, BONES], [BONES, ZLATIA], [BONES, ZLATIA]] }
+    - { name: Молот-панцирь, slot: HAMMER, cost: [[BONES, ZLATIA], [BONES, BONES], [BONES, ZLATIA]] }
+    - { name: Рогатый щит, slot: SWORD_AND_SHIELD, cost: [[BONES, BONES], [BONES, ZLATIA], [ZLATIA, ZLATIA]] }
+    - { name: Танцующие кости, slot: DUAL_BLADES, cost: [[ZLATIA, ZLATIA], [BONES, BONES], [BONES, ZLATIA]] }
+    - { name: Тигр, slot: GUN, cost: [[BONES, ZLATIA], [ZLATIA, ZLATIA], [BONES, ZLATIA]] }
+    - { name: Пронзатель костей, slot: SPEAR, cost: [[BONES, BONES], [BONES, ZLATIA], [BONES, BONES]] }
+    - { name: Гремучие кости, slot: DRUM, cost: [[BONES, ZLATIA], [BONES, BONES], [BONES, ZLATIA]] }
+    - { name: Шипастый шлем, slot: HELMET, cost: [[BONES, BONES], [BONES, ZLATIA], [BONES, ZLATIA]] }
+    - { name: Шипастый доспех, slot: ARMOR, cost: [[BONES, ZLATIA], [BONES, BONES], [BONES, ZLATIA]] }
+    - { name: Большая пасть, slot: ITEM, cost: [[BONES, ZLATIA], [BONES, BONES], [ZLATIA, ZLATIA]] }
+    - { name: Костяное копьё, slot: ITEM, cost: [[BONES, ZLATIA], [ZLATIA, ZLATIA], [BONES, BONES]] }
+
+- element: CORAL
+  items:
+    - { name: Кровавый риф, slot: GREATSWORD, cost: [[SCALES, ZIMIA], [ZIMIA, ZIMIA], [ZIMIA, ZIMIA]] }
+    - { name: Лук бездны, slot: GREATBOW, cost: [[SCALES, ZIMIA], [SCALES, ZIMIA], [SCALES, ZIMIA]] }
+    - { name: Молот тифона, slot: HAMMER, cost: [[BONES, ZIMIA], [ZIMIA, ZLATIA], [BONES, ZIMIA]] }
+    - { name: Океанический щит, slot: SWORD_AND_SHIELD, cost: [[SCALES, ZLATIA], [SCALES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Взрывные волны, slot: DUAL_BLADES, cost: [[BONES, BONES], [SCALES, ZIMIA], [ZIMIA, ZLATIA]] }
+    - { name: Океаническая пушка, slot: GUN, cost: [[ZIMIA, ZIMIA], [ZIMIA, ZIMIA], [ZIMIA, ZLATIA]] }
+    - { name: Копьё приливов, slot: SPEAR, cost: [[ZLATIA, ZIMIA], [BONES, ZIMIA], [ZLATIA, ZLATIA]] }
+    - { name: Волнобой, slot: DRUM, cost: [[BONES, ZIMIA], [ZIMIA, ZLATIA], [BONES, ZIMIA]] }
+    - { name: Рифовый шлем, slot: HELMET, cost: [[SCALES, ZIMIA], [ZIMIA, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Рифовые латы, slot: ARMOR, cost: [[BONES, ZIMIA], [SCALES, ZIMIA], [BONES, ZLATIA]] }
+    - { name: Коралловый трезубец, slot: ITEM, cost: [[BONES, ZLATIA], [BONES, BONES], [ZIMIA, ZLATIA]] }
+    - { name: Перчатка из ракушек, slot: ITEM, cost: [[SCALES, ZIMIA], [SCALES, ZIMIA], [SCALES, ZIMIA]] }
+
+- element: CRYSTAL
+  items:
+    - { name: Мерцающий клинок, slot: GREATSWORD, cost: [[SCALES, IRIDIA], [SCALES, IRIDIA], [SCALES, SCALES]] }
+    - { name: Лук погибели, slot: GREATBOW, cost: [[IRIDIA, ZIMIA], [SCALES, ZIMIA], [SCALES, IRIDIA]] }
+    - { name: Молот излучения, slot: HAMMER, cost: [[SCALES, ZIMIA], [SCALES, ZIMIA], [SCALES, ZIMIA]] }
+    - { name: Темнокаменный щит, slot: SWORD_AND_SHIELD, cost: [[ZIMIA, ZIMIA], [IRIDIA, ZIMIA], [SCALES, ZIMIA]] }
+    - { name: Мерцающая звезда, slot: DUAL_BLADES, cost: [[IRIDIA, ZIMIA], [IRIDIA, ZIMIA], [BONES, SCALES]] }
+    - { name: Аметист, slot: GUN, cost: [[BONES, SCALES], [BONES, SCALES], [BONES, SCALES]] }
+    - { name: Звёздное копьё, slot: SPEAR, cost: [[IRIDIA, ZIMIA], [IRIDIA, ZIMIA], [IRIDIA, ZIMIA]] }
+    - { name: Барабан ночи, slot: DRUM, cost: [[IRIDIA, ZIMIA], [IRIDIA, ZIMIA], [IRIDIA, IRIDIA]] }
+    - { name: Кристальный шлем, slot: HELMET, cost: [[IRIDIA, ZIMIA], [SCALES, IRIDIA], [SCALES, IRIDIA]] }
+    - { name: Кристальный доспех, slot: ARMOR, cost: [[IRIDIA, IRIDIA], [IRIDIA, ZIMIA], [IRIDIA, ZIMIA]] }
+    - { name: Мерцающие сапоги, slot: ITEM, cost: [[IRIDIA, ZIMIA], [SCALES, IRIDIA], [SCALES, IRIDIA]] }
+    - { name: Кристальное копьё, slot: ITEM, cost: [[BONES, ZIMIA], [SCALES, ZIMIA], [BONES, ZIMIA]] }
+
+- element: LIGHTNING
+  items:
+    - { name: Радужное лезвие, slot: GREATSWORD, cost: [[BLOOD, ZIMIA], [BLOOD, IRIDIA], [BLOOD, IRIDIA]] }
+    - { name: Лук-молния, slot: GREATBOW, cost: [[BLOOD, IRIDIA], [IRIDIA, IRIDIA], [BLOOD, ZIMIA]] }
+    - { name: Костяной молот, slot: HAMMER, cost: [[SCALES, IRIDIA], [BLOOD, IRIDIA], [SCALES, BLOOD]] }
+    - { name: Громовой щит, slot: SWORD_AND_SHIELD, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Вольтражи, slot: DUAL_BLADES, cost: [[BLOOD, ZIMIA], [BLOOD, BLOOD], [SCALES, BLOOD]] }
+    - { name: Электроскачок, slot: GUN, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [BLOOD, IRIDIA]] }
+    - { name: Громовое копьё, slot: SPEAR, cost: [[SCALES, BLOOD], [BLOOD, BLOOD], [SCALES, SCALES]] }
+    - { name: Призыватель бури, slot: DRUM, cost: [[BLOOD, BLOOD], [SCALES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Громовой шлем, slot: HELMET, cost: [[BLOOD, IRIDIA], [SCALES, BLOOD], [BLOOD, IRIDIA]] }
+    - { name: Громовой доспех, slot: ARMOR, cost: [[BLOOD, ZIMIA], [BLOOD, IRIDIA], [SCALES, BLOOD]] }
+    - { name: Электрическая плеть, slot: ITEM, cost: [[BLOOD, ZIMIA], [BLOOD, ZIMIA], [BLOOD, ZIMIA]] }
+    - { name: Электрический кинжал, slot: ITEM, cost: [[BLOOD, BLOOD], [IRIDIA, ZIMIA], [BLOOD, IRIDIA]] }
+
+- element: METAL
+  items:
+    - { name: Ауреанский клинок, slot: GREATSWORD, cost: [[IRIDIA, ZLATIA], [ZLATIA, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Железный лук, slot: GREATBOW, cost: [[ZLATIA, ZLATIA], [BONES, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Необработанный молот, slot: HAMMER, cost: [[IRIDIA, ZLATIA], [IRIDIA, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Медный щит, slot: SWORD_AND_SHIELD, cost: [[IRIDIA, ZLATIA], [BONES, ZLATIA], [IRIDIA, IRIDIA]] }
+    - { name: Лунные клинки, slot: DUAL_BLADES, cost: [[SCALES, IRIDIA], [ZLATIA, ZLATIA], [IRIDIA, ZIMIA]] }
+    - { name: Матерь-пушка, slot: GUN, cost: [[IRIDIA, ZLATIA], [IRIDIA, IRIDIA], [IRIDIA, ZIMIA]] }
+    - { name: Копьё из Аркеума, slot: SPEAR, cost: [[IRIDIA, ZLATIA], [IRIDIA, ZLATIA], [IRIDIA, ZIMIA]] }
+    - { name: Железное сердце, slot: DRUM, cost: [[IRIDIA, ZLATIA], [IRIDIA, ZLATIA], [ZIMIA, ZLATIA]] }
+    - { name: Железный шлем, slot: HELMET, cost: [[ZLATIA, ZLATIA], [IRIDIA, ZLATIA], [ZIMIA, ZLATIA]] }
+    - { name: Железные латы, slot: ARMOR, cost: [[SCALES, ZLATIA], [ZLATIA, ZLATIA], [IRIDIA, ZIMIA]] }
+    - { name: Взрывчатка, slot: ITEM, cost: [[IRIDIA, ZLATIA], [IRIDIA, IRIDIA], [BLOOD, IRIDIA]] }
+    - { name: Железные поножи, slot: ITEM, cost: [[IRIDIA, IRIDIA], [ZLATIA, ZLATIA], [IRIDIA, ZLATIA]] }
+
+- element: FEATHER
+  items:
+    - { name: Клинок ветра, slot: GREATSWORD, cost: [[BONES, ZIMIA], [SCALES, ZIMIA], [SCALES, ZIMIA]] }
+    - { name: Лебединый лук, slot: GREATBOW, cost: [[SCALES, ZIMIA], [BONES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Сотрясатель, slot: HAMMER, cost: [[BONES, ZIMIA], [SCALES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Щит полёта, slot: SWORD_AND_SHIELD, cost: [[BONES, ZIMIA], [SCALES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Зеркальные клинки, slot: DUAL_BLADES, cost: [[ZIMIA, ZLATIA], [SCALES, ZIMIA], [ZIMIA, ZLATIA]] }
+    - { name: Жар-пушка, slot: GUN, cost: [[BONES, ZIMIA], [BONES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Клык джунглей, slot: SPEAR, cost: [[ZIMIA, ZLATIA], [BONES, ZIMIA], [ZIMIA, IRIDIA]] }
+    - { name: Барабан джунглей, slot: DRUM, cost: [[BONES, ZIMIA], [ZLATIA, ZIMIA], [ZIMIA, ZLATIA]] }
+    - { name: Тотемный шлем, slot: HELMET, cost: [[ZIMIA, ZLATIA], [BONES, ZIMIA], [ZIMIA, ZLATIA]] }
+    - { name: Тотемные латы, slot: ARMOR, cost: [[ZIMIA, ZLATIA], [SCALES, ZIMIA], [BONES, ZIMIA]] }
+    - { name: Накидка из перьев, slot: ITEM, cost: [[BONES, ZIMIA], [BONES, ZLATIA], [SCALES, ZIMIA]] }
+    - { name: Бумеранг, slot: ITEM, cost: [[IRIDIA, ZIMIA], [ZIMIA, ZIMIA], [BONES, ZIMIA]] }
+
+- element: POISON
+  items:
+    - { name: Кобра, slot: GREATSWORD, cost: [[SCALES, BLOOD], [BLOOD, IRIDIA], [BLOOD, IRIDIA]] }
+    - { name: Паучье жало, slot: GREATBOW, cost: [[BLOOD, IRIDIA], [SCALES, BLOOD], [SCALES, IRIDIA]] }
+    - { name: Драконья отрава, slot: HAMMER, cost: [[SCALES, BLOOD], [BLOOD, IRIDIA], [SCALES, BLOOD]] }
+    - { name: Змеиная кожа, slot: SWORD_AND_SHIELD, cost: [[SCALES, BLOOD], [BLOOD, IRIDIA], [SCALES, BLOOD]] }
+    - { name: Гадюки, slot: DUAL_BLADES, cost: [[SCALES, BLOOD], [BLOOD, IRIDIA], [SCALES, IRIDIA]] }
+    - { name: Рептилия, slot: GUN, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [SCALES, IRIDIA]] }
+    - { name: Копьё погибели, slot: SPEAR, cost: [[SCALES, BLOOD], [SCALES, IRIDIA], [SCALES, BONES]] }
+    - { name: Лиановый барабан, slot: DRUM, cost: [[SCALES, IRIDIA], [SCALES, BLOOD], [SCALES, IRIDIA]] }
+    - { name: Стальной шлем, slot: HELMET, cost: [[SCALES, BLOOD], [SCALES, BLOOD], [SCALES, BLOOD]] }
+    - { name: Стальной доспех, slot: ARMOR, cost: [[SCALES, BLOOD], [BLOOD, IRIDIA], [SCALES, BLOOD]] }
+    - { name: Кровоискатель, slot: ITEM, cost: [[BLOOD, BLOOD], [SCALES, BLOOD], [BLOOD, IRIDIA]] }
+    - { name: Чёрная вдова, slot: ITEM, cost: [[SCALES, SCALES], [SCALES, BLOOD], [SCALES, BLOOD]] }
+
+- element: ICE
+  items:
+    - { name: Осколок льда, slot: GREATSWORD, cost: [[IRIDIA, ZLATIA], [BONES, ZLATIA], [BONES, ZLATIA]] }
+    - { name: Лук севера, slot: GREATBOW, cost: [[BONES, ZLATIA], [IRIDIA, ZLATIA], [BLOOD, ZLATIA]] }
+    - { name: Молот тундры, slot: HAMMER, cost: [[IRIDIA, ZLATIA], [BONES, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Ледяной щит, slot: SWORD_AND_SHIELD, cost: [[IRIDIA, ZLATIA], [BONES, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Ледяные крылья, slot: DUAL_BLADES, cost: [[BONES, IRIDIA], [BONES, ZLATIA], [BONES, BLOOD]] }
+    - { name: Морозная пушка, slot: GUN, cost: [[IRIDIA, ZLATIA], [IRIDIA, ZLATIA], [BLOOD, ZLATIA]] }
+    - { name: Зимнее копьё, slot: SPEAR, cost: [[BONES, IRIDIA], [BLOOD, ZLATIA], [BLOOD, ZLATIA]] }
+    - { name: Морозный барабан, slot: DRUM, cost: [[BLOOD, ZLATIA], [BONES, IRIDIA], [BONES, BLOOD]] }
+    - { name: Морозный шлем, slot: HELMET, cost: [[BONES, IRIDIA], [IRIDIA, ZLATIA], [BONES, IRIDIA]] }
+    - { name: Морозный доспех, slot: ARMOR, cost: [[BONES, IRIDIA], [BONES, ZLATIA], [IRIDIA, ZLATIA]] }
+    - { name: Морозные сапоги, slot: ITEM, cost: [[BONES, ZLATIA], [BONES, IRIDIA], [BONES, ZLATIA]] }
+    - { name: Мини-арбалет, slot: ITEM, cost: [[IRIDIA, ZLATIA], [IRIDIA, ZLATIA], [IRIDIA, ZLATIA]] }

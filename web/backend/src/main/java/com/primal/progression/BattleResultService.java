@@ -6,6 +6,7 @@ import com.primal.campaign.BattleOutcomes.Ending;
 import com.primal.campaign.BattleOutcomes.Outcome;
 import com.primal.campaign.Campaign;
 import com.primal.campaign.CampaignService;
+import com.primal.campaign.InventoryService;
 import com.primal.campaign.CampaignService.BattleContext;
 import com.primal.campaign.CampaignSheetDto.ActiveBattle;
 import com.primal.campaign.CampaignViews;
@@ -79,11 +80,12 @@ public class BattleResultService {
     private final AccessService access;
     private final JsonMapper json;
     private final ChangeEvents changes;
+    private final InventoryService inventory;
     private final Clock clock;
 
     BattleResultService(CampaignBattleRepository battles, CampaignBattleQueries queries, CampaignService campaigns,
                         BattleOutcomes outcomes, PlanApplier applier, CampaignViews views, CatalogService catalog,
-                        ConsequencesWriter consequences, AccessService access, JsonMapper json, ChangeEvents changes,
+                        ConsequencesWriter consequences, AccessService access, JsonMapper json, ChangeEvents changes, InventoryService inventory,
                         Clock clock) {
         this.battles = battles;
         this.queries = queries;
@@ -96,6 +98,7 @@ public class BattleResultService {
         this.access = access;
         this.json = json;
         this.changes = changes;
+        this.inventory = inventory;
         this.clock = clock;
     }
 
@@ -132,7 +135,7 @@ public class BattleResultService {
      */
     @Transactional
     public ResultApplied submit(PrimalPrincipal principal, long campaignId, UUID battleId, BattleReport report,
-                                Action action, Overrides overrides) {
+                                Action action, Overrides overrides, List<Long> rewardCardHolders) {
         access.require(principal, campaignId);
         BattleContext campaign = campaigns.lockForBattle(campaignId);
         Optional<CampaignBattle> existing = battle(battleId, campaignId);
@@ -164,6 +167,12 @@ public class BattleResultService {
         changes.battlesChanged(campaignId);
         outcomes.apply(campaignId, new Outcome(battleId, computation.trophyBoss(), computation.completedQuest(),
                 computation.plan(), computation.ending()));
+        // Карты наград — из правил задания и при «Редактировать»: это карты из коробки, а не начисления
+        Computation byRules = overrides == null ? computation : compute(campaign, report, null);
+        List<String> cards = rewardCards(byRules);
+        if (!cards.isEmpty()) {
+            inventory.giveRewardCards(campaignId, cards, rewardCardHolders);
+        }
         return new ResultApplied(next(report), campaigns.sheet(principal, campaignId));
     }
 
@@ -254,6 +263,13 @@ public class BattleResultService {
         }
         actions.addAll(planned.actions());
         return new Computation(quest, boss, completed, new Plan(actions, planned.explanations()), ending, facts, effects);
+    }
+
+    private static List<String> rewardCards(Computation computation) {
+        return computation.plan().actions().stream()
+                .filter(Effect.RewardCards.class::isInstance)
+                .flatMap(action -> ((Effect.RewardCards) action).cards().stream())
+                .toList();
     }
 
     /** Награды для окна: стихии босса первыми, уже добавленные задания и полученные достижения не повторяются. */

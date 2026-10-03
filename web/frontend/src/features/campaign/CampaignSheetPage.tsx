@@ -178,6 +178,14 @@ function BattleActions({ sheet }: { sheet: CampaignSheet }) {
           {ru.progression.startBattle}
         </Button>
       )}
+      <Group grow>
+        <Button component={Link} to={`/campaigns/${sheet.id}/forge`} variant="light" data-testid="sheet-open-forge">
+          {ru.forge.open}
+        </Button>
+        <Button component={Link} to={`/campaigns/${sheet.id}/lab`} variant="light" data-testid="sheet-open-lab">
+          {ru.lab.open}
+        </Button>
+      </Group>
     </Stack>
   );
 }

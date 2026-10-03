@@ -1,10 +1,11 @@
-import { Alert, Anchor, Button, Group, Loader, Stack, Text, Title } from '@mantine/core';
+import { Alert, Anchor, Button, Group, Loader, NativeSelect, Stack, Text, Title } from '@mantine/core';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
 import { previewBattleResult } from '../../api/generated/battles/battles';
-import type { ResultAppliedNext, ResultPreview } from '../../api/generated/primal.schemas';
+import { useGetCampaign } from '../../api/generated/campaigns/campaigns';
+import type { HunterSheet, ResultAppliedNext, ResultPreview } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
 import { useActiveBattle } from '../battle/useActiveBattle';
 import { hasPendingResult, resultRequest, type CampaignLocalBattle } from './campaignBattle';
@@ -60,6 +61,15 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
     retry: false,
     staleTime: Infinity,
   });
+  // Карты наград выдаются любому охотнику: кому — выбирается до «Принять» (по умолчанию первому в отряде)
+  const squad = useGetCampaign(campaignId, { query: { enabled: !autoAccept, retry: false } });
+  const hunters = squad.data?.hunters ?? [];
+  const [holders, setHolders] = useState<Record<number, number>>({});
+  const rewardCards = preview.data?.rewards.rewardCards ?? [];
+  const cardHolders = (): number[] | null => {
+    const first = hunters[0]?.id;
+    return rewardCards.length === 0 || first === undefined ? null : rewardCards.map((_, index) => holders[index] ?? first);
+  };
 
   const finish = (next: ResultAppliedNext | null) => {
     if (next === 'CHAPTER_TRANSITION') navigate(`/campaigns/${campaignId}/transition`, { replace: true });
@@ -67,7 +77,7 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
     else if (next === 'CAMPAIGN_COMPLETED') setCompleted(true);
   };
   const send = (action: ResultAction, overrides: Parameters<typeof submission.submit>[1] = null) =>
-    void submission.submit(action, overrides).then(finish);
+    void submission.submit(action, overrides, action === 'ACCEPT' ? cardHolders() : null).then(finish);
 
   // Пролог отправляется один раз при открытии экрана; ref — последняя версия отправки для эффекта
   const acceptNow = useRef<() => void>(() => undefined);
@@ -155,6 +165,9 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
         ) : (
           <PreviewView
             preview={preview.data}
+            hunters={hunters}
+            holders={holders}
+            onHolder={(index, hunterId) => setHolders((current) => ({ ...current, [index]: hunterId }))}
             sending={sending}
             onAccept={() => send('ACCEPT')}
             onEdit={() => setEditing(true)}
@@ -181,13 +194,16 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
 
 interface PreviewViewProps {
   preview: ResultPreview;
+  hunters: HunterSheet[];
+  holders: Record<number, number>;
+  onHolder: (index: number, hunterId: number) => void;
   sending: boolean;
   onAccept: () => void;
   onEdit: () => void;
   onDismiss: () => void;
 }
 
-function PreviewView({ preview, sending, onAccept, onEdit, onDismiss }: PreviewViewProps) {
+function PreviewView({ preview, hunters, holders, onHolder, sending, onAccept, onEdit, onDismiss }: PreviewViewProps) {
   const { rewards } = preview;
   const victory = preview.result === 'VICTORY';
   const bossMissing = victory && rewards.trophy === null;
@@ -211,6 +227,21 @@ function PreviewView({ preview, sending, onAccept, onEdit, onDismiss }: PreviewV
         rewardCards={rewards.rewardCards}
         rules={preview.rules}
       />
+      {rewards.rewardCards.length > 0 && hunters.length > 0 && (
+        <Stack gap="xs" data-testid="outcome-card-holders">
+          {rewards.rewardCards.map((card, index) => (
+            <NativeSelect
+              key={`${card}-${index}`}
+              label={ru.progression.rewardCardHolder(card)}
+              value={String(holders[index] ?? hunters[0]?.id)}
+              data={hunters.map((hunter) => ({ value: String(hunter.id), label: hunter.playerName }))}
+              onChange={(event) => onHolder(index, Number(event.currentTarget.value))}
+              data-testid="outcome-card-holder"
+              data-card={card}
+            />
+          ))}
+        </Stack>
+      )}
       {bossMissing && (
         <Alert color="yellow" data-testid="outcome-boss-missing">
           {ru.progression.bossMissing}

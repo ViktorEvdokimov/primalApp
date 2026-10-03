@@ -58,6 +58,7 @@ Content-Type: application/problem+json
 | 422 | `CAMPAIGN_LIMIT_REACHED` | У пользователя уже 10 кампаний |
 | 422 | `SKILL_LOCKED` | Ступень 2 без ступени 1, ступень уже открыта, снятие ступени 1 при открытой 2 |
 | 422 | `NOT_ENOUGH_RESOURCES` | Количество ресурса ушло бы ниже 0 |
+| 422 | `FORGE_UNAVAILABLE` | Кузня стихии не открыта или оружие чужого класса |
 | 422 | `QUEST_NOT_OPEN` | Подготовка боя или «Выполнено» по заданию, которое не открыто |
 | 422 | `QUEST_NOT_COMPLETED` | «Отмена» у задания, которое не выполнено |
 | 422 | `BOSS_REQUIRED` | Результат боя без задания, босс не выбран (42.4) |
@@ -90,6 +91,8 @@ Content-Type: application/problem+json
 | `GET /catalog/quests` · `GET /catalog/quests/{number}` | Задания: босс, награды, правила с формулировками | `task_info` |
 | `GET /catalog/chapters` | Главы: эффекты и решения с формулировками | `chapter_info` |
 | `GET /catalog/achievements` | Известные достижения (автодополнение) | — |
+| `GET /catalog/forge` | Планшеты кузни 9 стихий: предметы, слоты, цены на 3 уровня | — |
+| `GET /catalog/lab` | Планшет лаборатории: 6 зелий и их растения | — |
 | **Кампании** | | |
 | `GET /campaigns` · `POST /campaigns` | Список и создание | `onCampaignModeSelected`, `onStartCampaign` |
 | `GET /campaigns/{id}` | Лист кампании целиком | `loadCampaignSheet` |
@@ -99,6 +102,8 @@ Content-Type: application/problem+json
 | `POST /campaigns/{id}/hunters/{hunterId}/skills` | Открыть ступень навыка | `onUnlockSkill` |
 | `DELETE /campaigns/{id}/hunters/{hunterId}/skills/{branch}/{tier}` | Снять ступень (исправление ошибки) | — |
 | `POST /campaigns/{id}/hunters/{hunterId}/resources/adjust` | ± ресурсы | `onResourceIncrement/Decrement` |
+| `POST /campaigns/{id}/hunters/{hunterId}/forge` | Создать снаряжение в кузне: списать стихию и материи | — |
+| `POST /campaigns/{id}/hunters/{hunterId}/lab` | Приготовить зелье в лаборатории: списать растения | — |
 | `POST /campaigns/{id}/quests/{number}/complete` | «Выполнено» + открыть зависимые | `onCompleteQuest` |
 | `POST /campaigns/{id}/quests/{number}/reopen` | «Отмена» у выполненного | `onUncompleteQuest` |
 | `PUT /campaigns/{id}/quests/open` | Редактор открытых заданий | `onSaveQuestEdits` |
@@ -267,6 +272,42 @@ GET /catalog/chapters
 ```
 
 Сами эффекты в формате YAML/`jsonb` наружу не выходят: клиенту нужны готовые списки и формулировки.
+
+```http
+GET /catalog/forge                         // ETag и кэш на час, как у остального каталога
+→ 200
+[
+  { "element": "FIRE", "items": [
+      { "code": "FIRE_01", "name": "Язык пламени", "slot": "GREATSWORD", "hunterClass": "DAREON",
+        "costs": [ { "level": 1, "materials": { "BONES": 1, "BLOOD": 1 } },
+                   { "level": 2, "materials": { "SCALES": 1, "BLOOD": 1 } },
+                   { "level": 3, "materials": { "BONES": 1, "BLOOD": 1 } } ] },
+      …
+      { "code": "FIRE_09", "name": "Чешуйчатый шлем", "slot": "HELMET", "hunterClass": null, "costs": [ … ] },
+      … ] },
+  …                                          // 9 стихий в порядке справочника, по 12 предметов
+]
+```
+Планшет — по правилам «Кузня»: 8 видов оружия (по одному на класс: `GREATSWORD` Дареон, `GREATBOW` Мира,
+`HAMMER` Торег, `SWORD_AND_SHIELD` Льонар, `DUAL_BLADES` Кара, `GUN` Хелерен, `SPEAR` Зарайа, `DRUM` Друск),
+`HELMET`, `ARMOR` и 2 `ITEM`. `costs` — материи планшета соответствующего уровня; кроме них, создание
+стоит 1 стихию кузни. Код предмета — стихия и место на планшете (`FIRE_01`…`FIRE_12`), одинаков на всех
+уровнях.
+
+```http
+GET /catalog/lab
+→ 200
+[
+  { "code": "LAB_01", "name": "Алемор", "units": [ { "options": [ все 6 растений ], "any": true }, { … "any": true } ] },
+  { "code": "LAB_02", "name": "Имперум", "units": [ { "options": ["ANTHEMON"], "any": false },
+                                                  { "options": ["NILLEA"], "any": false } ] },
+  { "code": "LAB_05", "name": "Эвок", "units": [ { "options": ["TARMARET"], "any": false },
+                                               { "options": ["ANTHEMON", "MELLIS"], "any": false } ] },
+  …                                          // 6 зелий в порядке планшета
+]
+```
+У зелья 2 растения (`units`); `options` из нескольких — одно на выбор (косая черта на планшете, порядок —
+как на планшете), `any` — любое растение. Цена одинакова на всех уровнях лаборатории, стихий зелья не требуют.
 В главах условие с «иначе» формулируется как «открыть задание N, иначе добавить задание M» (как в app),
 вложенное условие — после двоеточия: «Если есть достижение «Горящий уголёк»: если текущая глава 8, то
 добавить задание 34, иначе добавить задание 27».
@@ -318,6 +359,7 @@ GET /campaigns/12
   "ownerName": "Алиса",
   "difficulty": 1,                       // уровень враждебности по главе
   "forgeLevel": 1, "labLevel": 1,
+  "openForges": ["FIRE", "CORAL"],       // кузни стихий побеждённых боссов (трофеи), порядок справочника
   "finalBoss": null,                     // { code, name } в главе 11
   "notes": "Мира нашла карту…",
   "hunters": [
@@ -382,7 +424,63 @@ DELETE /campaigns/12/hunters/31/skills/B/1
 POST /campaigns/12/hunters/31/resources/adjust
 { "changes": { "BONES": 1, "FIRE": -1 } }
 → 200 { "resources": { "BONES": 4, "FIRE": 1, … } }   // 422 NOT_ENOUGH_RESOURCES — всё или ничего
+
+POST /campaigns/12/hunters/31/forge
+{ "item": "FIRE_01" }
+→ 201 { "item": "FIRE_01", "name": "Язык пламени", "level": 1, "hunter": Hunter }   // карта — в инвентаре
 ```
+
+```http
+POST /campaigns/12/hunters/31/lab
+{ "potion": "LAB_05", "plants": ["TARMARET", "MELLIS"] }   // растения по порядку units: выбор сделан игроком
+→ 201 { "potion": "LAB_05", "name": "Эвок", "level": 1, "hunter": Hunter }
+```
+
+Лаборатория (правила, «Лаборатория»): доступна всегда и всем охотникам; списываются выбранные растения
+«всё или ничего», `level` — уровень лаборатории (уровень карты зелья). Ошибки: `404` — нет такого зелья
+или охотника; `400 VALIDATION_FAILED` с полем `plants` — не то число растений или растение не подходит
+(«Ниллея» не подходит для «Эвок».); `422 NOT_ENOUGH_RESOURCES`. Правило «не больше одной карты зелья
+с одним названием» сайт не проверяет — колоду зелий он не хранит, окно подтверждения напоминает о нём.
+
+Кузня (правила, «Кузня»): создать можно предмет с планшета **открытой** кузни (`openForges` листа)
+**текущего** уровня `forgeLevel`; списывается 1 стихия кузни и материи планшета этого уровня, «всё или
+ничего». Оружие — только охотнику своего класса, шлем, доспех и предметы — любому. Ошибки: `404` —
+нет такого предмета или охотника; `422 FORGE_UNAVAILABLE` — кузня не открыта («Кузня стихии «Коралл» ещё не
+открыта…») или оружие чужого класса (««Язык пламени» — оружие класса Дареон…»); `422 NOT_ENOUGH_RESOURCES`
+с перечнем недостающего («Не хватает ресурсов: Кровь.»). Созданный предмет добавляется в инвентарь охотника
+(`items` в `hunter`), `level` — уровень карты.
+
+**Инвентарь** (`items` охотника листа: `{ id, kind: EQUIPMENT|POTION|REWARD, name, level, element, source }`;
+у карты награды `level = null`, `element` — стихия кузни созданного предмета, `source` — код предмета
+кузни/зелья или номер карты награды). При создании кампании каждому охотнику выдаются стартовые предметы
+по правилам: базовое оружие класса, «Основной шлем», «Основной доспех» (1-го уровня) и зелье «Алемор».
+Кампании, созданные раньше, предметов не получают. Правка — без оплаты:
+
+```http
+POST   /campaigns/12/hunters/31/items            { "kind": "EQUIPMENT", "name": "Язык пламени", "level": 2 }  → 201 Hunter
+PATCH  /campaigns/12/hunters/31/items/501        { "name": "Язык пламени", "level": 3 }                     → 200 Hunter
+DELETE /campaigns/12/hunters/31/items/501                                                                   → 200 Hunter
+```
+
+`level` — 1–3 (по умолчанию 1), у карты награды не хранится; `400` с полем `level`/`name`, `404` — нет предмета.
+
+**Обмен ресурсов** (правила, «Обмен ресурсами»):
+
+```http
+POST /campaigns/12/exchange
+{ "fromHunterId": 31, "toHunterId": 32, "give": { "FIRE": 1, "BLOOD": 2 }, "receive": { "METAL": 1, "BONES": 1, "SCALES": 1 } }
+→ 200 { "hunters": [Hunter, Hunter] }
+
+POST /campaigns/12/hunters/31/convert       { "spend": ["FIRE"], "gain": "SCALES" }            → 200 Hunter
+POST /campaigns/12/hunters/31/items/401/sell { "gain": "BLOOD" }                                → 200 Hunter
+```
+
+- `exchange` — обмен между охотниками **1 к 1 внутри типа**: стихий, материй и растений каждая сторона
+  отдаёт поровну; отдать просто так нельзя. Иначе `400` с полем `give` («Обмен — 1 к 1 внутри типа…»);
+  `422 NOT_ENOUGH_RESOURCES` — у кого-то не хватает, ничего не меняется.
+- `convert` — преобразование: 1 стихия или 2 материи вместо 1 материи (`400` с полем `spend`/`gain`).
+- `sell` — карта снаряжения (или награды) сбрасывается вместо 1 любой материи или 1 стихии кузни этой карты;
+  зелье — `400`; не та стихия — «За «Язык пламени» можно получить материю или стихию «Огонь».».
 
 ### 5.5 Задания
 
@@ -600,7 +698,8 @@ POST /campaigns/12/battles/0b8f…/result/preview
 - Бой без задания без выбранного босса (параметры введены вручную): превью без трофея и стихий, «Принять» →
   `422 BOSS_REQUIRED` «Босс не выбран — укажите его через «Редактировать»» (как в `app`).
 - `perHunter` — стихии босса первыми, затем ресурсы задания; `openQuests` и `achievements` — только то, чего у
-  кампании ещё нет. `rewardCards` и `messages` — инструкции игрокам, состояние кампании они не меняют.
+  кампании ещё нет. `messages` — инструкции игрокам; `rewardCards` — номера карт наград, при `ACCEPT` они
+  попадают в инвентарь (§7.3).
 - Превью ничего не записывает. Несогласованный с кампанией результат → `409 CAMPAIGN_CHANGED` (§7.3); превью
   боя с уже сохранённым итогом — тоже `409`.
 
@@ -619,7 +718,8 @@ POST /campaigns/12/battles/0b8f…/result             // «Редактиров�
     "perHunter": { "HORN": 2, "BONES": 2, "ZLATIA": 1 },
     "openQuests": [4],
     "achievements": ["TAYNY_PROSHLOGO"]
-  }
+  },
+  "rewardCardHolders": [31]                       // кому — по порядку rewardCards превью
 }
 
 POST /campaigns/12/battles/0b8f…/result             // «Отклонить» после подтверждения
@@ -652,6 +752,9 @@ POST /campaigns/12/battles/0b8f…/result             // «Отклонить» 
 - С `overrides` правила не вычисляются: применяются ровно переданные значения (как `PostVictoryDialog`),
   стихии босса сами не добавляются — они уже в `perHunter`. Задание по-прежнему выполняется победой, глава
   закрывается. Неизвестные коды — `400`; `overrides` сохраняются в записи боя.
+- **Карты наград** задания выдаются любому охотнику: `rewardCardHolders[i]` — охотник для i-й карты
+  `rewardCards` (по правилам задания, и с `overrides` тоже). Нет, не охотник отряда или `null` — первый
+  охотник отряда. Карта появляется в инвентаре как «Карта награды №N» (`REWARD`, без уровня).
 - `action` обязателен (`400`). `DISMISS` записывает итог (`DISMISSED`) и автора, кампанию не меняет.
 - Итог одной кампании применяется под блокировкой её строки: две победы одной главы не проходят проверку
   одновременно.

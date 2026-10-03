@@ -3,6 +3,7 @@ package com.primal.campaign;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.primal.access.AccessService.CampaignAccess;
 import com.primal.common.api.ApiNullable;
+import com.primal.rules.model.Element;
 import com.primal.rules.model.HunterClass;
 import com.primal.rules.model.SkillBranch;
 import java.time.Instant;
@@ -31,7 +32,20 @@ public final class CampaignSheetDto {
             List<SkillStep> skills,
             List<SkillStep> unlockableSkills,
             /* нулевые количества не передаются */
-            Map<String, Integer> resources) {
+            Map<String, Integer> resources,
+            /* карты снаряжения, зелий и наград в порядке получения */
+            List<InventoryItem> items) {
+    }
+
+    /**
+     * Карта в инвентаре охотника.
+     *
+     * @param level   1–3; у карты награды — {@code null}
+     * @param element стихия кузни снаряжения — её можно получить, сбросив карту
+     * @param source  код каталога ({@code FIRE_01}, {@code LAB_02}) или номер карты награды; {@code null} — вручную
+     */
+    public record InventoryItem(long id, HunterItem.Kind kind, String name, @ApiNullable Integer level,
+                                @ApiNullable Element element, @ApiNullable String source) {
     }
 
     /** {@code closedInChapter} — у выполненных и истёкших заданий. */
@@ -65,7 +79,11 @@ public final class CampaignSheetDto {
                                int chapter, String status, Actor submittedBy, Instant submittedAt) {
     }
 
-    /** Лист кампании целиком ({@code doc/api.md} §5.2). */
+    /**
+     * Лист кампании целиком ({@code doc/api.md} §5.2).
+     *
+     * @param openForges кузни открытых стихий — стихии побеждённых боссов (трофеи) в порядке справочника
+     */
     public record CampaignSheet(
             long id,
             String name,
@@ -76,6 +94,7 @@ public final class CampaignSheetDto {
             String ownerName,
             int difficulty,
             int forgeLevel,
+            List<Element> openForges,
             int labLevel,
             @ApiNullable CampaignBoss finalBoss,
             String notes,

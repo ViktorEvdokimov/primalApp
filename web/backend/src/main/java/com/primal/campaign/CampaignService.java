@@ -45,6 +45,7 @@ public class CampaignService {
 
     private final CampaignRepository campaigns;
     private final CampaignHunterRepository hunters;
+    private final HunterItemRepository items;
     private final CampaignSheetService sheets;
     private final AccessService access;
     private final AccountService accounts;
@@ -52,11 +53,12 @@ public class CampaignService {
     private final ChangeEvents events;
     private final Clock clock;
 
-    CampaignService(CampaignRepository campaigns, CampaignHunterRepository hunters, CampaignSheetService sheets,
+    CampaignService(CampaignRepository campaigns, CampaignHunterRepository hunters, HunterItemRepository items, CampaignSheetService sheets,
                     AccessService access, AccountService accounts, PrimalProperties properties, ChangeEvents events,
                     Clock clock) {
         this.campaigns = campaigns;
         this.hunters = hunters;
+        this.items = items;
         this.sheets = sheets;
         this.access = access;
         this.accounts = accounts;
@@ -113,9 +115,11 @@ public class CampaignService {
             String playerName = hunter.playerName() == null || hunter.playerName().isBlank()
                     ? hunter.hunterClass().displayName()
                     : hunter.playerName().strip();
-            hunters.save(new CampaignHunter(campaign.getId(), hunter.hunterClass(), playerName, i + 1));
+            CampaignHunter saved = hunters.saveAndFlush(new CampaignHunter(campaign.getId(), hunter.hunterClass(), playerName, i + 1));
+            items.saveAll(InventoryService.startingKit(saved, now));
         }
         hunters.flush();
+        items.flush();
         return sheets.sheet(campaign, CampaignAccess.OWNER);
     }
 

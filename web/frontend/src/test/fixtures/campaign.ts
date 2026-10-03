@@ -27,6 +27,7 @@ export function hunterFixture(overrides: Partial<HunterSheet> = {}): HunterSheet
     skills: [],
     unlockableSkills: (['A', 'B', 'V', 'G', 'D'] as const).map((branch) => ({ branch, tier: 1 })),
     resources: {},
+    items: [],
     ...overrides,
   };
 }
@@ -50,6 +51,7 @@ export function sheetFixture(overrides: Partial<CampaignSheet> = {}): CampaignSh
     ownerName: 'Алиса',
     difficulty: 0,
     forgeLevel: 1,
+    openForges: [],
     labLevel: 1,
     finalBoss: null,
     notes: '',
