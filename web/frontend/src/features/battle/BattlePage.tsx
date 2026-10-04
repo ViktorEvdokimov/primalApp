@@ -97,7 +97,8 @@ function BattleView({ battle }: { battle: LocalBattle }) {
             campaign === null
               ? { label: ru.battle.newBattle, onClick: () => leave('/expedition/new'), testId: 'battle-new' }
               : {
-                  label: ru.progression.toRewards,
+                  // Поражение наград не даёт: итог записывается и открывается лист кампании
+                  label: state.status === 'VICTORY' ? ru.progression.toRewards : ru.progression.finishDefeat,
                   onClick: () => navigate(`/campaigns/${campaign.id}/outcome`),
                   testId: 'battle-to-rewards',
                 }

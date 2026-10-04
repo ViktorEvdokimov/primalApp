@@ -1,6 +1,6 @@
 import { Badge, Group, Image, Stack, Text } from '@mantine/core';
 import { useDictionaries } from '../../api/generated/catalog/catalog';
-import type { AchievementRef, RewardRule } from '../../api/generated/primal.schemas';
+import type { AchievementRef, ExpiringQuest, RewardRule } from '../../api/generated/primal.schemas';
 import { iconUrl } from '../../shared/assets';
 import { ru } from '../../shared/i18n/ru';
 
@@ -9,7 +9,8 @@ interface RewardsViewProps {
   lines: string[];
   perHunter: Record<string, number>;
   openQuests: number[];
-  expireQuests?: number[];
+  /** Открытые задания, у которых истечёт время, с последствиями невыполненного задания. */
+  expireQuests?: ExpiringQuest[];
   achievements: AchievementRef[];
   rewardCards: string[];
   rules: RewardRule[];
@@ -78,7 +79,19 @@ export function RewardsView({ lines, perHunter, openQuests, expireQuests = [], a
         <Text data-testid="rewards-open-quests">{`${ru.progression.openQuests} ${openQuests.join(', ')}`}</Text>
       )}
       {expireQuests.length > 0 && (
-        <Text data-testid="rewards-expire-quests">{`${ru.progression.expireQuests} ${expireQuests.join(', ')}`}</Text>
+        <Stack gap={2}>
+          <Text data-testid="rewards-expire-quests">
+            {`${ru.progression.expireQuests} ${expireQuests.map((quest) => quest.number).join(', ')}`}
+          </Text>
+          <Text size="sm" c="dimmed" data-testid="rewards-expiry-note">
+            {ru.progression.expiryNote}
+          </Text>
+          {expireQuests.map((quest) => (
+            <Text key={quest.number} size="sm" pl="md" data-testid="rewards-expiry" data-quest={quest.number}>
+              {ru.progression.expiry(quest.number, quest.name, quest.consequences)}
+            </Text>
+          ))}
+        </Stack>
       )}
       {achievements.length > 0 && (
         <Text data-testid="rewards-achievements">

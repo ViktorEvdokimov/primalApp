@@ -99,6 +99,11 @@ public final class EffectDescriber {
         };
     }
 
+    /** Одно действие плана: «добавить задание 6», «добавить достижение «Оледенение»». */
+    public String action(Effect effect) {
+        return effect(effect, Context.QUEST, false);
+    }
+
     private String effects(List<Effect> effects, Context context, boolean openVerb) {
         return effects.stream().map(effect -> effect(effect, context, openVerb)).collect(Collectors.joining(", "));
     }

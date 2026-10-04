@@ -28,7 +28,7 @@ class EffectDescriberTest {
         @DisplayName("задание 2: одно и то же условие при победе и поражении")
         void quest2() {
             assertThat(victoryRules(2)).containsExactly("Если текущая глава 1 или 2, то добавить задание 5");
-            assertThat(defeatRules(2)).containsExactly("Если текущая глава 1 или 2, то добавить задание 5");
+            assertThat(expiryRules(2)).containsExactly("Если текущая глава 1 или 2, то добавить задание 5");
         }
 
         @Test
@@ -106,8 +106,8 @@ class EffectDescriberTest {
         return CATALOG.describer().rules(CATALOG.quest(quest).orElseThrow().victory(), Context.QUEST);
     }
 
-    private static java.util.List<String> defeatRules(int quest) {
-        return CATALOG.describer().rules(CATALOG.quest(quest).orElseThrow().defeat(), Context.QUEST);
+    private static java.util.List<String> expiryRules(int quest) {
+        return CATALOG.describer().rules(CATALOG.quest(quest).orElseThrow().expired(), Context.QUEST);
     }
 
     private static java.util.List<String> chapterRules(int chapter) {

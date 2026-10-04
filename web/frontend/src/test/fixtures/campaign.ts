@@ -4,12 +4,12 @@ const noRewards = { resources: {}, openQuests: [], achievements: [], rewardCards
 
 /** Часть каталога заданий: базовые задания и одно из дополнения. */
 export const questsFixture: Quest[] = [
-  { number: 1, name: 'Вой в долине', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: null, victory: noRewards, defeat: noRewards },
-  { number: 2, name: 'Каменный сон', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, defeat: noRewards },
-  { number: 3, name: 'Старые кости', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, defeat: noRewards },
-  { number: 4, name: 'Пепел', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: null, victory: noRewards, defeat: noRewards },
-  { number: 5, name: 'Тихая вода', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, defeat: noRewards },
-  { number: 40, name: 'Перья бури', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: 'FEATHER', victory: noRewards, defeat: noRewards },
+  { number: 1, name: 'Вой в долине', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: null, victory: noRewards, expired: noRewards },
+  { number: 2, name: 'Каменный сон', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, expired: noRewards },
+  { number: 3, name: 'Старые кости', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, expired: noRewards },
+  { number: 4, name: 'Пепел', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: null, victory: noRewards, expired: noRewards },
+  { number: 5, name: 'Тихая вода', boss: { code: 'GROMOVOLK', name: 'Громоволк', element: 'LIGHTNING' }, expansion: null, victory: noRewards, expired: noRewards },
+  { number: 40, name: 'Перья бури', boss: { code: 'ZHAR_PTITSA', name: 'Жар-птица', element: 'FIRE' }, expansion: 'FEATHER', victory: noRewards, expired: noRewards },
 ];
 
 export const achievementsFixture: Achievement[] = [

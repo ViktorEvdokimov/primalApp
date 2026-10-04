@@ -46,15 +46,21 @@ public class ChapterChanges {
         return pending(campaign);
     }
 
-    /** «Принять»: сначала эффекты выбранных вариантов решений, затем эффекты главы — уже в новой главе. */
+    /**
+     * «Принять»: сначала эффекты выбранных вариантов решений, затем эффекты главы — уже в новой главе, затем
+     * последствия невыполненных заданий, у которых истекло время.
+     */
     @Transactional
-    public void accept(long campaignId, int toChapter, Plan decisions, Plan chapter) {
+    public void accept(long campaignId, int toChapter, Plan decisions, Plan chapter, Plan expiries) {
         Campaign campaign = campaigns.campaign(campaignId);
         campaign.enterChapter(toChapter);
         if (!decisions.actions().isEmpty()) {
             applier.apply(campaignId, decisions, CampaignAchievement.Source.DECISION);
         }
         applier.apply(campaignId, chapter, CampaignAchievement.Source.CHAPTER);
+        if (!expiries.actions().isEmpty()) {
+            applier.apply(campaignId, expiries, CampaignAchievement.Source.QUEST);
+        }
     }
 
     /** «Отклонить»: эффекты не применяются, глава прежняя. */

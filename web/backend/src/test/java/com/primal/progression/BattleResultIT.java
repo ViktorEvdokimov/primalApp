@@ -318,7 +318,7 @@ class BattleResultIT extends IntegrationTest {
     class Defeat {
 
         @Test
-        @DisplayName("задание 47 (R-7, D-15): достижение «Оледенение», без трофея и стихий, глава не меняется")
+        @DisplayName("задание 47 (D-15, qa 135): поражение ничего не даёт — «Оледенение» выдаётся при истечении, не здесь")
         void quest47() throws Exception {
             // подготовка
             chapter(5);
@@ -330,23 +330,22 @@ class BattleResultIT extends IntegrationTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.rewards.trophy").isEmpty())
                     .andExpect(jsonPath("$.rewards.perHunter").isEmpty())
-                    .andExpect(jsonPath("$.rewards.achievements[0].name").value("Оледенение"))
-                    .andExpect(jsonPath("$.next").value("CAMPAIGN_SHEET"))
-                    .andExpect(jsonPath("$.dismissConsequences").value(contains(
-                            "Не будет получено достижение «Оледенение».",
-                            "Награды можно внести вручную на листе кампании.")));
+                    .andExpect(jsonPath("$.rewards.achievements").isEmpty())
+                    .andExpect(jsonPath("$.rewards.openQuests").isEmpty())
+                    .andExpect(jsonPath("$.rules").isEmpty())
+                    .andExpect(jsonPath("$.next").value("CAMPAIGN_SHEET"));
             accept(battle, 47, "SIRKAAJ", 5, 0, "DEFEAT")
                     .andExpect(jsonPath("$.next").value("CAMPAIGN_SHEET"))
                     .andExpect(jsonPath("$.campaign.pendingTransition").value(false));
             assertThat(jdbc.queryForList("select achievement_code from campaign_achievement where campaign_id = ?",
-                    String.class, campaignId)).containsExactly("OLEDENENIE");
+                    String.class, campaignId)).isEmpty();
             assertThat(questStatus(47)).isEqualTo("OPEN");
             assertThat(trophies()).isEmpty();
             assertThat(progressSeq()).isZero();
         }
 
         @Test
-        @DisplayName("задание 3 (app): поражение открывает задание 10")
+        @DisplayName("задание 3: поражение не открывает задание 10 — это последствие истечения задания 3")
         void questThree() throws Exception {
             // подготовка
             chapter(1);
@@ -356,7 +355,8 @@ class BattleResultIT extends IntegrationTest {
             accept(UUID.randomUUID(), 3, "KOROVON", 1, 0, "DEFEAT").andExpect(status().isOk());
 
             // проверка
-            assertThat(questStatus(10)).isEqualTo("OPEN");
+            assertThat(jdbc.queryForObject("select count(*) from campaign_quest where campaign_id = ? and quest_number = 10",
+                    Integer.class, campaignId)).isZero();
             assertThat(questStatus(3)).isEqualTo("OPEN");
             assertThat(campaignStatus()).isEqualTo("ACTIVE");
         }
@@ -415,7 +415,8 @@ class BattleResultIT extends IntegrationTest {
             accept(UUID.randomUUID(), 1, "TORAMAT", 2, 0, "VICTORY")
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.next").value("CHAPTER_TRANSITION"));
-            assertThat(questStatus(6)).isEqualTo("OPEN");
+            assertThat(questStatus(4)).isEqualTo("OPEN");
+            assertThat(questStatus(6)).as("поражение задание 6 не открывает (qa 135)").isNull();
             assertThat(trophies()).containsExactly("TORAMAT");
         }
 

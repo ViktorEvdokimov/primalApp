@@ -51,8 +51,9 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
   const [dismissing, setDismissing] = useState(false);
   const [completed, setCompleted] = useState(false);
   const victory = battle.state.status === 'VICTORY';
-  // Пролог (36.1): победа принимается без окна наград — сразу переход главы
-  const autoAccept = battle.campaign.purpose === 'PROLOGUE' && victory;
+  // Пролог (36.1): победа принимается без окна наград — сразу переход главы. Поражение наград не даёт
+  // (qa № 135–136): итог записывается в историю без окна, дальше — лист кампании
+  const autoAccept = !victory || battle.campaign.purpose === 'PROLOGUE';
 
   const preview = useQuery({
     queryKey: ['battle-result-preview', battle.id],
@@ -126,7 +127,7 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
     <Stack gap="md" data-testid="page-campaign-outcome">
       {back}
       <Title order={2} data-testid="outcome-title">
-        {victory ? ru.progression.rewardsVictory : ru.progression.rewardsDefeat}
+        {victory ? ru.progression.rewardsVictory : ru.progression.defeatTitle}
       </Title>
 
       {changed !== null && (
@@ -146,8 +147,8 @@ function Outcome({ battle, back }: { battle: CampaignLocalBattle; back: ReactNod
       {(autoAccept || preview.isPending) && changed === null && !offline && (
         <Group gap="xs">
           <Loader size="xs" />
-          <Text size="sm" c="dimmed">
-            {ru.progression.loadingRewards}
+          <Text size="sm" c="dimmed" data-testid="outcome-loading">
+            {victory ? ru.progression.loadingRewards : ru.progression.savingDefeat}
           </Text>
         </Group>
       )}

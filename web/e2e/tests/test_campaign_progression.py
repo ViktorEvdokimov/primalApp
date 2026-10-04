@@ -176,3 +176,29 @@ class TestCampaignProgression:
         transition = TransitionPage(page)
         with check("После восстановления сети итог принят — награды главы 2"):
             assert transition.to_chapter() == 2
+
+
+@allure.feature("Прогрессия кампании")
+class TestCampaignDefeat:
+
+    @allure.title("Поражение по заданию: окна наград нет — «Завершить бой» сразу возвращает на лист, задание открыто")
+    def test_defeat_without_rewards(self, page: Page, campaign_id: int):
+        # подготовка: глава 1, задание 1
+        sheet = play_prologue(page, campaign_id)
+        page.get_by_test_id("sheet-start-battle").click()
+        battle = CampaignBattleSetupPage(page).select_quest(1).start_on_demand()
+
+        # вызов: «Сдаться» → «Завершить бой»
+        result = battle.surrender().confirm()
+        with check("Кнопка — «Завершить бой», не «К наградам»"):
+            expect(page.get_by_test_id("battle-to-rewards")).to_have_text("Завершить бой")
+        result.click("battle-to-rewards")
+
+        # проверка
+        sheet.should_be_open()
+        expect(page).to_have_url(re.compile(rf"/campaigns/{campaign_id}$"))
+        with check("Окна «Награды за поражение» не было"):
+            expect(page.get_by_text("Награды за поражение")).to_have_count(0)
+        with check("Задание 1 по-прежнему открыто, глава 1"):
+            assert 1 in sheet.open_quests()
+            assert sheet.chapter() == 1

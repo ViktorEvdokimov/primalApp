@@ -251,7 +251,8 @@ public class BattleResultService {
             case QUEST -> quest.bossCode();
             case FREE -> report.bossCode();
         };
-        List<Effect> effects = quest == null ? List.of() : victory ? quest.victory() : quest.defeat();
+        // Поражение заданием ничего не даёт: его «последствия» применяются, когда истекает время задания (qa № 135)
+        List<Effect> effects = quest != null && victory ? quest.victory() : List.of();
         Plan planned = catalog.planner().plan(effects, facts, Context.QUEST);
         List<Effect> actions = new ArrayList<>();
         if (boss != null) {

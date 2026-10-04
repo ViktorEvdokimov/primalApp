@@ -101,18 +101,18 @@ public class R__Catalog extends BaseJavaMigration {
 
     private static void upsertQuests(Connection connection, List<QuestDef> quests) throws SQLException {
         try (PreparedStatement statement = connection.prepareStatement("""
-                insert into quest_def (number, name, boss_code, expansion, victory_effects, defeat_effects)
+                insert into quest_def (number, name, boss_code, expansion, victory_effects, expired_effects)
                 values (?, ?, ?, ?, ?::jsonb, ?::jsonb)
                 on conflict (number) do update set name = excluded.name, boss_code = excluded.boss_code,
                     expansion = excluded.expansion, victory_effects = excluded.victory_effects,
-                    defeat_effects = excluded.defeat_effects""")) {
+                    expired_effects = excluded.expired_effects""")) {
             for (QuestDef quest : quests) {
                 statement.setInt(1, quest.number());
                 statement.setString(2, quest.name());
                 statement.setString(3, quest.bossCode());
                 setText(statement, 4, quest.expansion() == null ? null : quest.expansion().name());
                 statement.setString(5, quest.victoryJson());
-                statement.setString(6, quest.defeatJson());
+                statement.setString(6, quest.expiredJson());
                 statement.addBatch();
             }
             statement.executeBatch();

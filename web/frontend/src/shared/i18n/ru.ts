@@ -346,7 +346,9 @@ export const ru = {
     campaignBattle: (campaign: string, what: string) => `${campaign} · ${what}`,
     toRewards: 'К наградам',
     rewardsVictory: 'Награды за победу',
-    rewardsDefeat: 'Награды за поражение',
+    defeatTitle: 'Поражение',
+    finishDefeat: 'Завершить бой',
+    savingDefeat: 'Сохраняю результат боя…',
     loadingRewards: 'Считаю награды…',
     trophy: (name: string) => `Трофей: ${name}`,
     perHunter: 'Каждый охотник получает:',
@@ -381,6 +383,10 @@ export const ru = {
     transitionTitle: (chapter: number) => `Награды главы ${chapter}`,
     decisionTitle: 'Решение главы',
     expireQuests: 'Истекает время заданий:',
+    expiryNote:
+      'Когда истекает время задания, применяются последствия невыполненного задания (правила, «Последствия невыполненных заданий»):',
+    expiry: (number: number, name: string, consequences: string[]) =>
+      `Задание ${number} «${name}»: ${consequences.length === 0 ? 'последствий нет' : consequences.join(', ')}.`,
     forge: 'Кузня улучшается.',
     lab: 'Лаборатория улучшается.',
     kit: 'Каждый охотник улучшает свой набор.',

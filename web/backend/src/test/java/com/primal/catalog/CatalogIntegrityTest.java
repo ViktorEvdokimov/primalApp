@@ -33,7 +33,7 @@ class CatalogIntegrityTest {
         victory.add(new Effect.Conditional(new Condition.HasAchievement("NO_SUCH"), List.of(new Effect.FinalBattle("NOBODY", null)),
                 List.of(), null));
         List<QuestDef> quests = new ArrayList<>(CATALOG.quests());
-        quests.set(0, new QuestDef(1, original.name(), original.bossCode(), null, victory, original.defeat(), "[]", "[]"));
+        quests.set(0, new QuestDef(1, original.name(), original.bossCode(), null, victory, original.expired(), "[]", "[]"));
         Catalog broken = new Catalog(CATALOG.bosses(), CATALOG.achievements(), quests, CATALOG.chapters(), CATALOG.forge(), CATALOG.lab(), CATALOG.checksum());
 
         // вызов

@@ -114,7 +114,7 @@ Content-Type: application/problem+json
 | `GET /campaigns/{id}/battles` | Идущие бои и история | — |
 | `DELETE /campaigns/{id}/battles/{battleId}` | Снять отметку («Бросить бой») | `resetBattle` |
 | `POST /campaigns/{id}/battles/{battleId}/result/preview` | Превью наград по результату боя | `QuestRewardsDialog` |
-| `POST /campaigns/{id}/battles/{battleId}/result` | Принять (в том числе с правками) или отклонить результат | `onQuestRewardsAccept`, `onConfirmVictory`, `onDefeatRewardsAccept` |
+| `POST /campaigns/{id}/battles/{battleId}/result` | Принять (в том числе с правками) или отклонить результат | `onQuestRewardsAccept`, `onConfirmVictory`, `onDefeatRewardsAccept` (награды за поражение в `app` — ошибка, qa № 135) |
 | **Переход главы** | | |
 | `GET /campaigns/{id}/chapter-transition` | Превью перехода главы (с учётом ответов на решения) | `ChapterDecisionDialog`, `ChapterRewardsDialog` |
 | `POST /campaigns/{id}/chapter-transition` | Принять или отклонить переход главы | `onChapterRewardsAccept/Reject` |
@@ -243,7 +243,7 @@ GET /catalog/quests/1
     "openQuests": [], "achievements": [], "rewardCards": [], "messages": [],
     "rules": [ "Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6" ]
   },
-  "defeat": { "resources": {}, "openQuests": [6], "achievements": [], "rewardCards": [], "messages": [], "rules": [] }
+  "expired": { "resources": {}, "openQuests": [6], "achievements": [], "rewardCards": [], "messages": [], "rules": [] }
 }
 ```
 
@@ -691,8 +691,9 @@ POST /campaigns/12/battles/0b8f…/result/preview
 }
 ```
 
-- Поражение: `trophy = null`, в `perHunter` нет стихий; `openQuests` и `achievements` — из наград за
-  поражение (D-15, R-7); `next = CAMPAIGN_SHEET`.
+- Поражение: наград нет — `trophy = null`, `perHunter`, `openQuests`, `achievements` пусты;
+  `next = CAMPAIGN_SHEET`. Сайт превью поражения не запрашивает и окна не показывает — сразу `ACCEPT` (qa № 136). `expired` задания каталога — не награда за поражение, а последствия
+  невыполненного задания: они применяются, когда истекает его время при переходе главы (§8, qa № 135).
 - Пролог: трофей Вираксена и 2 «Огня» каждому охотнику. Фронтенд принимает их без показа окна (36.1).
 - Бой без задания: трофей и стихии выбранного босса; задание не завершается (42.4).
 - Бой без задания без выбранного босса (параметры введены вручную): превью без трофея и стихий, «Принять» →
@@ -782,7 +783,10 @@ GET /campaigns/12/chapter-transition?decision=TRAIN_WITH_VOLTYAR:YES
   "decisionsComplete": true,
   "perHunter": {},
   "openQuests": [24],
-  "expireQuests": [ { "number": 7, "wasOpen": true }, { "number": 9, "wasOpen": false } ],
+  "expireQuests": [
+    { "number": 7, "name": "Храм Зарка", "wasOpen": true, "consequences": ["добавить задание 26"] },
+    { "number": 9, "name": "Звёздная пещера", "wasOpen": false, "consequences": [] }
+  ],
   "achievements": [ { "code": "GOLOS_VOLTYARA", "name": "Голос Волтьяра" } ],
   "forgeLevelUp": false,
   "labLevelUp": false,
@@ -812,6 +816,11 @@ GET /campaigns/12/chapter-transition?decision=TRAIN_WITH_VOLTYAR:YES
   на решение, на условия этой же главы не влияет.
 - `achievements` и `openQuests` — только то, чего у кампании ещё нет; `expireQuests[].wasOpen = false` —
   задание не открыто, его истечение ничего не изменит (в `rejectConsequences` такие не попадают).
+- **Последствия невыполненных заданий** (правила: «когда истекает время задания … прочтите параграф» в
+  «Последствиях невыполненных заданий»): у каждого открытого истекающего задания `consequences` — его эффекты
+  `expired` из каталога, вычисленные по снимку кампании до перехода («текущая глава» — глава до перехода).
+  «Принять» применяет их после эффектов главы; задание, истекающее в этом же переходе, ими не добавляется.
+  «Отклонить» — задание не истекает, последствий нет.
 - `rules[].kind` — вид правила: `QUEST` («Условные задания»), `ACHIEVEMENT`, `KIT`, `MESSAGE` («Условные
   награды»). Так же в превью итога боя (§7.2).
 - Перехода нет (кампания `ACTIVE` или `COMPLETED`) → `409 CAMPAIGN_CHANGED`; неизвестное решение или

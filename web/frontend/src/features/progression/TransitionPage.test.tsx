@@ -42,6 +42,10 @@ describe('Переход главы', () => {
     await waitFor(() => expect(screen.queryByTestId('decision-dialog')).not.toBeInTheDocument());
     expect(await screen.findByTestId('rewards-achievements')).toHaveTextContent('«Голос Волтьяра»');
     expect(screen.getByTestId('rewards-expire-quests')).toHaveTextContent('Истекает время заданий: 7');
+    expect(screen.getByTestId('rewards-expiry-note')).toHaveTextContent('Последствия невыполненных заданий');
+    expect(screen.getAllByTestId('rewards-expiry').map((line) => line.textContent)).toEqual([
+      'Задание 7 «Храм Зарка»: добавить задание 26.',
+    ]);
     expect(screen.getByText('Каждый охотник улучшает свой набор.')).toBeInTheDocument();
 
     // вызов

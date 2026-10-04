@@ -38,7 +38,7 @@ public class CatalogViews {
             List<String> rules) {
     }
 
-    public record Quest(int number, String name, BossRef boss, @ApiNullable String expansion, Rewards victory, Rewards defeat) {
+    public record Quest(int number, String name, BossRef boss, @ApiNullable String expansion, Rewards victory, Rewards expired) {
     }
 
     public record DecisionOption(String code, String label, List<AchievementRef> achievements) {
@@ -67,7 +67,7 @@ public class CatalogViews {
         BossDef boss = catalog.boss(def.bossCode()).orElseThrow();
         return new Quest(def.number(), def.name(), bossRef(boss.code()),
                 def.expansion() == null ? null : def.expansion().name(),
-                rewards(def.victory()), rewards(def.defeat()));
+                rewards(def.victory()), rewards(def.expired()));
     }
 
     public Chapter chapter(ChapterDef def) {

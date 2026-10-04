@@ -21,8 +21,12 @@ public final class ChapterTransitionDto {
                                      @ApiNullable String selected) {
     }
 
-    /** Задание, у которого истечёт время; {@code wasOpen} — открыто ли оно сейчас (иначе ничего не изменится). */
-    public record ExpiringQuest(int number, boolean wasOpen) {
+    /**
+     * Задание, у которого истечёт время; {@code wasOpen} — открыто ли оно сейчас (иначе ничего не изменится).
+     * {@code consequences} — последствия невыполненного задания (правила, «Последствия невыполненных заданий»):
+     * «добавить задание 6»; применяются вместе с переходом, только если задание было открыто.
+     */
+    public record ExpiringQuest(int number, String name, boolean wasOpen, List<String> consequences) {
     }
 
     /**

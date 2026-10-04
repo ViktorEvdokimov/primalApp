@@ -1,4 +1,5 @@
-# Задания кампании (49): босс и награды за победу и поражение на языке эффектов (doc/data-model.md §4.3).
+# Задания кампании (49): босс, награды за победу и последствия невыполненного задания (expired — применяются,
+# когда истекает время задания, а не при поражении) на языке эффектов (doc/data-model.md §4.3).
 # Перенос app/shared/.../TaskInfoSeed.kt (с исправлениями C-5…C-7, C-10, qa 110) и doc/taskInfo.md.
 # Дополнение задания — дополнение его босса. Общие правила (трофей, 2 стихии босса, выполнение задания)
 # в YAML не записываются — их применяет progression.
@@ -11,7 +12,7 @@
     - if: { chapterIn: [1, 2] }
       then: [ { openQuest: 4 } ]
       else: [ { openQuest: 6 } ]
-  defeat:
+  expired:
     - openQuest: 6
 - number: 2
   name: "Полёт в вечную бурю"
@@ -20,7 +21,7 @@
     - resources: { BLOOD: 2, ZIMIA: 1, IRIDIA: 1, ALBALACEA: 2, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - if: { chapterIn: [1, 2] }
       then: [ { openQuest: 5 } ]
-  defeat:
+  expired:
     - if: { chapterIn: [1, 2] }
       then: [ { openQuest: 5 } ]
 - number: 3
@@ -29,7 +30,7 @@
   victory:
     - resources: { SCALES: 1, ZIMIA: 2, ZLATIA: 1, NILLEA: 1, MELLIS: 2, ANTHEMON: 2 }
     - grantAchievement: ZATISHE
-  defeat:
+  expired:
     - openQuest: 10
 - number: 4
   name: "Вожак стаи"
@@ -37,7 +38,7 @@
   victory:
     - resources: { BONES: 1, ZIMIA: 1, IRIDIA: 2, TARMARET: 2, MELLIS: 1, SELICORNIA: 2 }
     - grantAchievement: TAYNY_PROSHLOGO
-  defeat:
+  expired:
     - openQuest: 6
 - number: 5
   name: "Серебряные когти"
@@ -47,7 +48,7 @@
     - rewardCards: ["1"]
     - grantAchievement: PYL_ARKEUMA
     - grantAchievement: NAROD_ZOLOTYKH_GOR
-  defeat: []
+  expired: []
 - number: 6
   name: "Охота меж двух пустынь"
   boss: FELAXIR
@@ -55,7 +56,7 @@
     - resources: { BONES: 1, ZIMIA: 2, IRIDIA: 1, TARMARET: 1, ALBALACEA: 1, MELLIS: 2, SELICORNIA: 1 }
     - rewardCards: ["2"]
     - openQuest: 14
-  defeat: []
+  expired: []
 - number: 7
   name: "Храм Зарка"
   boss: TARRAGUA
@@ -64,7 +65,7 @@
     - rewardCards: ["3"]
     - grantAchievement: GORYASHCHIY_UGOLEK
     - grantAchievement: FOLIANT_O_CHUDOVISHCHAKH
-  defeat:
+  expired:
     - openQuest: 26
 - number: 8
   name: "Пожиратель железа"
@@ -72,7 +73,7 @@
   victory:
     - resources: { BONES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 2, ALBALACEA: 1, SELICORNIA: 2 }
     - openQuest: 16
-  defeat:
+  expired:
     - openQuest: 26
 - number: 9
   name: "Звёздная пещера"
@@ -80,14 +81,14 @@
   victory:
     - resources: { SCALES: 1, BONES: 1, ZIMIA: 2, NILLEA: 1, TARMARET: 1, MELLIS: 2, ANTHEMON: 1 }
     - openQuest: 15
-  defeat: []
+  expired: []
 - number: 10
   name: "Затопленные земли"
   boss: ORUXEN
   victory:
     - resources: { SCALES: 1, BONES: 1, BLOOD: 1, ZIMIA: 1, NILLEA: 1, MELLIS: 2, ANTHEMON: 2 }
     - rewardCards: ["4"]
-  defeat: []
+  expired: []
 - number: 11
   name: "Город памяти"
   boss: KHARJA
@@ -97,14 +98,14 @@
     - if: { achievement: GRIBNOY_LES }
       then: [ { openQuest: 32 } ]
       else: [ { openQuest: 17 } ]
-  defeat: []
+  expired: []
 - number: 12
   name: "Древняя Каэр Мага"
   boss: DIGORAX
   victory:
     - resources: { SCALES: 1, BONES: 2, ZLATIA: 1, NILLEA: 2, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 1 }
     - openQuest: 18
-  defeat: []
+  expired: []
 - number: 13
   name: "Королева Озевов"
   boss: OZEV
@@ -113,14 +114,14 @@
     - rewardCards: ["5"]
     - openQuest: 19
     - grantAchievement: TRI_KOPYA
-  defeat: []
+  expired: []
 - number: 14
   name: "Тысячеликий дракон"
   boss: DIGORAX
   victory:
     - resources: { SCALES: 1, BONES: 1, ZLATIA: 2, NILLEA: 2, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 1 }
     - rewardCards: ["6"]
-  defeat: []
+  expired: []
 - number: 15
   name: "Странные кристаллы"
   boss: FELAXIR
@@ -128,7 +129,7 @@
     - resources: { BONES: 1, ZIMIA: 2, IRIDIA: 1, NILLEA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 1 }
     - if: { chapterIn: [5, 6, 7] }
       then: [ { openQuest: 20 } ]
-  defeat: []
+  expired: []
 - number: 16
   name: "Святилище бури"
   boss: OZEV
@@ -137,14 +138,14 @@
     - rewardCards: ["5"]
     - openQuest: 21
     - grantAchievement: NEOPLACHENNYY_DOLG
-  defeat: []
+  expired: []
 - number: 17
   name: "Цветок в тумане"
   boss: VIRAXEN
   victory:
     - resources: { SCALES: 2, BLOOD: 2, NILLEA: 1, ALBALACEA: 1, MELLIS: 2, ANTHEMON: 1 }
     - rewardCards: ["7"]
-  defeat: []
+  expired: []
 - number: 18
   name: "Залы памяти"
   boss: TORAMAT
@@ -152,14 +153,14 @@
     - resources: { BONES: 2, ZLATIA: 2, NILLEA: 1, TARMARET: 2, ALBALACEA: 1, SELICORNIA: 1 }
     - rewardCards: ["8"]
     - grantAchievement: KOPE_DRAKONOBORTSA
-  defeat: []
+  expired: []
 - number: 19
   name: "Трон в недрах горы"
   boss: YUROM
   victory:
     - resources: { SCALES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 1, ALBALACEA: 2, ANTHEMON: 1, SELICORNIA: 1 }
     - rewardCards: ["9"]
-  defeat: []
+  expired: []
 - number: 20
   name: "Кристаллизация"
   boss: MORKRAAS
@@ -167,14 +168,14 @@
     - resources: { SCALES: 1, ZIMIA: 1, IRIDIA: 2, NILLEA: 1, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 2 }
     - rewardCards: ["10", "11", "12", "13"]
     - grantAchievement: ZVEZDA_DRAKONA
-  defeat: []
+  expired: []
 - number: 21
   name: "Трон дракона"
   boss: YUROM
   victory:
     - resources: { SCALES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 1, ALBALACEA: 1, ANTHEMON: 2, SELICORNIA: 1 }
     - rewardCards: ["9"]
-  defeat: []
+  expired: []
 - number: 22
   name: "В сиянии кораллов"
   boss: KOROVON
@@ -182,14 +183,14 @@
     - resources: { SCALES: 1, ZIMIA: 2, ZLATIA: 1, NILLEA: 1, MELLIS: 2, ANTHEMON: 2 }
     - rewardCards: ["14"]
     - openQuest: 23
-  defeat: []
+  expired: []
 - number: 23
   name: "Пещера красных кораллов"
   boss: ORUXEN
   victory:
     - resources: { SCALES: 1, BONES: 1, ZIMIA: 1, ZLATIA: 1, NILLEA: 1, MELLIS: 2, ANTHEMON: 2 }
     - rewardCards: ["15"]
-  defeat: []
+  expired: []
 - number: 24
   name: "Вечная гробница"
   boss: DIGORAX
@@ -197,7 +198,7 @@
     - resources: { SCALES: 1, BONES: 1, ZLATIA: 2, NILLEA: 1, TARMARET: 1, ALBALACEA: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - rewardCards: ["16"]
     - grantAchievement: KOSTI_DRAKONA
-  defeat: []
+  expired: []
 - number: 25
   name: "Горящее солнце"
   boss: KHARJA
@@ -209,28 +210,28 @@
         - if: { chapterIn: [8] }
           then: [ { openQuest: 34 } ]
           else: [ { openQuest: 27 } ]
-  defeat: []
+  expired: []
 - number: 26
   name: "Голос гор"
   boss: TARRAGUA
   victory:
     - resources: { BONES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 1, ALBALACEA: 1, ANTHEMON: 1, SELICORNIA: 2 }
     - rewardCards: ["18", "19", "20", "21"]
-  defeat: []
+  expired: []
 - number: 27
   name: "Негасимое пламя"
   boss: VIRAXEN
   victory:
     - resources: { SCALES: 2, BLOOD: 2, NILLEA: 2, TARMARET: 1, ALBALACEA: 2 }
     - rewardCards: ["22"]
-  defeat: []
+  expired: []
 - number: 28
   name: "Гора из плоти и кристаллов"
   boss: MORKRAAS
   victory:
     - resources: { SCALES: 1, ZIMIA: 1, IRIDIA: 3, TARMARET: 1, ALBALACEA: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - rewardCards: ["10", "11", "12", "13"]
-  defeat: []
+  expired: []
 - number: 29
   name: "Пещеры эха"
   boss: IEKOROS
@@ -238,27 +239,27 @@
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 1, ALBALACEA: 1, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - if: { achievement: GOLOS_VOLTYARA }
       then: [ { grantAchievement: UROBBOROS } ]
-  defeat: []
+  expired: []
 - number: 30
   name: "Голос бури"
   boss: IEKOROS
   victory:
     - resources: { SCALES: 1, BLOOD: 2, ZIMIA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 2, SELICORNIA: 1 }
-  defeat: []
+  expired: []
 - number: 31
   name: "Крушение дирижабля"
   boss: ZEKAT
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 2 }
     - grantAchievement: GRIBNOY_LES
-  defeat: []
+  expired: []
 - number: 32
   name: "Подземный цветок"
   boss: ZEKALIT
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 2 }
     - rewardCards: ["7"]
-  defeat: []
+  expired: []
 - number: 33
   name: "Последняя страница"
   boss: XITEROS
@@ -266,21 +267,21 @@
   victory:
     - resources: { BONES: 1, ZIMIA: 2, IRIDIA: 1, NILLEA: 2, MELLIS: 2, ANTHEMON: 1 }
     - message: "Каждый охотник получает 2 карты крови изначального"
-  defeat: []
+  expired: []
 - number: 34
   name: "Дыхание дракона"
   boss: TARASK
   victory:
     - resources: { SCALES: 1, BONES: 1, BLOOD: 1, IRIDIA: 1, NILLEA: 1, TARMARET: 1, ALBALACEA: 2, ANTHEMON: 1 }
     - rewardCards: ["22"]
-  defeat: []
+  expired: []
 - number: 35
   name: "В жерле вулкана"
   boss: TARASK
   victory:
     - resources: { SCALES: 1, BONES: 1, BLOOD: 1, IRIDIA: 2, TARMARET: 1, ALBALACEA: 2, MELLIS: 1 }
     - rewardCards: ["24"]
-  defeat: []
+  expired: []
 - number: 36
   name: "Чудовище «Муары»"
   boss: PAZIS
@@ -289,7 +290,7 @@
     - resources: { BONES: 1, ZIMIA: 2, ZLATIA: 1, NILLEA: 2, TARMARET: 1, MELLIS: 1, ANTHEMON: 1 }
     - grantAchievement: LAGER_V_DZHUNGLYAKH
     - grantAchievement: YAD_PAZISA
-  defeat: []
+  expired: []
 - number: 37
   name: "Речной дракон"
   boss: NAGARJAS
@@ -298,7 +299,7 @@
     - resources: { SCALES: 1, BONES: 1, ZIMIA: 1, ZLATIA: 1, NILLEA: 2, MELLIS: 2, ANTHEMON: 1 }
     - grantAchievement: KHOZYAYKA_FONARYA
     - grantAchievement: EKHO_VODOPADA
-  defeat: []
+  expired: []
 - number: 38
   name: "Охота в джунглях"
   boss: PAZIS
@@ -307,7 +308,7 @@
     - resources: { BONES: 1, ZIMIA: 2, ZLATIA: 1, NILLEA: 2, MELLIS: 1, ANTHEMON: 2 }
     - rewardCards: ["25"]
     - { openQuest: 39, expansion: FEATHER }
-  defeat: []
+  expired: []
 - number: 39
   name: "Камни изначальных"
   boss: NAGARJAS
@@ -316,7 +317,7 @@
     - resources: { SCALES: 1, BONES: 1, ZIMIA: 2, NILLEA: 2, MELLIS: 1, ANTHEMON: 2 }
     - rewardCards: ["26", "27", "28", "29"]
     - grantAchievement: KHOZYAYKA_FONARYA
-  defeat: []
+  expired: []
 - number: 40
   name: "Бездна под водопадом"
   boss: IEKOROS
@@ -324,7 +325,7 @@
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 2, ALBALACEA: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - if: { achievement: GOLOS_VOLTYARA }
       then: [ { grantAchievement: UROBBOROS } ]
-  defeat: []
+  expired: []
 - number: 41
   name: "Умирающий лес"
   boss: GIDAR
@@ -332,7 +333,7 @@
   victory:
     - resources: { SCALES: 1, BLOOD: 2, IRIDIA: 1, NILLEA: 1, TARMARET: 1, MELLIS: 2, ANTHEMON: 1 }
     - grantAchievement: ZMEINAYA_KROV
-  defeat: []
+  expired: []
 - number: 42
   name: "Тёмная трясина"
   boss: REIKAL
@@ -342,7 +343,7 @@
     - rewardCards: ["30", "31"]
     - if: { not: { questAvailable: 18 } }
       then: [ { openQuest: 45 } ]
-  defeat: []
+  expired: []
 - number: 43
   name: "Воплощение ночи"
   boss: REIKAL
@@ -350,7 +351,7 @@
   victory:
     - resources: { SCALES: 2, BLOOD: 2, TARMARET: 1, MELLIS: 2, ANTHEMON: 1, SELICORNIA: 1 }
     - rewardCards: ["32"]
-  defeat: []
+  expired: []
 - number: 44
   name: "Луноцвет"
   boss: GIDAR
@@ -358,7 +359,7 @@
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, NILLEA: 1, TARMARET: 1, MELLIS: 2, ANTHEMON: 1 }
     - rewardCards: ["33"]
-  defeat: []
+  expired: []
 - number: 45
   name: "Залы памяти"
   boss: TORAMAT
@@ -366,7 +367,7 @@
     - resources: { BONES: 2, ZLATIA: 2, NILLEA: 2, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 1 }
     - rewardCards: ["8"]
     - grantAchievement: KOPE_DRAKONOBORTSA
-  defeat: []
+  expired: []
 - number: 46
   name: "Ненасытная зима"
   boss: SIRKAAJ
@@ -374,7 +375,7 @@
   victory:
     - resources: { BONES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 1, ALBALACEA: 2, SELICORNIA: 2 }
     - grantAchievement: UPAVSHAYA_ZVEZDA
-  defeat: []
+  expired: []
 - number: 47
   name: "Морозный укус"
   boss: SIRKAAJ
@@ -383,7 +384,7 @@
     - resources: { BONES: 1, BLOOD: 1, IRIDIA: 1, ZLATIA: 1, TARMARET: 1, ALBALACEA: 2, SELICORNIA: 2 }
     - rewardCards: ["35"]
     - { openQuest: 48, expansion: ICE }
-  defeat:
+  expired:
     - grantAchievement: OLEDENENIE
 - number: 48
   name: "Ледяная гробница"
@@ -392,7 +393,7 @@
   victory:
     - resources: { BONES: 1, IRIDIA: 1, ZLATIA: 2, TARMARET: 1, ALBALACEA: 2, SELICORNIA: 2 }
     - rewardCards: ["36", "37"]
-  defeat:
+  expired:
     - grantAchievement: OLEDENENIE
 - number: 49
   name: "Звёздные врата"
@@ -402,4 +403,4 @@
     - resources: { BONES: 1, BLOOD: 1, IRIDIA: 1, ZLATIA: 1, TARMARET: 1, ALBALACEA: 2, SELICORNIA: 2 }
     - rewardCards: ["34"]
     - grantAchievement: OZERO_NEBESNOGO
-  defeat: []
+  expired: []

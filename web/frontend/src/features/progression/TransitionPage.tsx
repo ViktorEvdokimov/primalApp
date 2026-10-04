@@ -101,7 +101,7 @@ export function TransitionPage() {
         lines={lines}
         perHunter={data.perHunter}
         openQuests={data.openQuests}
-        expireQuests={data.expireQuests.filter((quest) => quest.wasOpen).map((quest) => quest.number)}
+        expireQuests={data.expireQuests.filter((quest) => quest.wasOpen)}
         achievements={data.achievements}
         rewardCards={data.rewardCards}
         rules={data.rules}

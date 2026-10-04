@@ -82,9 +82,9 @@ public final class CatalogLoader {
                     text(node, "boss"),
                     enumOrNull(Expansion.class, node.path("expansion"), where),
                     EffectParser.effects(node.path("victory"), where + ", победа"),
-                    EffectParser.effects(node.path("defeat"), where + ", поражение"),
+                    EffectParser.effects(node.path("expired"), where + ", истечение"),
                     json(node.path("victory")),
-                    json(node.path("defeat"))));
+                    json(node.path("expired"))));
         }
         return List.copyOf(quests);
     }

@@ -967,7 +967,7 @@ export interface Quest {
   /** @nullable */
   expansion: string | null;
   victory: Rewards;
-  defeat: Rewards;
+  expired: Rewards;
 }
 
 export type LabUnitOptionsItem = typeof LabUnitOptionsItem[keyof typeof LabUnitOptionsItem];
@@ -1208,7 +1208,9 @@ export interface SseEmitter {
 
 export interface ExpiringQuest {
   number: number;
+  name: string;
   wasOpen: boolean;
+  consequences: string[];
 }
 
 export interface TransitionOption {

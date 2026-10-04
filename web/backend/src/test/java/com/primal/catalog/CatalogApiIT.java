@@ -88,7 +88,7 @@ class CatalogApiIT extends IntegrationTest {
                     .andExpect(jsonPath("$.victory.openQuests", hasSize(0)))
                     .andExpect(jsonPath("$.victory.rules[0]")
                             .value("Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6"))
-                    .andExpect(jsonPath("$.defeat.openQuests[0]").value(6));
+                    .andExpect(jsonPath("$.expired.openQuests[0]").value(6));
         }
 
         @Test

@@ -11,6 +11,7 @@ import com.primal.campaign.ChapterChanges.PendingChapter;
 import com.primal.campaign.PlanApplier;
 import com.primal.catalog.CatalogService;
 import com.primal.catalog.ChapterDef;
+import com.primal.catalog.QuestDef;
 import com.primal.common.error.ApiException;
 import com.primal.common.error.ErrorCode;
 import com.primal.identity.PrimalPrincipal;
@@ -25,10 +26,12 @@ import com.primal.rules.effects.Decision;
 import com.primal.rules.effects.Effect;
 import com.primal.rules.effects.EffectDescriber.Context;
 import com.primal.rules.effects.Plan;
+import com.primal.rules.effects.RuleExplanation;
 import com.primal.rules.model.ResourceCode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,13 +48,27 @@ public class ChapterTransitionService {
 
     public enum Action { ACCEPT, REJECT }
 
-    /** План перехода: эффекты выбранных вариантов решений и эффекты главы, по одному снимку кампании. */
+    /**
+     * План перехода: эффекты выбранных вариантов решений, эффекты главы и последствия истекающих открытых заданий,
+     * по одному снимку кампании.
+     */
     record Computation(int fromChapter, ChapterDef chapter, Map<String, String> selected, boolean complete,
                        List<Effect> decisionEffects, Plan decisionPlan, Plan chapterPlan, CampaignFacts facts,
-                       Set<Integer> openNow) {
+                       Set<Integer> openNow, Map<Integer, Plan> expiries) {
 
         int toChapter() {
             return chapter.chapter();
+        }
+
+        /** Последствия всех истекающих заданий одним планом — применяются после главы. */
+        Plan expiryPlan() {
+            List<Effect> actions = new ArrayList<>();
+            List<RuleExplanation> explanations = new ArrayList<>();
+            expiries.values().forEach(plan -> {
+                actions.addAll(plan.actions());
+                explanations.addAll(plan.explanations());
+            });
+            return new Plan(actions, explanations);
         }
     }
 
@@ -135,7 +152,8 @@ public class ChapterTransitionService {
                     .collect(Collectors.joining(" "));
             throw new ApiException(ErrorCode.DECISION_REQUIRED, "Ответьте на решение главы: " + questions);
         }
-        chapters.accept(campaignId, computation.toChapter(), computation.decisionPlan(), computation.chapterPlan());
+        chapters.accept(campaignId, computation.toChapter(), computation.decisionPlan(), computation.chapterPlan(),
+                computation.expiryPlan());
         return campaigns.sheet(principal, campaignId);
     }
 
@@ -160,10 +178,56 @@ public class ChapterTransitionService {
         Set<Integer> openNow = campaigns.battleContext(pending.campaignId()).openQuests().stream()
                 .map(QuestItem::number)
                 .collect(Collectors.toSet());
-        return new Computation(pending.chapter(), def, selected, complete, decisionEffects,
-                catalog.planner().plan(decisionEffects, facts, Context.CHAPTER),
-                catalog.planner().plan(def.effects(), facts, Context.CHAPTER),
-                facts, openNow);
+        Plan decisionPlan = catalog.planner().plan(decisionEffects, facts, Context.CHAPTER);
+        Plan chapterPlan = catalog.planner().plan(def.effects(), facts, Context.CHAPTER);
+        return new Computation(pending.chapter(), def, selected, complete, decisionEffects, decisionPlan, chapterPlan,
+                facts, openNow, expiries(decisionPlan, chapterPlan, openNow, facts));
+    }
+
+    /**
+     * Последствия невыполненных заданий (правила, «Последствия невыполненных заданий»): для каждого открытого
+     * задания, у которого истекает время, — его эффекты {@code expired} по снимку кампании до перехода. Задание,
+     * истекающее в этом же переходе, последствие снова не добавляет.
+     */
+    private Map<Integer, Plan> expiries(Plan decisionPlan, Plan chapterPlan, Set<Integer> openNow, CampaignFacts facts) {
+        Set<Integer> expiring = new LinkedHashSet<>();
+        List<Effect> actions = new ArrayList<>(decisionPlan.actions());
+        actions.addAll(chapterPlan.actions());
+        for (Effect action : actions) {
+            if (action instanceof Effect.ExpireQuests expire) {
+                expire.quests().stream().filter(openNow::contains).forEach(expiring::add);
+            } else if (action instanceof Effect.ExpireAllQuests) {
+                openNow.stream().sorted().forEach(expiring::add);
+            }
+        }
+        Map<Integer, Plan> result = new LinkedHashMap<>();
+        for (int number : expiring) {
+            catalog.quest(number).ifPresent(quest -> {
+                Plan plan = catalog.planner().plan(quest.expired(), facts, Context.QUEST);
+                List<Effect> kept = plan.actions().stream()
+                        .filter(effect -> !(effect instanceof Effect.OpenQuest open && expiring.contains(open.quest())))
+                        .toList();
+                result.put(number, new Plan(kept, plan.explanations()));
+            });
+        }
+        return result;
+    }
+
+    /** «добавить задание 6», «добавить достижение «Оледенение»»: уже добавленное и полученное не повторяется. */
+    private List<String> consequences(Plan plan, CampaignFacts facts) {
+        return plan.actions().stream()
+                .filter(effect -> !(effect instanceof Effect.OpenQuest open && facts.availableQuests().contains(open.quest())))
+                .filter(effect -> !(effect instanceof Effect.GrantAchievement grant
+                        && facts.achievements().contains(grant.achievement())))
+                .map(catalog.describer()::action)
+                .toList();
+    }
+
+    private ExpiringQuest expiring(Computation computation, int number, boolean wasOpen) {
+        String name = catalog.quest(number).map(QuestDef::name).orElse("");
+        Plan plan = computation.expiries().get(number);
+        return new ExpiringQuest(number, name, wasOpen,
+                wasOpen && plan != null ? consequences(plan, computation.facts()) : List.of());
     }
 
     /** Действия обоих планов по порядку применения: сначала решения, затем глава. */
@@ -195,9 +259,9 @@ public class ChapterTransitionService {
                     }
                 }
                 case Effect.ExpireQuests expire -> expire.quests().forEach(number ->
-                        expireQuests.add(new ExpiringQuest(number, computation.openNow().contains(number))));
+                        expireQuests.add(expiring(computation, number, computation.openNow().contains(number))));
                 case Effect.ExpireAllQuests ignored -> computation.openNow().stream().sorted()
-                        .forEach(number -> expireQuests.add(new ExpiringQuest(number, true)));
+                        .forEach(number -> expireQuests.add(expiring(computation, number, true)));
                 case Effect.GrantAchievement grant -> {
                     List<AchievementRef> target = i < decisionCount ? decisionAchievements : chapterAchievements;
                     if (!facts.achievements().contains(grant.achievement())) {

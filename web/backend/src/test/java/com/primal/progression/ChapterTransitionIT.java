@@ -209,6 +209,82 @@ class ChapterTransitionIT extends IntegrationTest {
                 .andExpect(jsonPath("$.forcedBoss.code").value("AWAKENED"));
     }
 
+    @Nested
+    @DisplayName("Последствия невыполненных заданий (qa 135): применяются, когда истекает время задания")
+    class Expiry {
+
+        @Test
+        @DisplayName("глава 4: истекают 1 и 3 — добавлены 6 и 10; выполненное задание 4 последствий не даёт")
+        void chapterFour() throws Exception {
+            // подготовка
+            pending(3);
+            quest(1, "OPEN");
+            quest(3, "OPEN");
+            quest(4, "COMPLETED");
+
+            // вызов и проверка: превью
+            preview("")
+                    .andExpect(jsonPath("$.expireQuests[0].number").value(1))
+                    .andExpect(jsonPath("$.expireQuests[0].name").value("Память пустыни"))
+                    .andExpect(jsonPath("$.expireQuests[0].consequences", contains("добавить задание 6")))
+                    .andExpect(jsonPath("$.expireQuests[1].number").value(3))
+                    .andExpect(jsonPath("$.expireQuests[1].consequences", contains("добавить задание 10")))
+                    .andExpect(jsonPath("$.expireQuests[2].number").value(4))
+                    .andExpect(jsonPath("$.expireQuests[2].wasOpen").value(false))
+                    .andExpect(jsonPath("$.expireQuests[2].consequences").isEmpty());
+
+            // вызов и проверка: «Принять»
+            submit("ACCEPT", "{}", version()).andExpect(status().isOk());
+            assertThat(questStatus(1)).isEqualTo("EXPIRED");
+            assertThat(questStatus(3)).isEqualTo("EXPIRED");
+            assertThat(questStatus(6)).isEqualTo("OPEN");
+            assertThat(questStatus(10)).isEqualTo("OPEN");
+        }
+
+        @Test
+        @DisplayName("задание 2 истекает при переходе в главу 3: условие «текущая глава 1 или 2» — по главе до перехода")
+        void questTwoCondition() throws Exception {
+            // подготовка
+            pending(2);
+            quest(2, "OPEN");
+
+            // вызов и проверка
+            preview("").andExpect(jsonPath("$.expireQuests[0].consequences", contains("добавить задание 5")));
+            submit("ACCEPT", "{}", version()).andExpect(status().isOk());
+            assertThat(questStatus(5)).isEqualTo("OPEN");
+        }
+
+        @Test
+        @DisplayName("глава 11: истекает задание 47 — достижение «Оледенение»")
+        void quest47() throws Exception {
+            // подготовка
+            pending(10);
+            quest(47, "OPEN");
+
+            // вызов и проверка
+            preview("").andExpect(jsonPath("$.expireQuests[0].consequences",
+                    contains("добавить достижение «Оледенение»")));
+            submit("ACCEPT", "{}", version()).andExpect(status().isOk());
+            assertThat(jdbc.queryForList("select achievement_code from campaign_achievement where campaign_id = ?",
+                    String.class, campaignId)).contains("OLEDENENIE");
+        }
+
+        @Test
+        @DisplayName("«Отклонить» — задание не истекает, последствий нет")
+        void reject() throws Exception {
+            // подготовка
+            pending(3);
+            quest(1, "OPEN");
+
+            // вызов
+            submit("REJECT", "{}", version()).andExpect(status().isOk());
+
+            // проверка
+            assertThat(questStatus(1)).isEqualTo("OPEN");
+            assertThat(questStatus(6)).isNull();
+        }
+    }
+
     @Test
     @DisplayName("устаревшая версия → 409 VERSION_CONFLICT; неизвестное решение и неверный формат ответа → 400")
     void refusals() throws Exception {

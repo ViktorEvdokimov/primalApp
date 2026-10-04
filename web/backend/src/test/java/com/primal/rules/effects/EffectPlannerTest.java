@@ -294,7 +294,7 @@ class EffectPlannerTest {
         List<RuleExplanation> rules = new java.util.ArrayList<>();
         CATALOG.quests().forEach(quest -> {
             rules.addAll(PLANNER.plan(quest.victory(), empty, Context.QUEST).explanations());
-            rules.addAll(PLANNER.plan(quest.defeat(), empty, Context.QUEST).explanations());
+            rules.addAll(PLANNER.plan(quest.expired(), empty, Context.QUEST).explanations());
         });
         CATALOG.chapters().forEach(chapter -> rules.addAll(PLANNER.plan(chapter.effects(), empty, Context.CHAPTER).explanations()));
 

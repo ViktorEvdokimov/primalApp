@@ -109,8 +109,8 @@ export function transitionFixture(selected: string | null = null): TransitionPre
     perHunter: {},
     openQuests: [],
     expireQuests: [
-      { number: 7, wasOpen: true },
-      { number: 9, wasOpen: false },
+      { number: 7, name: 'Храм Зарка', wasOpen: true, consequences: ['добавить задание 26'] },
+      { number: 9, name: 'Звёздная пещера', wasOpen: false, consequences: [] },
     ],
     achievements: selected === 'YES' ? [{ code: 'GOLOS_VOLTYARA', name: 'Голос Волтьяра' }] : [],
     forgeLevelUp: false,

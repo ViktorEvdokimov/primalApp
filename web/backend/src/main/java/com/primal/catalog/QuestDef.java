@@ -8,9 +8,10 @@ import java.util.List;
  * Задание каталога.
  *
  * @param victory     эффекты победы (без общих правил: трофей, 2 стихии босса, выполнение задания)
- * @param defeat      эффекты поражения
+ * @param expired     последствия невыполненного задания — применяются, когда истекает его время (правила,
+ *                    «Последствия невыполненных заданий»), а не при поражении
  * @param victoryJson эффекты победы в JSON — копия для {@code quest_def.victory_effects}
- * @param defeatJson  эффекты поражения в JSON — копия для {@code quest_def.defeat_effects}
+ * @param expiredJson последствия в JSON — копия для {@code quest_def.expired_effects}
  */
 public record QuestDef(
         int number,
@@ -18,7 +19,7 @@ public record QuestDef(
         String bossCode,
         Expansion expansion,
         List<Effect> victory,
-        List<Effect> defeat,
+        List<Effect> expired,
         String victoryJson,
-        String defeatJson) {
+        String expiredJson) {
 }

@@ -64,11 +64,11 @@ class QuestCatalogTest {
         }
 
         @Test
-        @DisplayName("задания 47 и 48: при поражении выдаётся «Оледенение» (R-7)")
-        void defeatAchievements() {
+        @DisplayName("задания 47 и 48: при истечении выдаётся «Оледенение» (R-7, qa 135)")
+        void expiryAchievements() {
             // вызов и проверка
             for (int number : new int[] {47, 48}) {
-                assertThat(quest(number).defeat()).contains(new Effect.GrantAchievement("OLEDENENIE", null));
+                assertThat(quest(number).expired()).contains(new Effect.GrantAchievement("OLEDENENIE", null));
             }
         }
 
@@ -108,8 +108,8 @@ class QuestCatalogTest {
                 assertThat(achievementNames(quest.victory())).as(where + ": достижения победы").isEqualTo(split(row.get(8)));
                 assertThat(topLevel(quest.victory(), Effect.Message.class).stream().map(Effect.Message::text).toList())
                         .as(where + ": особая награда").isEqualTo(split(row.get(10)));
-                assertThat(openQuests(quest.defeat())).as(where + ": задания поражения").isEqualTo(numbers(row.get(11)));
-                assertThat(achievementNames(quest.defeat())).as(where + ": достижения поражения")
+                assertThat(openQuests(quest.expired())).as(where + ": задания при истечении").isEqualTo(numbers(row.get(11)));
+                assertThat(achievementNames(quest.expired())).as(where + ": достижения при истечении")
                         .isEqualTo(split(column(row, 13)));
             }
         }
@@ -126,7 +126,7 @@ class QuestCatalogTest {
                 QuestDef quest = quest(Integer.parseInt(row.get(0)));
                 assertThat(conditionTargets(quest.victory())).as("задание " + quest.number() + ", победа")
                         .isEqualTo(seedConditionTargets(row.get(7)));
-                assertThat(conditionTargets(quest.defeat())).as("задание " + quest.number() + ", поражение")
+                assertThat(conditionTargets(quest.expired())).as("задание " + quest.number() + ", истечение")
                         .isEqualTo(seedConditionTargets(row.get(12)));
             }
         }

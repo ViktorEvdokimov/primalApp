@@ -7,7 +7,7 @@ interface ResultScreenProps {
   message: string;
   undoDescription: string | null;
   onUndo: () => void;
-  /** Главное действие: «Новый бой» в экспедиции, «К наградам» в бою кампании. */
+  /** Главное действие: «Новый бой» в экспедиции; в бою кампании — «К наградам» или «Завершить бой» (поражение). */
   primary: { label: string; onClick: () => void; testId: string };
   onMenu: () => void;
 }

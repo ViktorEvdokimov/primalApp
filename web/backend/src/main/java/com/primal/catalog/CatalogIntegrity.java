@@ -40,7 +40,7 @@ final class CatalogIntegrity {
                 problems.add(where + ": нет босса " + quest.bossCode());
             }
             refs.effects(quest.victory(), where + ", победа");
-            refs.effects(quest.defeat(), where + ", поражение");
+            refs.effects(quest.expired(), where + ", истечение");
         }
 
         List<Integer> chapterNumbers = catalog.chapters().stream().map(ChapterDef::chapter).toList();

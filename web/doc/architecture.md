@@ -260,7 +260,7 @@ public record Plan(List<Effect> actions, List<RuleExplanation> explanations) {}
 | `/campaigns/new` | Создание: название, 2–5 классов, имена игроков | аккаунт | `CampaignSetupScreen` |
 | `/campaigns/:id` | Лист кампании: охотники (навыки, ресурсы), задания, достижения, трофеи, заметки, история боёв; «Поделиться» (ссылка и QR-код) | доступ к кампании | `CampaignSheetScreen` |
 | `/campaigns/:id/battle/new` | Выбор задания и подготовка к бою | доступ к кампании | `QuestSelectDialog` + подготовка |
-| `/campaigns/:id/outcome` | Награды за бой из этого браузера (победа / поражение), «Редактировать», «Отклонить» | доступ к кампании | `QuestRewardsDialog`, `PostVictoryDialog` |
+| `/campaigns/:id/outcome` | Награды за победу из этого браузера, «Редактировать», «Отклонить»; поражение отправляется само, без окна | доступ к кампании | `QuestRewardsDialog`, `PostVictoryDialog` |
 | `/campaigns/:id/transition` | Решение главы и награды главы | доступ к кампании | `ChapterDecisionDialog`, `ChapterRewardsDialog` |
 
 ### 5.2 Структура

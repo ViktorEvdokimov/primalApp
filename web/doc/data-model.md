@@ -158,7 +158,7 @@ create table quest_def (
     boss_code        varchar(32)  not null references boss(code),   -- стихия задания = стихия босса
     expansion        varchar(16)  check (expansion in ('FEATHER','POISON','ICE')),
     victory_effects  jsonb        not null default '[]',  -- язык эффектов, §4
-    defeat_effects   jsonb        not null default '[]'
+    expired_effects  jsonb        not null default '[]'  -- последствия невыполненного задания (V7: было defeat_effects)
 );
 
 create table chapter_def (
@@ -493,8 +493,8 @@ Condition :=
 | Победа по заданию | задание → `COMPLETED`; `victory_effects` задания |
 | Победа (любая, кроме финала) | кампания → `CHAPTER_TRANSITION`; `progress_seq + 1` — остальные бои этой главы больше не принимаются |
 | Победа в финальном бою | кампания → `COMPLETED` («Кампания пройдена! Пробуждённый повержен.») |
-| Поражение по заданию | `defeat_effects` задания; глава не меняется |
-| Переход в главу N | эффекты вариантов решений → `chapter_def(N).effects`; `chapter = N`; `status = ACTIVE` |
+| Поражение по заданию | ничего не меняется (наград за поражение в правилах нет) |
+| Переход в главу N | эффекты вариантов решений → `chapter_def(N).effects`; `chapter = N`; `status = ACTIVE`; затем `expired_effects` каждого открытого задания, у которого истекло время |
 
 ### 4.4 Примеры: задания
 
@@ -507,7 +507,7 @@ Condition :=
     - if: { chapterIn: [1, 2] }
       then: [ { openQuest: 4 } ]
       else: [ { openQuest: 6 } ]
-  defeat:
+  expired:                        # последствия невыполненного задания — когда истекает его время
     - openQuest: 6
 
 - number: 25                      # «Горящее солнце»: в гл. 8 вместо 27 добавляется 34

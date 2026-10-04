@@ -69,10 +69,27 @@ describe('Итог боя кампании', () => {
     expect(activeBattle.getSnapshot().battle).toBeNull();
   });
 
+  it('поражение: окна «Награды за поражение» нет — итог отправляется сам, без превью, дальше лист кампании', async () => {
+    // подготовка
+    const { activeBattle, bodies, previews, router } = openOutcome(
+      finishedCampaignBattle('DEFEAT'),
+      resultPreviewFixture({ result: 'DEFEAT', next: 'CAMPAIGN_SHEET' }),
+    );
+
+    // проверка
+    expect(await screen.findByTestId('outcome-title')).toHaveTextContent('Поражение');
+    await waitFor(() => expect(router.state.location.pathname).toBe('/campaigns/12'));
+    expect(bodies).toHaveLength(1);
+    expect(bodies[0]).toMatchObject({ action: 'ACCEPT', result: 'DEFEAT', overrides: null });
+    expect(previews()).toBe(0);
+    expect(screen.queryByText('Награды за поражение')).not.toBeInTheDocument();
+    expect(activeBattle.getSnapshot().battle).toBeNull();
+  });
+
   it('нет сети — результат остаётся в браузере (NOT_SENT), «Отправить снова» отправляет его', async () => {
     // подготовка
-    const { user, activeBattle, router } = openOutcome(finishedCampaignBattle('DEFEAT'), resultPreviewFixture({ result: 'DEFEAT', next: 'CAMPAIGN_SHEET' }));
     let online = false;
+    const { user, activeBattle, router } = openOutcome(finishedCampaignBattle());
     server.use(
       http.post(RESULT_URL, () =>
         online ? HttpResponse.json({ next: 'CAMPAIGN_SHEET', campaign: sheetFixture() }) : HttpResponse.error(),
@@ -95,6 +112,28 @@ describe('Итог боя кампании', () => {
     // проверка
     await waitFor(() => expect(router.state.location.pathname).toBe('/campaigns/12'));
     expect(activeBattle.getSnapshot().battle).toBeNull();
+  });
+
+  it('поражение без сети — «Результат боя не отправлен», «Отправить снова»', async () => {
+    // подготовка
+    let online = false;
+    server.use(signedIn());
+    const { user, router } = openOutcome(finishedCampaignBattle('DEFEAT'));
+    server.use(
+      http.post(RESULT_URL, () =>
+        online ? HttpResponse.json({ next: 'CAMPAIGN_SHEET', campaign: sheetFixture() }) : HttpResponse.error(),
+      ),
+    );
+
+    // проверка
+    expect(await screen.findByTestId('result-not-sent')).toBeInTheDocument();
+
+    // вызов
+    online = true;
+    await user.click(screen.getByTestId('result-resend'));
+
+    // проверка
+    await waitFor(() => expect(router.state.location.pathname).toBe('/campaigns/12'));
   });
 
   it('итог, не ушедший из-за сети, отправляется сам, когда сеть возвращается', async () => {
@@ -248,6 +287,17 @@ describe('Итог боя кампании', () => {
 
     // проверка
     expect(await screen.findByTestId('outcome-no-battle')).toBeInTheDocument();
+  });
+
+  it('экран поражения боя кампании — «Завершить бой» вместо «К наградам»', async () => {
+    // подготовка
+    server.use(signedIn());
+    const activeBattle = memoryActiveBattle();
+    activeBattle.start(finishedCampaignBattle('DEFEAT'));
+    renderRoutes(routes, '/battle', { activeBattle });
+
+    // проверка
+    expect(await screen.findByTestId('battle-to-rewards')).toHaveTextContent('Завершить бой');
   });
 
   it('экран победы боя кампании ведёт «К наградам»; меню показывает неотправленный результат (D-13)', async () => {
