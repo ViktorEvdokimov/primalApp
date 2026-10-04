@@ -49,7 +49,9 @@ public final class CampaignSheetDto {
     }
 
     /** {@code closedInChapter} — у выполненных и истёкших заданий. */
-    public record QuestItem(int number, String name, CampaignBoss boss, @ApiNullable Integer closedInChapter) {
+    /** {@code expansion} — дополнение задания (NIGHTMARE, FEATHER, POISON, ICE); {@code null} — базовая игра. */
+    public record QuestItem(int number, String name, CampaignBoss boss, @ApiNullable String expansion,
+                            @ApiNullable Integer closedInChapter) {
     }
 
     public record QuestLists(List<QuestItem> open, List<QuestItem> completed, List<QuestItem> expired) {

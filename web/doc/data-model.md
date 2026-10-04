@@ -97,6 +97,44 @@ create table app_user (
 );
 create unique index ux_app_user_login on app_user (login);   -- V5
 create unique index ux_app_user_email on app_user (email);
+
+create table app_admin (                                      -- V8: администраторы (qa № 137)
+    user_id     bigint      primary key references app_user(id) on delete cascade,
+    granted_at  timestamptz not null default now()
+);
+-- Назначаются только скриптом deploy/grant-admin.sh; V8 назначил аккаунт с логином 89227145790, если он был.
+-- По id, а не по логину: логин можно сменить в настройках, и роль не должна перейти к новому владельцу логина.
+
+create table quest_override (                                 -- V8: правки наград администратором
+    number           smallint    primary key references quest_def(number),
+    victory_effects  jsonb       not null,
+    expired_effects  jsonb       not null,
+    updated_at       timestamptz not null,
+    updated_by       bigint      references app_user(id) on delete set null
+);
+create table chapter_override (
+    chapter     smallint    primary key references chapter_def(chapter),
+    effects     jsonb       not null,
+    updated_at  timestamptz not null,
+    updated_by  bigint      references app_user(id) on delete set null
+);
+-- Нет строки — действует YAML. Каталог в памяти = YAML + эти правки (catalog.CatalogEditor).
+
+-- V9 (qa № 138): цены кузни и лаборатории и стойки боссов, изменённые администратором, — в формате YAML.
+create table forge_override (code varchar(16) primary key, cost jsonb not null,      -- [[материи 1-го ур.], …]
+                             updated_at timestamptz not null, updated_by bigint references app_user(id) on delete set null);
+create table lab_override   (code varchar(16) primary key, cost jsonb not null,      -- ["ANY", "TARMARET", "A/B"]
+                             updated_at timestamptz not null, updated_by bigint references app_user(id) on delete set null);
+create table boss_override  (code varchar(32) primary key references boss(code),
+                             stances jsonb not null,                                  -- {"0": [{"t": 2, "change": 6}, …], …}
+                             updated_at timestamptz not null, updated_by bigint references app_user(id) on delete set null);
+
+-- V9: дополнения игрока. Хранятся отключённые: по умолчанию у аккаунта все, новое дополнение сразу включено.
+create table user_hidden_expansion (
+    user_id    bigint      not null references app_user(id) on delete cascade,
+    expansion  varchar(16) not null check (expansion in ('NIGHTMARE','FEATHER','POISON','ICE')),
+    primary key (user_id, expansion)
+);
 ```
 
 Пока логином был телефон (V4), номера хранились в столбце `phone` (`+79123456789`). V5 перенесла их в
@@ -464,14 +502,15 @@ Effect :=
   | { finalBattle: BOSS_CODE }                      следующий бой — только этот босс
   | { if: Condition, then: [Effect…], else: [Effect…] }
 
-  У любого эффекта может быть поле  expansion: FEATHER|POISON|ICE  — пометка, из какого дополнения
-  инструкция. В первой версии все дополнения подключены, и на расчёт пометка не влияет; это задел
-  для будущего выбора дополнений при создании кампании.
+  У любого эффекта может быть поле  expansion: NIGHTMARE|FEATHER|POISON|ICE  — пометка, из какого
+  дополнения инструкция; на расчёт пометка не влияет. Зависимость от дополнения записывается условием
+  { expansion: … } (ниже).
 
 Condition :=
     { achievement: CODE }            у отряда есть достижение
   | { chapterIn: [n, …] }            текущая глава (книги)
   | { questAvailable: n }            задание добавлено (OPEN или COMPLETED)
+  | { expansion: FEATHER }           у владельца кампании есть дополнение (настройка аккаунта, qa № 138)
   | { not: Condition } | { all: [Condition…] } | { any: [Condition…] }
 ```
 
@@ -510,7 +549,7 @@ Condition :=
   expired:                        # последствия невыполненного задания — когда истекает его время
     - openQuest: 6
 
-- number: 25                      # «Горящее солнце»: в гл. 8 вместо 27 добавляется 34
+- number: 25                      # «Горящее солнце»: в гл. 8 с «Кошмаром» вместо 27 добавляется 34 (qa № 139)
   name: Горящее солнце
   boss: KHARJA
   victory:
@@ -518,7 +557,7 @@ Condition :=
     - rewardCards: ["17"]
     - if: { achievement: GORYASHCHIY_UGOLEK }
       then:
-        - if: { chapterIn: [8] }
+        - if: { all: [ { chapterIn: [8] }, { expansion: NIGHTMARE } ] }
           then: [ { openQuest: 34 } ]
           else: [ { openQuest: 27 } ]
 

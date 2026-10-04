@@ -1,5 +1,6 @@
 package com.primal.rules.effects;
 
+import com.primal.rules.model.Expansion;
 import java.util.List;
 
 /** Условие эффекта (doc/data-model.md §4.3). */
@@ -18,6 +19,10 @@ public sealed interface Condition {
 
     /** Задание добавлено: открыто или уже выполнено. */
     record QuestAvailable(int quest) implements Condition {
+    }
+
+    /** У владельца кампании есть дополнение (настройка аккаунта, qa № 138). */
+    record HasExpansion(Expansion expansion) implements Condition {
     }
 
     record Not(Condition condition) implements Condition {

@@ -28,7 +28,7 @@ class EffectDescriberTest {
         @DisplayName("задание 2: одно и то же условие при победе и поражении")
         void quest2() {
             assertThat(victoryRules(2)).containsExactly("Если текущая глава 1 или 2, то добавить задание 5");
-            assertThat(expiryRules(2)).containsExactly("Если текущая глава 1 или 2, то добавить задание 5");
+            assertThat(expiryRules(2)).isEmpty(); // при истечении — безусловно задание 31 (qa № 139)
         }
 
         @Test
@@ -41,7 +41,7 @@ class EffectDescriberTest {
         @DisplayName("задание 25: вложенное условие описывается после двоеточия")
         void quest25() {
             assertThat(victoryRules(25)).containsExactly(
-                    "Если есть достижение «Горящий уголёк»: если текущая глава 8, то добавить задание 34, иначе добавить задание 27");
+                    "Если есть достижение «Горящий уголёк»: если текущая глава 8 и есть дополнение «Кошмар», то добавить задание 34, иначе добавить задание 27");
         }
 
         @Test

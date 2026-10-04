@@ -40,7 +40,8 @@ const CATALOG_STALE_MS = 60 * 60 * 1000;
 export function ForgePage() {
   const campaignId = Number(useParams().id);
   const { sheet, ...actions } = useCampaignSheet(campaignId);
-  const forge = useForge({ query: { staleTime: CATALOG_STALE_MS } });
+  // Цены может изменить администратор (qa № 138): при каждом открытии — проверка по ETag
+  const forge = useForge({ query: { staleTime: 0 } });
   const dictionaries = useDictionaries({ query: { staleTime: CATALOG_STALE_MS } });
   useLiveUpdates(campaignId);
 

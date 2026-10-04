@@ -1,6 +1,7 @@
 package com.primal.campaign;
 
 import com.primal.catalog.CatalogService;
+import com.primal.identity.ExpansionSettings;
 import com.primal.rules.effects.CampaignFacts;
 import com.primal.rules.effects.Effect;
 import com.primal.rules.effects.Plan;
@@ -33,10 +34,12 @@ public class PlanApplier {
     private final CampaignAchievementRepository achievements;
     private final CatalogService catalog;
     private final Clock clock;
+    private final ExpansionSettings expansions;
 
     PlanApplier(CampaignService campaigns, CampaignHunterRepository hunters, HunterResourceRepository resources,
                 CampaignQuestRepository quests, CampaignAchievementRepository achievements, CatalogService catalog,
-                Clock clock) {
+                Clock clock, ExpansionSettings expansions) {
+        this.expansions = expansions;
         this.campaigns = campaigns;
         this.hunters = hunters;
         this.resources = resources;
@@ -46,7 +49,10 @@ public class PlanApplier {
         this.clock = clock;
     }
 
-    /** Снимок кампании для планировщика: достижения, глава, добавленные задания (открытые и выполненные). */
+    /**
+     * Снимок кампании для планировщика: достижения, глава, добавленные задания (открытые и выполненные) и
+     * дополнения владельца кампании — для условия «есть дополнение» (qa № 138).
+     */
     @Transactional(readOnly = true)
     public CampaignFacts facts(long campaignId) {
         Campaign campaign = campaigns.campaign(campaignId);
@@ -58,7 +64,7 @@ public class PlanApplier {
                 .filter(quest -> quest.getStatus() != CampaignQuest.Status.EXPIRED)
                 .map(CampaignQuest::getQuestNumber)
                 .collect(Collectors.toSet());
-        return new CampaignFacts(codes, campaign.getChapter(), available);
+        return new CampaignFacts(codes, campaign.getChapter(), available, expansions.enabled(campaign.getOwnerId()));
     }
 
     /** Выполняет план в текущей транзакции; версия кампании растёт. */

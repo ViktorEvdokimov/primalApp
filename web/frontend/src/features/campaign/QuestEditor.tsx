@@ -4,6 +4,7 @@ import { useSetOpenQuests } from '../../api/generated/campaigns/campaigns';
 import { useQuests } from '../../api/generated/catalog/catalog';
 import type { QuestLists } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
+import { useQuestVisible } from '../auth/useMe';
 import type { SheetActions } from './useCampaignSheet';
 
 interface QuestEditorProps {
@@ -33,8 +34,9 @@ function QuestEditorBody({ campaignId, quests, onClose, actions }: Omit<QuestEdi
   const [draft, setDraft] = useState<ReadonlySet<number>>(() => new Set(quests.open.map((quest) => quest.number)));
   const completed = new Set(quests.completed.map((quest) => quest.number));
   const expired = new Set(quests.expired.map((quest) => quest.number));
-  // Все задания каталога, как в app: выбора дополнений в v1 нет, задания дополнений открываются вручную
-  const shown = catalog.data ?? [];
+  // Задания каталога без дополнений, убранных в настройках (qa № 138); открытые скрытые при сохранении остаются
+  const visible = useQuestVisible();
+  const shown = (catalog.data ?? []).filter((quest) => visible(quest.expansion));
 
   const toggle = (number: number, checked: boolean) =>
     setDraft((current) => {

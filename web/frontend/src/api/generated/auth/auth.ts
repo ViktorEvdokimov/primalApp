@@ -25,6 +25,7 @@ import type {
 
 import type {
   DeviceSummary,
+  ExpansionsRequest,
   LoginChangeRequest,
   LoginRequest,
   MeResponse,
@@ -217,6 +218,87 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUpdateLoginMutationOptions(options), queryClient);
+    }
+    export const getUpdateExpansionsUrl = () => {
+
+
+
+
+  return `/api/v1/auth/me/expansions`
+}
+
+export const updateExpansions = async (expansionsRequest: ExpansionsRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<MeResponse>(getUpdateExpansionsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(expansionsRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateExpansionsMutationKey = () => ['updateExpansions'] as const;
+
+export const getUpdateExpansionsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExpansions>>, TError,UpdateExpansionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateExpansions>>, TError,UpdateExpansionsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateExpansionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateExpansions>>, UpdateExpansionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateExpansions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateExpansionsMutationResult = NonNullable<Awaited<ReturnType<typeof updateExpansions>>>
+    export type UpdateExpansionsMutationBody = ExpansionsRequest
+    export type UpdateExpansionsMutationError = unknown
+    export type UpdateExpansionsMutationVariables = {data: ExpansionsRequest}
+
+    export const useUpdateExpansions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateExpansions>>, TError,UpdateExpansionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateExpansions>>,
+        TError,
+        UpdateExpansionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateExpansionsMutationOptions(options), queryClient);
     }
     export const getRegisterUrl = () => {
 

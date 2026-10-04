@@ -7,10 +7,12 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.primal.support.AuthHelper;
 import com.primal.support.IntegrationTest;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
@@ -545,6 +547,42 @@ class BattleResultIT extends IntegrationTest {
 
             // проверка
             assertThat(rewardItems(ids.get(0))).containsExactly("Карта награды №1");
+        }
+    }
+
+    @Nested
+    @DisplayName("Условие «есть дополнение» — по дополнениям владельца кампании (qa № 138)")
+    class Expansions {
+
+        @AfterEach
+        void resetQuest() throws Exception {
+            mockMvc.perform(delete("/api/v1/admin/quests/1").with(xsrf()).cookie(alice));
+        }
+
+        @Test
+        @DisplayName("есть «Перо» — задание 36, владелец убрал «Перо» — задание 6")
+        void ownerExpansions() throws Exception {
+            // подготовка: награда задания 1 — «если есть дополнение «Перо», задание 36, иначе 6»
+            jdbc.update("insert into app_admin (user_id) select id from app_user where login = ?",
+                    AuthHelper.loginOf("alice"));
+            mockMvc.perform(put("/api/v1/admin/quests/1").with(xsrf()).cookie(alice).contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"victory": [{"if": {"expansion": "FEATHER"}, "then": [{"openQuest": 36}],
+                                                  "else": [{"openQuest": 6}]}], "expired": []}"""))
+                    .andExpect(status().isOk());
+            chapter(1);
+            quest(1, "OPEN");
+
+            // вызов и проверка
+            preview(UUID.randomUUID(), report(1, "TORAMAT", 1, 0, "VICTORY", ""))
+                    .andExpect(jsonPath("$.rewards.openQuests[0]").value(36));
+            mockMvc.perform(put("/api/v1/auth/me/expansions").with(xsrf()).cookie(alice)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"expansions\": [\"ICE\"]}"))
+                    .andExpect(status().isOk());
+            preview(UUID.randomUUID(), report(1, "TORAMAT", 1, 0, "VICTORY", ""))
+                    .andExpect(jsonPath("$.rewards.openQuests[0]").value(6))
+                    .andExpect(jsonPath("$.rules[0].description").value(
+                            "Если есть дополнение «Перо», добавить задание 36, иначе добавить задание 6"));
         }
     }
 }

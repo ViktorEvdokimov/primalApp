@@ -1,7 +1,8 @@
 # Задания кампании (49): босс, награды за победу и последствия невыполненного задания (expired — применяются,
 # когда истекает время задания, а не при поражении) на языке эффектов (doc/data-model.md §4.3).
 # Перенос app/shared/.../TaskInfoSeed.kt (с исправлениями C-5…C-7, C-10, qa 110) и doc/taskInfo.md.
-# Дополнение задания — дополнение его босса. Общие правила (трофей, 2 стихии босса, выполнение задания)
+# Дополнение задания — по номеру (qa № 137): 1–30 базовая игра, 31–35 «Кошмар», 36–40 «Перо», 41–45 «Яд»,
+# 46–50 «Лёд»; может не совпадать с дополнением босса. Общие правила (трофей, 2 стихии босса, выполнение задания)
 # в YAML не записываются — их применяет progression.
 
 - number: 1
@@ -22,8 +23,7 @@
     - if: { chapterIn: [1, 2] }
       then: [ { openQuest: 5 } ]
   expired:
-    - if: { chapterIn: [1, 2] }
-      then: [ { openQuest: 5 } ]
+    - openQuest: 31                                   # qa № 139
 - number: 3
   name: "Рёв моря"
   boss: KOROVON
@@ -104,7 +104,9 @@
   boss: DIGORAX
   victory:
     - resources: { SCALES: 1, BONES: 2, ZLATIA: 1, NILLEA: 2, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 1 }
-    - openQuest: 18
+    - if: { not: { questAvailable: 45 } }             # qa № 139
+      then: [ { openQuest: 18 } ]
+      expansion: POISON
   expired: []
 - number: 13
   name: "Королева Озевов"
@@ -207,7 +209,7 @@
     - rewardCards: ["17"]
     - if: { achievement: GORYASHCHIY_UGOLEK }
       then:
-        - if: { chapterIn: [8] }
+        - if: { all: [ { chapterIn: [8] }, { expansion: NIGHTMARE } ] }   # qa № 139
           then: [ { openQuest: 34 } ]
           else: [ { openQuest: 27 } ]
   expired: []
@@ -249,6 +251,7 @@
 - number: 31
   name: "Крушение дирижабля"
   boss: ZEKAT
+  expansion: NIGHTMARE
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 2 }
     - grantAchievement: GRIBNOY_LES
@@ -256,6 +259,7 @@
 - number: 32
   name: "Подземный цветок"
   boss: ZEKALIT
+  expansion: NIGHTMARE
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 1, MELLIS: 1, ANTHEMON: 1, SELICORNIA: 2 }
     - rewardCards: ["7"]
@@ -263,7 +267,7 @@
 - number: 33
   name: "Последняя страница"
   boss: XITEROS
-  expansion: FEATHER
+  expansion: NIGHTMARE
   victory:
     - resources: { BONES: 1, ZIMIA: 2, IRIDIA: 1, NILLEA: 2, MELLIS: 2, ANTHEMON: 1 }
     - message: "Каждый охотник получает 2 карты крови изначального"
@@ -271,6 +275,7 @@
 - number: 34
   name: "Дыхание дракона"
   boss: TARASK
+  expansion: NIGHTMARE
   victory:
     - resources: { SCALES: 1, BONES: 1, BLOOD: 1, IRIDIA: 1, NILLEA: 1, TARMARET: 1, ALBALACEA: 2, ANTHEMON: 1 }
     - rewardCards: ["22"]
@@ -278,6 +283,7 @@
 - number: 35
   name: "В жерле вулкана"
   boss: TARASK
+  expansion: NIGHTMARE
   victory:
     - resources: { SCALES: 1, BONES: 1, BLOOD: 1, IRIDIA: 2, TARMARET: 1, ALBALACEA: 2, MELLIS: 1 }
     - rewardCards: ["24"]
@@ -321,6 +327,7 @@
 - number: 40
   name: "Бездна под водопадом"
   boss: IEKOROS
+  expansion: FEATHER
   victory:
     - resources: { SCALES: 1, BLOOD: 1, ZIMIA: 1, IRIDIA: 1, TARMARET: 2, ALBALACEA: 1, ANTHEMON: 1, SELICORNIA: 1 }
     - if: { achievement: GOLOS_VOLTYARA }
@@ -363,6 +370,7 @@
 - number: 45
   name: "Залы памяти"
   boss: TORAMAT
+  expansion: POISON
   victory:
     - resources: { BONES: 2, ZLATIA: 2, NILLEA: 2, TARMARET: 1, ALBALACEA: 1, SELICORNIA: 1 }
     - rewardCards: ["8"]

@@ -105,7 +105,7 @@ public final class CatalogLoader {
     }
 
     /** JSON-копия эффектов для {@code jsonb}; отсутствующий список — пустой массив. */
-    private static String json(JsonNode node) {
+    static String json(JsonNode node) {
         return node.isMissingNode() || node.isNull() ? "[]" : JSON.writeValueAsString(node);
     }
 
@@ -118,30 +118,46 @@ public final class CatalogLoader {
             if (!codes.add(code)) {
                 throw new CatalogException(where + ": код босса повторяется");
             }
-            SortedMap<Integer, List<StanceDef>> stances = new TreeMap<>();
-            JsonNode stancesNode = node.path("stances");
-            for (String difficulty : stancesNode.propertyNames()) {
-                int level = Integer.parseInt(difficulty);
-                if (level < 0 || level > 3) {
-                    throw new CatalogException(where + ": уровень враждебности " + level + " вне 0–3");
-                }
-                stances.put(level, parseStances(stancesNode.get(difficulty), where + ", сложность " + level));
-            }
-            if (stances.isEmpty()) {
-                throw new CatalogException(where + ": нет стоек");
-            }
+            SortedMap<Integer, List<StanceDef>> stances = parseBossStances(node.path("stances"), where);
             bosses.add(new BossDef(
                     code,
                     text(node, "name"),
                     enumOrNull(Element.class, node.path("element"), where),
                     enumOrNull(Expansion.class, node.path("expansion"), where),
                     node.path("sortOrder").asInt(),
-                    Collections.unmodifiableSortedMap(stances)));
+                    stances));
         }
         return List.copyOf(bosses);
     }
 
+    /** Стойки босса по уровням враждебности 0–3: {@code {"0": [{t: 2, change: 6}, …], …}}. */
+    static SortedMap<Integer, List<StanceDef>> parseBossStances(JsonNode node, String where) {
+        if (!node.isObject()) {
+            throw new CatalogException(where + ": стойки — по уровням враждебности");
+        }
+        SortedMap<Integer, List<StanceDef>> stances = new TreeMap<>();
+        for (String difficulty : node.propertyNames()) {
+            int level;
+            try {
+                level = Integer.parseInt(difficulty);
+            } catch (NumberFormatException e) {
+                throw new CatalogException(where + ": уровень враждебности " + difficulty + " — не число", e);
+            }
+            if (level < 0 || level > 3) {
+                throw new CatalogException(where + ": уровень враждебности " + level + " вне 0–3");
+            }
+            stances.put(level, parseStances(node.get(difficulty), where + ", сложность " + level));
+        }
+        if (stances.isEmpty()) {
+            throw new CatalogException(where + ": нет стоек");
+        }
+        return Collections.unmodifiableSortedMap(stances);
+    }
+
     private static List<StanceDef> parseStances(JsonNode list, String where) {
+        if (!list.isArray()) {
+            throw new CatalogException(where + ": ожидается список стоек");
+        }
         List<StanceDef> stances = new ArrayList<>();
         int number = 1;
         for (JsonNode stance : list) {
@@ -208,7 +224,7 @@ public final class CatalogLoader {
                 }
                 slots.merge(slot, 1, Integer::sum);
                 items.add(new ForgeItemDef("%s_%02d".formatted(element, position), element, name, slot,
-                        parseCosts(node.path("cost"), at)));
+                        parseCosts(node.path("cost"), at, 2, 2)));
             }
             if (!slots.equals(BOARD)) {
                 throw new CatalogException(where + ": на планшете должны быть " + BOARD + ", а есть " + slots);
@@ -221,16 +237,21 @@ public final class CatalogLoader {
         return List.copyOf(items);
     }
 
-    private static List<Map<Material, Integer>> parseCosts(JsonNode cost, String where) {
+    /**
+     * Цены предмета кузни на 3 уровня: на каждом от {@code min} до {@code max} материй по одной (на планшетах — по 2,
+     * в правке администратора — до {@link CatalogEditor#FORGE_UNITS_MAX}).
+     */
+    static List<Map<Material, Integer>> parseCosts(JsonNode cost, String where, int min, int max) {
         if (!cost.isArray() || cost.size() != ForgeItemDef.LEVELS) {
-            throw new CatalogException(where + ": cost — цены на " + ForgeItemDef.LEVELS + " уровня");
+            throw new CatalogException(where + ": цены на " + ForgeItemDef.LEVELS + " уровня");
         }
         List<Map<Material, Integer>> costs = new ArrayList<>();
         int level = 0;
         for (JsonNode units : cost) {
             level++;
-            if (!units.isArray() || units.size() != 2) {
-                throw new CatalogException(where + ", уровень " + level + ": на планшете 2 материи");
+            if (!units.isArray() || units.size() < min || units.size() > max) {
+                throw new CatalogException(where + ", уровень " + level + ": "
+                        + (min == max ? "на планшете " + min + " материи" : "от " + min + " до " + max + " материй"));
             }
             Map<Material, Integer> materials = new EnumMap<>(Material.class);
             for (JsonNode unit : units) {
@@ -257,20 +278,32 @@ public final class CatalogLoader {
         for (JsonNode node : list(root, "lab.yaml")) {
             String name = text(node, "name");
             String where = "lab.yaml, " + name;
-            JsonNode cost = node.path("cost");
-            if (!cost.isArray() || cost.size() != 2) {
-                throw new CatalogException(where + ": на планшете 2 растения");
-            }
-            List<Set<Plant>> units = new ArrayList<>();
-            for (JsonNode unit : cost) {
-                units.add(parsePlants(unit.asString(), where));
-            }
-            potions.add(new LabPotionDef("LAB_%02d".formatted(potions.size() + 1), name, List.copyOf(units)));
+            potions.add(new LabPotionDef("LAB_%02d".formatted(potions.size() + 1), name,
+                    parseLabCost(node.path("cost"), where, 2, 2)));
         }
         if (potions.size() != LAB_POTIONS) {
             throw new CatalogException("lab.yaml: зелий должно быть " + LAB_POTIONS + ", а их " + potions.size());
         }
         return List.copyOf(potions);
+    }
+
+    /**
+     * Цена зелья: от {@code min} до {@code max} растений по одному — код, «A/B» или {@code ANY} (на планшете — по 2,
+     * в правке администратора — до {@link CatalogEditor#LAB_UNITS_MAX}).
+     */
+    static List<Set<Plant>> parseLabCost(JsonNode cost, String where, int min, int max) {
+        if (!cost.isArray() || cost.size() < min || cost.size() > max) {
+            throw new CatalogException(where + ": " + (min == max ? "на планшете " + min + " растения"
+                    : "от " + min + " до " + max + " растений"));
+        }
+        List<Set<Plant>> units = new ArrayList<>();
+        for (JsonNode unit : cost) {
+            if (!unit.isString() || unit.asString().isBlank()) {
+                throw new CatalogException(where + ": растение не указано");
+            }
+            units.add(parsePlants(unit.asString(), where));
+        }
+        return List.copyOf(units);
     }
 
     private static Set<Plant> parsePlants(String unit, String where) {
@@ -353,6 +386,11 @@ public final class CatalogLoader {
      */
     private static boolean isEmpty(JsonNode value) {
         return value.isMissingNode() || value.isNull() || value.isString() && "~".equals(value.asString());
+    }
+
+    /** Дерево JSON из копии эффектов ({@code jsonb}). */
+    static JsonNode readJson(String json) {
+        return JSON.readTree(json);
     }
 
     static String checksum(Map<String, byte[]> files) {

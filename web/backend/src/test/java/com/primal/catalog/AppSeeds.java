@@ -43,7 +43,9 @@ final class AppSeeds {
             return Optional.empty();
         }
         try {
-            String text = Files.readString(path, StandardCharsets.UTF_8);
+            // В рабочей копии под Windows переводы строк — CRLF: без замены список не находился и сверка молча
+            // проходила без единой строки
+            String text = Files.readString(path, StandardCharsets.UTF_8).replace("\r\n", "\n");
             String body = text.substring(text.indexOf("private val " + listName + " = listOf("));
             body = body.substring(0, body.indexOf("\n)\n") + 2);
             List<List<String>> rows = new ArrayList<>();

@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import { routes } from '../../app/routes';
-import type { CampaignSheet } from '../../api/generated/primal.schemas';
+import type { CampaignSheet, MeResponse } from '../../api/generated/primal.schemas';
+import { userMe } from '../../test/fixtures/auth';
 import { achievementsFixture, hunterFixture, questItem, questsFixture, sheetFixture } from '../../test/fixtures/campaign';
 import { finishedCampaignBattle } from '../../test/fixtures/progression';
 import { memoryActiveBattle, renderRoutes } from '../../test/render';
@@ -13,10 +14,10 @@ const problem = (status: number, body: Record<string, unknown>) =>
   HttpResponse.json({ status, ...body }, { status, headers: { 'Content-Type': 'application/problem+json' } });
 
 /** Лист кампании 12 на «сервере»: GET отдаёт текущее значение, тест меняет его между запросами. */
-function serveSheet(initial: CampaignSheet) {
+function serveSheet(initial: CampaignSheet, me: MeResponse = userMe) {
   const state = { sheet: initial, gets: 0 };
   server.use(
-    signedIn(),
+    signedIn(me),
     http.get('*/api/v1/campaigns/12', () => {
       state.gets += 1;
       return HttpResponse.json(state.sheet);
@@ -27,8 +28,8 @@ function serveSheet(initial: CampaignSheet) {
   return state;
 }
 
-async function openSheet(sheet: CampaignSheet = sheetFixture(), path = '/campaigns/12') {
-  const state = serveSheet(sheet);
+async function openSheet(sheet: CampaignSheet = sheetFixture(), path = '/campaigns/12', me: MeResponse = userMe) {
+  const state = serveSheet(sheet, me);
   const view = renderRoutes(routes, path);
   await screen.findByTestId('sheet-name');
   return { ...view, state, user: userEvent.setup() };
@@ -264,6 +265,35 @@ describe('Лист кампании: задания', () => {
 
     // проверка
     expect(screen.getByTestId('quests-empty')).toHaveTextContent('Нет открытых заданий.');
+  });
+
+  it('у задания дополнения — пометка («Перо»), у базовой игры — нет', async () => {
+    // подготовка
+    const quests = { open: [questItem(1), questItem(40)], completed: [], expired: [] };
+
+    // вызов
+    await openSheet(sheetFixture({ quests }), '/campaigns/12?tab=quests');
+
+    // проверка
+    const cards = await screen.findAllByTestId('quest-open');
+    expect(within(cards[0]!).queryByTestId('quest-expansion')).not.toBeInTheDocument();
+    expect(within(cards[1]!).getByTestId('quest-expansion')).toHaveTextContent('Перо');
+  });
+
+  it('дополнение убрано в настройках — его задания не показываются ни в списках, ни в редакторе', async () => {
+    // подготовка: у игрока нет «Пера» (задание 40)
+    const me: MeResponse = { ...userMe, user: { ...userMe.user!, expansions: ['NIGHTMARE', 'POISON', 'ICE'] } };
+    const quests = { open: [questItem(1), questItem(40)], completed: [], expired: [] };
+
+    // вызов
+    const { user } = await openSheet(sheetFixture({ quests }), '/campaigns/12?tab=quests', me);
+
+    // проверка
+    await waitFor(() => expect(screen.getAllByTestId('quest-open').map((node) => node.dataset.number)).toEqual(['1']));
+    await user.click(screen.getByTestId('quests-edit'));
+    const editor = within(await screen.findByTestId('quest-editor'));
+    await editor.findByLabelText('4. Пепел');
+    expect(editor.queryByLabelText('40. Перья бури')).not.toBeInTheDocument();
   });
 
   it('редактор: выполненные и истёкшие неактивны, сохраняется набор открытых', async () => {

@@ -3,6 +3,7 @@ package com.primal.identity;
 import com.primal.common.api.ApiNullable;
 import com.primal.identity.PasswordAuthService.Registration;
 import com.primal.identity.PasswordAuthService.SignIn;
+import com.primal.rules.model.Expansion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,8 +11,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.net.InetAddress;
+import java.util.EnumSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -65,9 +70,12 @@ class AuthController {
 
     /**
      * {@code passwordSet = false} бывает у аккаунта, созданного по почте: он задаёт пароль в настройках
-     * (пароль — без текущего). Логин у такого аккаунта — {@code user<id>}.
+     * (пароль — без текущего). Логин у такого аккаунта — {@code user<id>}. {@code admin} — администратор
+     * (qa № 137): только ему сайт показывает правку наград. {@code expansions} — включённые дополнения игрока
+     * (qa № 138): задания остальных сайт ему не показывает.
      */
-    record UserView(long id, String login, @ApiNullable String displayName, boolean passwordSet) {
+    record UserView(long id, String login, @ApiNullable String displayName, boolean passwordSet, boolean admin,
+                    List<Expansion> expansions) {
     }
 
     record DeviceView(UUID id, String userAgent) {
@@ -84,6 +92,10 @@ class AuthController {
 
     /** {@code user} — только у пользователя с аккаунтом. */
     record MeResponse(Kind kind, @ApiNullable UserView user, MeDevice device) {
+    }
+
+    /** Включённые дополнения; пустой список — только базовая игра. */
+    record ExpansionsRequest(@NotNull List<@NotNull Expansion> expansions) {
     }
 
     record RenameRequest(@Size(max = 60, message = "Не длиннее 60 символов") String displayName) {
@@ -113,8 +125,13 @@ class AuthController {
     private final AccountService accounts;
     private final DeviceService devices;
     private final DeviceCookies cookies;
+    private final Admins admins;
+    private final ExpansionSettings expansions;
 
-    AuthController(PasswordAuthService auth, AccountService accounts, DeviceService devices, DeviceCookies cookies) {
+    AuthController(PasswordAuthService auth, AccountService accounts, DeviceService devices, DeviceCookies cookies,
+                   Admins admins, ExpansionSettings expansions) {
+        this.admins = admins;
+        this.expansions = expansions;
         this.auth = auth;
         this.accounts = accounts;
         this.devices = devices;
@@ -169,6 +186,14 @@ class AuthController {
         return toResponse(accounts.changeLogin(principal, body.login()));
     }
 
+    @Operation(operationId = "updateExpansions")
+    @PutMapping("/me/expansions")
+    MeResponse changeExpansions(@AuthenticationPrincipal PrimalPrincipal principal,
+                                @Valid @RequestBody ExpansionsRequest body) {
+        Set<Expansion> enabled = body.expansions().isEmpty() ? EnumSet.noneOf(Expansion.class) : EnumSet.copyOf(body.expansions());
+        return toResponse(accounts.changeExpansions(principal, enabled));
+    }
+
     @Operation(operationId = "changePassword")
     @ApiResponse(responseCode = "204", description = "Пароль изменён")
     @PutMapping("/me/password")
@@ -195,12 +220,13 @@ class AuthController {
                 .body(response);
     }
 
-    private static UserView userView(AppUser user) {
-        return new UserView(user.getId(), user.getLogin(), user.getDisplayName(), user.getPasswordHash() != null);
+    private UserView userView(AppUser user) {
+        return new UserView(user.getId(), user.getLogin(), user.getDisplayName(), user.getPasswordHash() != null,
+                admins.isAdmin(user.getId()), List.copyOf(expansions.enabled(user.getId())));
     }
 
-    private static MeResponse toResponse(AccountService.Me me) {
-        UserView user = me.user().map(AuthController::userView).orElse(null);
+    private MeResponse toResponse(AccountService.Me me) {
+        UserView user = me.user().map(this::userView).orElse(null);
         return new MeResponse(user == null ? Kind.GUEST : Kind.USER, user,
                 new MeDevice(me.principal().deviceId(), me.deviceName()));
     }

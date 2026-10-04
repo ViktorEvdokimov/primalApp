@@ -83,6 +83,13 @@ final class EffectParser {
             case "achievement" -> new Condition.HasAchievement(string(value, where));
             case "chapterIn" -> new Condition.ChapterIn(integers(value, where));
             case "questAvailable" -> new Condition.QuestAvailable(integer(value, where));
+            case "expansion" -> {
+                Expansion expansion = expansion(value, where);
+                if (expansion == null) {
+                    throw new CatalogException(where + ": не указано дополнение");
+                }
+                yield new Condition.HasExpansion(expansion);
+            }
             case "not" -> new Condition.Not(condition(value, where + ", not"));
             case "all" -> new Condition.All(conditions(value, where + ", all"));
             case "any" -> new Condition.Any(conditions(value, where + ", any"));

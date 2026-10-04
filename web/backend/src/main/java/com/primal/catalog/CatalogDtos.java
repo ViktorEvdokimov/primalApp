@@ -47,7 +47,7 @@ public final class CatalogDtos {
     public record Boss(String code, String name, @ApiNullable String element, @ApiNullable String expansion, int sortOrder,
                        Map<String, List<Stance>> difficulties) {
 
-        static Boss of(BossDef def) {
+        public static Boss of(BossDef def) {
             Map<String, List<Stance>> difficulties = new LinkedHashMap<>();
             def.stances().forEach((level, stances) ->
                     difficulties.put(String.valueOf(level), stances.stream().map(Stance::of).toList()));
@@ -66,7 +66,7 @@ public final class CatalogDtos {
     public record ForgeItem(String code, String name, ForgeSlot slot, @ApiNullable HunterClass hunterClass,
                             List<ForgeCost> costs) {
 
-        static ForgeItem of(ForgeItemDef def) {
+        public static ForgeItem of(ForgeItemDef def) {
             List<ForgeCost> costs = new ArrayList<>();
             for (int level = 1; level <= ForgeItemDef.LEVELS; level++) {
                 Map<String, Integer> materials = new LinkedHashMap<>();
@@ -88,7 +88,7 @@ public final class CatalogDtos {
     /** Зелье лаборатории: 2 растения, одинаково на всех уровнях. */
     public record LabPotion(String code, String name, List<LabUnit> units) {
 
-        static LabPotion of(LabPotionDef def) {
+        public static LabPotion of(LabPotionDef def) {
             return new LabPotion(def.code(), def.name(), def.units().stream()
                     .map(unit -> new LabUnit(List.copyOf(unit), unit.size() == Plant.values().length))
                     .toList());

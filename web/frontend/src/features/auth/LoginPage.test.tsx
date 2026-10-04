@@ -15,7 +15,14 @@ function problem(status: number, code: string, extra: Record<string, unknown> = 
   );
 }
 
-const alice: UserView = { id: 7, login: 'alice', displayName: 'Алиса', passwordSet: true };
+const alice: UserView = {
+  id: 7,
+  login: 'alice',
+  displayName: 'Алиса',
+  passwordSet: true,
+  admin: false,
+  expansions: ['NIGHTMARE', 'FEATHER', 'POISON', 'ICE'],
+};
 
 function signIn(user: UserView = alice): SignInResponse {
   return { user, device: { id: userMe.device.id, userAgent: 'Chrome, Android' } };
@@ -440,5 +447,42 @@ describe('Главное меню и настройки', () => {
     expect(screen.queryByTestId('settings-devices')).not.toBeInTheDocument();
     expect(screen.queryByTestId('settings-username')).not.toBeInTheDocument();
     expect(screen.queryByTestId('settings-password')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('settings-expansions')).not.toBeInTheDocument();
+  });
+});
+
+describe('Дополнения в настройках', () => {
+  it('по умолчанию отмечены все; снять «Перо» — уходят остальные три, отметка снята', async () => {
+    // подготовка
+    const bodies: unknown[] = [];
+    server.use(
+      signedIn(),
+      http.get('*/api/v1/auth/devices', () => HttpResponse.json([])),
+      http.put('*/api/v1/auth/me/expansions', async ({ request }) => {
+        const body = (await request.json()) as { expansions: string[] };
+        bodies.push(body);
+        return HttpResponse.json({ ...userMe, user: { ...alice, expansions: body.expansions } });
+      }),
+    );
+    renderRoutes(routes, '/settings');
+    const user = userEvent.setup();
+    const checkbox = async (code: string) =>
+      (await screen.findAllByTestId('settings-expansion')).find((node) => node.dataset.expansion === code)!;
+
+    // проверка
+    expect((await screen.findAllByTestId('settings-expansion')).map((node) => (node as HTMLInputElement).checked)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+
+    // вызов
+    await user.click(await checkbox('FEATHER'));
+
+    // проверка
+    await waitFor(() => expect(bodies).toEqual([{ expansions: ['NIGHTMARE', 'POISON', 'ICE'] }]));
+    await waitFor(async () => expect(await checkbox('FEATHER')).not.toBeChecked());
+    expect(await screen.findByText('Дополнения сохранены.')).toBeInTheDocument();
   });
 });

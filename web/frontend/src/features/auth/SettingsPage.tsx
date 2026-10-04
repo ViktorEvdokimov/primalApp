@@ -1,4 +1,4 @@
-import { Alert, Button, Divider, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Checkbox, Divider, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -10,10 +10,11 @@ import {
   useLogout,
   useRevokeDevice,
   useRevokeOtherDevices,
+  useUpdateExpansions,
   useUpdateLogin,
   useUpdateMe,
 } from '../../api/generated/auth/auth';
-import type { DeviceSummary, MeResponse, UserView } from '../../api/generated/primal.schemas';
+import type { DeviceSummary, ExpansionsRequestExpansionsItem, MeResponse, UserView } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
 import { authErrorText, LOGIN_MAX, loginError, PASSWORD_MAX, passwordError, repeatError } from './credentials';
 import { DevicesList } from './DevicesList';
@@ -102,6 +103,8 @@ function Settings({ me }: { me: MeResponse }) {
           <Divider />
           <PasswordSection user={me.user} onSaved={setNotice} />
           <Divider />
+          <ExpansionsSection user={me.user} onSaved={setNotice} />
+          <Divider />
           <Title order={3}>{ru.settings.devices}</Title>
           <DevicesList
             devices={devices.data ?? []}
@@ -176,6 +179,56 @@ function LoginSection({ user, onSaved }: SectionProps) {
       <Button variant="light" loading={updateLogin.isPending} onClick={() => void save()} data-testid="settings-username-save">
         {ru.settings.loginSave}
       </Button>
+    </Stack>
+  );
+}
+
+/** Порядок и названия — как в правилах: «Кошмар», «Перо», «Яд», «Лёд». */
+const EXPANSIONS = Object.keys(ru.expansions) as ExpansionsRequestExpansionsItem[];
+
+/**
+ * Дополнения игрока (qa № 138): по умолчанию все. Задания убранного дополнения не показываются, а условие
+ * «есть дополнение» в наградах проверяется по дополнениям владельца кампании.
+ */
+function ExpansionsSection({ user, onSaved }: SectionProps) {
+  const queryClient = useQueryClient();
+  const update = useUpdateExpansions();
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = async (expansion: ExpansionsRequestExpansionsItem, enabled: boolean) => {
+    setError(null);
+    const next = EXPANSIONS.filter((code) => (code === expansion ? enabled : user.expansions.includes(code)));
+    try {
+      const updated = await update.mutateAsync({ data: { expansions: next } });
+      queryClient.setQueryData(ME_QUERY_KEY, updated);
+      onSaved(ru.settings.expansionsSaved);
+    } catch (cause) {
+      setError(authErrorText(cause));
+    }
+  };
+
+  return (
+    <Stack gap="xs" data-testid="settings-expansions">
+      <Title order={3}>{ru.settings.expansions}</Title>
+      <Text size="sm" c="dimmed">
+        {ru.settings.expansionsHint}
+      </Text>
+      {error !== null && (
+        <Alert color="red" data-testid="settings-expansions-error">
+          {error}
+        </Alert>
+      )}
+      {EXPANSIONS.map((code) => (
+        <Checkbox
+          key={code}
+          label={ru.expansions[code]}
+          checked={user.expansions.includes(code)}
+          disabled={update.isPending}
+          onChange={(event) => void toggle(code, event.currentTarget.checked)}
+          data-testid="settings-expansion"
+          data-expansion={code}
+        />
+      ))}
     </Stack>
   );
 }

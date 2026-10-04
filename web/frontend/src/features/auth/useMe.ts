@@ -27,6 +27,16 @@ export function useMe() {
   };
 }
 
+/**
+ * Видно ли задание этому игроку (qa № 138): базовая игра — всегда; дополнение — если оно включено в настройках
+ * аккаунта. Гостю (аккаунта нет) и до загрузки «Кто я» видны все.
+ */
+export function useQuestVisible(): (expansion: string | null) => boolean {
+  const { me } = useMe();
+  const enabled = me?.user?.expansions;
+  return (expansion) => expansion === null || enabled === undefined || (enabled as string[]).includes(expansion);
+}
+
 /** Подпись без своего имени: «Игрок» или «Гость» — логин другим не показывается. */
 export function defaultNameOf(me: MeResponse): string {
   return me.user === null ? ru.settings.guestName : ru.settings.playerName;

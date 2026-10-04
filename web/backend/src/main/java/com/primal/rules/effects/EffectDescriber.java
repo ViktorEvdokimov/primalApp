@@ -4,6 +4,7 @@ import com.primal.rules.effects.Condition.All;
 import com.primal.rules.effects.Condition.Any;
 import com.primal.rules.effects.Condition.ChapterIn;
 import com.primal.rules.effects.Condition.HasAchievement;
+import com.primal.rules.effects.Condition.HasExpansion;
 import com.primal.rules.effects.Condition.Not;
 import com.primal.rules.effects.Condition.QuestAvailable;
 import com.primal.rules.effects.Effect.Conditional;
@@ -79,6 +80,7 @@ public final class EffectDescriber {
             case HasAchievement has -> "есть достижение " + quoted(has.achievement());
             case ChapterIn in -> "текущая глава " + joinWords(in.chapters().stream().map(String::valueOf).toList(), "или");
             case QuestAvailable available -> "задание " + available.quest() + " доступно";
+            case HasExpansion has -> "есть дополнение «" + has.expansion().displayName() + "»";
             case Not not -> negated(not.condition());
             case All all when onlyAchievements(all.conditions()) -> "есть достижения " + joinWords(quotedAll(all.conditions()), "и");
             case Any any when onlyAchievements(any.conditions()) -> "есть достижение " + joinWords(quotedAll(any.conditions()), "или");
@@ -91,6 +93,7 @@ public final class EffectDescriber {
         return switch (condition) {
             case HasAchievement has -> "нет достижения " + quoted(has.achievement());
             case QuestAvailable available -> "задание " + available.quest() + " ещё не доступно";
+            case HasExpansion has -> "нет дополнения «" + has.expansion().displayName() + "»";
             case All all when onlyAchievements(all.conditions()) ->
                     "нет хотя бы одного из достижений " + joinWords(quotedAll(all.conditions()), "и");
             case Any any when onlyAchievements(any.conditions()) ->

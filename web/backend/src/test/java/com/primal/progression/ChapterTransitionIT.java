@@ -242,16 +242,16 @@ class ChapterTransitionIT extends IntegrationTest {
         }
 
         @Test
-        @DisplayName("задание 2 истекает при переходе в главу 3: условие «текущая глава 1 или 2» — по главе до перехода")
-        void questTwoCondition() throws Exception {
+        @DisplayName("задание 2 истекает при переходе в главу 3 — добавляется задание 31 (qa № 139)")
+        void questTwo() throws Exception {
             // подготовка
             pending(2);
             quest(2, "OPEN");
 
             // вызов и проверка
-            preview("").andExpect(jsonPath("$.expireQuests[0].consequences", contains("добавить задание 5")));
+            preview("").andExpect(jsonPath("$.expireQuests[0].consequences", contains("добавить задание 31")));
             submit("ACCEPT", "{}", version()).andExpect(status().isOk());
-            assertThat(questStatus(5)).isEqualTo("OPEN");
+            assertThat(questStatus(31)).isEqualTo("OPEN");
         }
 
         @Test

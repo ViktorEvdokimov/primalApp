@@ -96,6 +96,9 @@ final class CatalogIntegrity {
                 case Condition.ChapterIn in -> in.chapters().stream()
                         .filter(chapter -> chapter < 0 || chapter > CHAPTERS)
                         .forEach(chapter -> problems.add(where + ": глава " + chapter + " вне 0–" + CHAPTERS));
+                case Condition.HasExpansion ignored -> {
+                    // дополнение проверено при разборе: только значения Expansion
+                }
                 case Condition.Not not -> condition(not.condition(), where);
                 case Condition.All all -> all.conditions().forEach(c -> condition(c, where));
                 case Condition.Any any -> any.conditions().forEach(c -> condition(c, where));

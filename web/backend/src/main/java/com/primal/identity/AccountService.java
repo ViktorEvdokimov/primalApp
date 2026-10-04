@@ -6,7 +6,9 @@ import com.primal.common.ratelimit.RateLimiter;
 import com.primal.common.ratelimit.RateLimiter.Limit;
 import com.primal.identity.PrimalPrincipal.GuestPrincipal;
 import com.primal.identity.PrimalPrincipal.UserPrincipal;
+import com.primal.rules.model.Expansion;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,8 +40,11 @@ public class AccountService {
     private final DeviceService devices;
     private final PasswordEncoder encoder;
     private final RateLimiter rateLimiter;
+    private final ExpansionSettings expansions;
 
-    AccountService(AppUserRepository users, DeviceService devices, PasswordEncoder encoder, RateLimiter rateLimiter) {
+    AccountService(AppUserRepository users, DeviceService devices, PasswordEncoder encoder, RateLimiter rateLimiter,
+                   ExpansionSettings expansions) {
+        this.expansions = expansions;
         this.users = users;
         this.devices = devices;
         this.encoder = encoder;
@@ -120,6 +125,14 @@ public class AccountService {
         }
         PasswordAuthService.checkPasswordLength(newPassword, "newPassword");
         user.setPasswordHash(encoder.encode(newPassword));
+    }
+
+    /** Дополнения игрока (qa № 138): только у аккаунта. */
+    @Transactional
+    public Me changeExpansions(PrimalPrincipal principal, Set<Expansion> enabled) {
+        AppUser user = account(principal);
+        expansions.set(user.getId(), enabled);
+        return me(principal);
     }
 
     private AppUser account(PrimalPrincipal principal) {

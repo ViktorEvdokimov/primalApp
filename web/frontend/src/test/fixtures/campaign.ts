@@ -36,7 +36,7 @@ export function hunterFixture(overrides: Partial<HunterSheet> = {}): HunterSheet
 export function questItem(number: number, closedInChapter: number | null = null) {
   const item = questsFixture.find((candidate) => candidate.number === number);
   if (item === undefined) throw new Error(`Нет задания ${number} в questsFixture`);
-  return { number, name: item.name, boss: item.boss, closedInChapter };
+  return { number, name: item.name, boss: item.boss, expansion: item.expansion, closedInChapter };
 }
 
 /** Лист новой кампании Алисы: пролог, Дареон «Боец» и Мира. */

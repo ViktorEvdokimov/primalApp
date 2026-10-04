@@ -1,6 +1,8 @@
 import { Button, Card, Group, Stack, Text, Title } from '@mantine/core';
 import type { QuestItem } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
+import { useQuestVisible } from '../auth/useMe';
+import { ExpansionBadge } from '../../shared/ui/ExpansionBadge';
 import { BossLabel } from '../campaign/BossLabel';
 
 interface QuestSelectProps {
@@ -12,7 +14,10 @@ interface QuestSelectProps {
  * Выбор задания перед боем кампании (`QuestSelectDialog` app): открытые задания и «Продолжить без задания».
  * В прологе и главе 11 выбора нет — подготовка открывается сразу.
  */
-export function QuestSelect({ quests, onSelect }: QuestSelectProps) {
+export function QuestSelect({ quests: all, onSelect }: QuestSelectProps) {
+  // Задания дополнений, убранных в настройках, к выбору не предлагаются (qa № 138)
+  const visible = useQuestVisible();
+  const quests = all.filter((quest) => visible(quest.expansion));
   return (
     <Stack gap="md" data-testid="quest-select">
       <div>
@@ -38,7 +43,10 @@ export function QuestSelect({ quests, onSelect }: QuestSelectProps) {
           data-number={quest.number}
         >
           <Group justify="space-between" wrap="nowrap">
-            <Text fw={600}>{ru.progression.quest(quest.number, quest.name)}</Text>
+            <Group gap="xs" wrap="nowrap">
+              <Text fw={600}>{ru.progression.quest(quest.number, quest.name)}</Text>
+              <ExpansionBadge expansion={quest.expansion} />
+            </Group>
             <BossLabel boss={quest.boss} />
           </Group>
         </Card>

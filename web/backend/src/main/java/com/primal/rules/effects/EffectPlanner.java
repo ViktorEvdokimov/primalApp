@@ -4,6 +4,7 @@ import com.primal.rules.effects.Condition.All;
 import com.primal.rules.effects.Condition.Any;
 import com.primal.rules.effects.Condition.ChapterIn;
 import com.primal.rules.effects.Condition.HasAchievement;
+import com.primal.rules.effects.Condition.HasExpansion;
 import com.primal.rules.effects.Condition.Not;
 import com.primal.rules.effects.Condition.QuestAvailable;
 import com.primal.rules.effects.Effect.Conditional;
@@ -61,6 +62,7 @@ public final class EffectPlanner {
             case HasAchievement has -> facts.achievements().contains(has.achievement());
             case ChapterIn in -> in.chapters().contains(facts.chapter());
             case QuestAvailable available -> facts.availableQuests().contains(available.quest());
+            case HasExpansion has -> facts.expansions().contains(has.expansion());
             case Not not -> !holds(not.condition(), facts);
             case All all -> all.conditions().stream().allMatch(c -> holds(c, facts));
             case Any any -> any.conditions().stream().anyMatch(c -> holds(c, facts));

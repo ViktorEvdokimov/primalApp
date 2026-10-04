@@ -41,6 +41,11 @@ export function MainMenuPage() {
         <Button component={Link} to="/campaigns" size="lg" variant="light" data-testid="menu-campaigns">
           {ru.menu.campaigns}
         </Button>
+        {me?.user?.admin === true && (
+          <Button component={Link} to="/admin" size="lg" variant="default" data-testid="menu-admin">
+            {ru.admin.menu}
+          </Button>
+        )}
       </Stack>
       {!isLoading && (
         <Group justify="space-between">

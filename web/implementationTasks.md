@@ -1418,6 +1418,81 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 
 ---
 
+## Задача 9.5: Администратор и правка наград; дополнения заданий ✅ ВЫПОЛНЕНО (04.10.2026)
+
+**Объём:** L · **Зависит от:** 9.4
+
+> Роль администратора (только скриптом), редактор наград заданий и глав формой (с условиями), правки поверх
+> YAML; свойство «дополнение» у заданий по номеру. Решения — `qa.md` № 137.
+
+**Файлы:**
+- БД: `V8__admin_and_catalog_overrides.sql` (`app_admin`, `quest_override`, `chapter_override`, «Кошмар»)
+- Скрипт: `deploy/grant-admin.sh`
+- Бэкенд: `identity.Admins`, `AuthController.UserView.admin`, `catalog.CatalogEditor`, `CatalogService`
+  (исходный и действующий каталог), модуль `admin` (`AdminController`, `AdminService`), `Expansion.NIGHTMARE`,
+  `quests.yaml` (дополнение по номеру), `CampaignSheetDto.QuestItem.expansion`
+- Фронтенд: `features/admin/{AdminPage, EffectEditor, effects, RequireAdmin}` (ленивая загрузка), пункт меню,
+  маршрут `/admin`, `shared/ui/ExpansionBadge`, `ru.admin`, `ru.expansions`
+- Тесты: `AdminIT`, `QuestCatalogTest.expansionByNumber`, `SchemaIT`; `effects.test.ts`, `AdminPage.test.tsx`,
+  `CampaignSheetPage.test.tsx`; E2E `test_admin.py`, `pages/admin_page.py`
+- Документация: `api.md` §3, §9.4; `data-model.md`; `architecture.md` §3; `behavior.md` §7.5, §12.1;
+  `setup.md` §3.13
+
+**Тесты:** бэкенд 343, фронтенд 387, E2E 70 — зелёные.
+
+**Критерии приёмки:** обычный игрок не видит раздела ни в меню, ни по адресу, API отвечает 404; администратор
+меняет награды задания формой (в том числе условие), игроки получают новые награды сразу; «Вернуть исходные»
+возвращает YAML; скрипт назначает и снимает роль.
+
+---
+
+## Задача 9.6: Цены кузни и лаборатории, монстры; дополнения игрока ✅ ВЫПОЛНЕНО (04.10.2026)
+
+**Объём:** M · **Зависит от:** 9.5
+
+> Администратор правит цены кузни и лаборатории и стойки монстров; игрок выбирает свои дополнения в
+> настройках — задания остальных скрыты; условие наград «есть дополнение». Решения — `qa.md` № 138.
+
+**Файлы:**
+- БД: `V9__expansions_and_catalog_overrides.sql` (`user_hidden_expansion`, `forge_override`, `lab_override`,
+  `boss_override`)
+- Бэкенд: `CatalogEditor` (цены, стойки), `CatalogLoader` (`parseCosts`, `parseLabCost`, `parseBossStances`),
+  `AdminController`/`AdminService` (`/admin/forge`, `/admin/lab`, `/admin/bosses`), `Condition.HasExpansion`,
+  `CampaignFacts.expansions`, `PlanApplier.facts` (дополнения владельца), `Expansion.displayName`,
+  `identity.ExpansionSettings`, `PUT /auth/me/expansions`, `CatalogController` (`no-cache` + `ETag`)
+- Фронтенд: `features/admin/{PriceEditors, BossEditor, adminShared, adminHooks}`, условие «Есть дополнение» в
+  `EffectEditor`, раздел «Дополнения» в настройках, `useQuestVisible` (`QuestsTab`, `QuestEditor`,
+  `QuestSelect`), кузница и лаборатория перезапрашивают цены
+- Тесты: `AdminIT` (цены, монстры, условие), `ExpansionSettingsIT`, `ExpansionConditionTest`,
+  `BattleResultIT.Expansions`, `CatalogApiIT`, `SchemaIT`; `AdminPage.test.tsx`, `LoginPage.test.tsx`
+  (настройки), `CampaignSheetPage.test.tsx`; E2E `test_admin.py`
+- Документация: `api.md` §3, §9.4; `data-model.md` §4.3 и таблицы V9; `behavior.md` §5.2, §12.1
+
+**Тесты:** бэкенд 356, фронтенд 393, E2E 73 — зелёные.
+
+**Доработка (04.10.2026, `qa.md` № 139):** правки заданий 2, 12, 25 перенесены в `quests.yaml` как награды по
+умолчанию, `V10__quest_defaults_2_12_25.sql` удаляет их строки правок; сверка с app (`AppSeeds`,
+`QuestCatalogTest.Parity`) снова работает в Windows. Тесты: бэкенд 359 — зелёные.
+
+**Критерии приёмки:** новая цена кузни сразу видна в кузнице и списывается при создании; стойки монстра — в
+новых боях; игрок без «Пера» не видит его заданий; «если есть дополнение» решается по владельцу кампании.
+
+---
+
+## Задача 9.7: Статистика для администратора ✅ ВЫПОЛНЕНО (04.10.2026)
+
+**Объём:** S · **Зависит от:** 9.5
+
+> Количество учётных записей, кампаний и сыгранных боёв кампаний — всего, за 30 и 7 дней. Решения — `qa.md` № 140.
+
+**Файлы:** `admin.AdminStatsService`, `AdminController` (`GET /admin/stats`); `features/admin/StatsView`,
+раздел «Статистика» в `AdminPage`, `ru.admin.stats*`; тесты `AdminIT.Stats`, `AdminPage.test.tsx`, E2E
+`test_admin.py::test_stats`; документация `api.md` §9.4, `behavior.md` §12.1.
+
+**Тесты:** бэкенд 361, фронтенд 394, E2E 74 — зелёные.
+
+---
+
 ## Приоритет выполнения
 
 | Порядок | Задачи | Результат |
@@ -1431,4 +1506,4 @@ SPA на React + TypeScript с маршрутами-заглушками из `a
 | 7 | 6.1 → 6.2 → 6.3 | Совместная игра по ссылкам |
 | 8 | 7.1, 7.2 (можно раньше — после 2.1), 7.3 → 7.4 → 7.5 | Готово к работе на сервере |
 | 9 | 8.1 → 8.2 → 8.3 | Вход по логину и паролю вместо кода из письма |
-| 10 | 9.1 → 9.2 → 9.3 → 9.4 | Кузница, лаборатория, инвентарь и обмен ресурсов; последствия истечения заданий |
+| 10 | 9.1 → 9.2 → 9.3 → 9.4 → 9.5 → 9.6 → 9.7 | Кузница, лаборатория, инвентарь и обмен ресурсов; последствия истечения заданий; администрирование каталога; дополнения игрока |

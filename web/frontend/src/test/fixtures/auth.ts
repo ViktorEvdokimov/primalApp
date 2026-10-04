@@ -3,7 +3,7 @@ import type { MeResponse } from '../../api/generated/primal.schemas';
 /** Вошедший пользователь для тестов экранов. */
 export const userMe: MeResponse = {
   kind: 'USER',
-  user: { id: 7, login: 'alice', displayName: 'Алиса', passwordSet: true },
+  user: { id: 7, login: 'alice', displayName: 'Алиса', passwordSet: true, admin: false, expansions: ['NIGHTMARE', 'FEATHER', 'POISON', 'ICE'] },
   device: { id: 'a41f0000-0000-4000-8000-000000000001', displayName: null },
 };
 

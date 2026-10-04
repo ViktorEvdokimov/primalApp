@@ -32,6 +32,7 @@ public class CampaignViews {
     /** Задание каталога; {@code closedInChapter} — у выполненного или истёкшего задания кампании. */
     public QuestItem quest(int number, Integer closedInChapter) {
         QuestDef def = catalog.quest(number).orElseThrow();
-        return new QuestItem(def.number(), def.name(), boss(def.bossCode()), closedInChapter);
+        return new QuestItem(def.number(), def.name(), boss(def.bossCode()),
+                def.expansion() == null ? null : def.expansion().name(), closedInChapter);
     }
 }

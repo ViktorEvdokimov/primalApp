@@ -123,13 +123,13 @@ class CatalogApiIT extends IntegrationTest {
     class Caching {
 
         @Test
-        @DisplayName("ETag — контрольная сумма каталога, кэш на час")
+        @DisplayName("ETag — контрольная сумма каталога; каждый раз проверка по ETag — правки администратора видны сразу")
         void etagAndCacheControl() throws Exception {
             // вызов и проверка
             mockMvc.perform(get("/api/v1/catalog/bosses"))
                     .andExpect(status().isOk())
                     .andExpect(header().string(HttpHeaders.ETAG, "\"" + catalog.checksum() + "\""))
-                    .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "max-age=3600, public"));
+                    .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "no-cache, public"));
         }
 
         @Test

@@ -35,7 +35,8 @@ const CATALOG_STALE_MS = 60 * 60 * 1000;
 export function LabPage() {
   const campaignId = Number(useParams().id);
   const { sheet, ...actions } = useCampaignSheet(campaignId);
-  const lab = useLab({ query: { staleTime: CATALOG_STALE_MS } });
+  // Цены может изменить администратор (qa № 138): при каждом открытии — проверка по ETag
+  const lab = useLab({ query: { staleTime: 0 } });
   const dictionaries = useDictionaries({ query: { staleTime: CATALOG_STALE_MS } });
   useLiveUpdates(campaignId);
 

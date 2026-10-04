@@ -16,7 +16,6 @@ import com.primal.rules.model.Material;
 import com.primal.rules.model.Plant;
 import com.primal.rules.model.SkillBranch;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.CacheControl;
@@ -35,7 +34,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/catalog")
 public class CatalogController {
 
-    private static final CacheControl CACHE = CacheControl.maxAge(Duration.ofHours(1)).cachePublic();
+    /**
+     * Каждый раз — проверка по ETag (ответ 304 без тела): правки администратора (награды, цены кузни и
+     * лаборатории) должны доходить до игроков сразу, а не через час.
+     */
+    private static final CacheControl CACHE = CacheControl.noCache().cachePublic();
 
     private static final List<DifficultyRange> DIFFICULTY_BY_CHAPTER = List.of(
             new DifficultyRange(List.of(0), 0),

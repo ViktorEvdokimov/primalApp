@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { RouteObject } from 'react-router';
+import { RequireAdmin } from '../features/admin/RequireAdmin';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
 import { SettingsPage } from '../features/auth/SettingsPage';
@@ -64,6 +65,7 @@ export const routes: RouteObject[] = [
         // Кампании и настройки — после входа (doc/architecture.md §5.1)
         return { path: screen.path, element: isProtectedPath(screen.path) ? <RequireAuth>{page}</RequireAuth> : page };
       }),
+      { path: '/admin', element: <RequireAdmin /> },
       { path: '*', element: <PageStub title={ru.pages.notFound} testId="page-not-found" /> },
     ],
   },

@@ -1,3 +1,4 @@
+export * from './admin/admin';
 export * from './auth/auth';
 export * from './battles/battles';
 export * from './campaigns/campaigns';

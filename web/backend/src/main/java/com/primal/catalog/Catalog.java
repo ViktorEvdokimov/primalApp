@@ -18,6 +18,12 @@ public record Catalog(
         List<LabPotionDef> lab,
         String checksum) {
 
+    /** Каталог с заменёнными боссами, заданиями, главами и ценами (правки администратора) и новой контрольной суммой. */
+    Catalog with(List<BossDef> bosses, List<QuestDef> quests, List<ChapterDef> chapters, List<ForgeItemDef> forge,
+                 List<LabPotionDef> lab, String checksum) {
+        return new Catalog(bosses, achievements, quests, chapters, forge, lab, checksum);
+    }
+
     public Optional<LabPotionDef> labPotion(String code) {
         return lab.stream().filter(potion -> potion.code().equals(code)).findFirst();
     }

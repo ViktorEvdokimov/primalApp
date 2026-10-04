@@ -2,8 +2,11 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
 
-/** Справочники для экспедиции без сети: отдаются из кэша и обновляются в фоне (doc/architecture.md §5). */
-const OFFLINE_CATALOG = new Set(['/api/v1/catalog/bosses', '/api/v1/catalog/dictionaries']);
+/**
+ * Справочники для экспедиции без сети: отдаются из кэша и обновляются в фоне (doc/architecture.md §5).
+ * Только регулярное выражение: функция-шаблон попадает в sw.js текстом, без переменных этого файла (qa № 138).
+ */
+const OFFLINE_CATALOG = /\/api\/v1\/catalog\/(bosses|dictionaries)$/;
 
 export default defineConfig({
   plugins: [
@@ -40,7 +43,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: ({ url, sameOrigin }) => sameOrigin && OFFLINE_CATALOG.has(url.pathname),
+            urlPattern: OFFLINE_CATALOG,
             handler: 'StaleWhileRevalidate',
             options: { cacheName: 'primal-catalog' },
           },

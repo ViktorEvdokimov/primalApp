@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useCompleteQuest, useReopenQuest } from '../../api/generated/campaigns/campaigns';
 import type { QuestItem, QuestLists } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
+import { useQuestVisible } from '../auth/useMe';
+import { ExpansionBadge } from '../../shared/ui/ExpansionBadge';
 import { BossLabel } from './BossLabel';
 import { QuestEditor } from './QuestEditor';
 import type { SheetActions } from './useCampaignSheet';
@@ -19,7 +21,14 @@ interface QuestsTabProps {
  * Задания кампании: открытые с «Выполнено», выполненные серым с «Отмена», истёкшие серым; редактор открытых.
  * «Выполнено» открывает только задания из наград победы — без ресурсов и достижений (qa 70).
  */
-export function QuestsTab({ campaignId, chapter, quests, actions }: QuestsTabProps) {
+export function QuestsTab({ campaignId, chapter, quests: all, actions }: QuestsTabProps) {
+  // Задания дополнений, убранных в настройках, не показываются (qa № 138); в кампании они остаются
+  const visible = useQuestVisible();
+  const quests: QuestLists = {
+    open: all.open.filter((quest) => visible(quest.expansion)),
+    completed: all.completed.filter((quest) => visible(quest.expansion)),
+    expired: all.expired.filter((quest) => visible(quest.expansion)),
+  };
   const complete = useCompleteQuest();
   const reopen = useReopenQuest();
   const [editing, setEditing] = useState(false);
@@ -69,7 +78,10 @@ export function QuestsTab({ campaignId, chapter, quests, actions }: QuestsTabPro
         <Card key={quest.number} withBorder padding="sm" data-testid="quest-open" data-number={quest.number}>
           <Group justify="space-between" wrap="nowrap">
             <Stack gap={2}>
-              <Text fw={600}>{`${quest.number}. ${quest.name}`}</Text>
+              <Group gap="xs" wrap="nowrap">
+                <Text fw={600}>{`${quest.number}. ${quest.name}`}</Text>
+                <ExpansionBadge expansion={quest.expansion} />
+              </Group>
               <BossLabel boss={quest.boss} />
             </Stack>
             <Button size="xs" loading={busy(quest.number)} onClick={() => onComplete(quest)} data-testid="quest-complete">
@@ -111,7 +123,7 @@ export function QuestsTab({ campaignId, chapter, quests, actions }: QuestsTabPro
         </Stack>
       )}
 
-      <QuestEditor campaignId={campaignId} quests={quests} opened={editing} onClose={() => setEditing(false)} actions={actions} />
+      <QuestEditor campaignId={campaignId} quests={all} opened={editing} onClose={() => setEditing(false)} actions={actions} />
     </Stack>
   );
 }

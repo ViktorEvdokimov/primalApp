@@ -20,6 +20,8 @@ export interface QuestItem {
   name: string;
   boss: CampaignBoss;
   /** @nullable */
+  expansion: string | null;
+  /** @nullable */
   closedInChapter: number | null;
 }
 
@@ -65,18 +67,256 @@ export const MeResponseKind = {
   GUEST: 'GUEST',
 } as const;
 
+export type UserViewExpansionsItem = typeof UserViewExpansionsItem[keyof typeof UserViewExpansionsItem];
+
+
+export const UserViewExpansionsItem = {
+  NIGHTMARE: 'NIGHTMARE',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
 export interface UserView {
   id: number;
   login: string;
   /** @nullable */
   displayName: string | null;
   passwordSet: boolean;
+  admin: boolean;
+  expansions: UserViewExpansionsItem[];
 }
 
 export interface MeResponse {
   kind: MeResponseKind;
   user: UserView | null;
   device: MeDevice;
+}
+
+export type ExpansionsRequestExpansionsItem = typeof ExpansionsRequestExpansionsItem[keyof typeof ExpansionsRequestExpansionsItem];
+
+
+export const ExpansionsRequestExpansionsItem = {
+  NIGHTMARE: 'NIGHTMARE',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface ExpansionsRequest {
+  expansions: ExpansionsRequestExpansionsItem[];
+}
+
+export type QuestEffectsRequestVictoryItem = {[key: string]: unknown};
+
+export type QuestEffectsRequestExpiredItem = {[key: string]: unknown};
+
+export interface QuestEffectsRequest {
+  /** Награды за победу */
+  victory: QuestEffectsRequestVictoryItem[];
+  /** Последствия невыполненного задания */
+  expired: QuestEffectsRequestExpiredItem[];
+}
+
+export type AdminQuestVictoryItem = {[key: string]: unknown};
+
+export type AdminQuestExpiredItem = {[key: string]: unknown};
+
+export interface AdminQuest {
+  number: number;
+  name: string;
+  bossCode: string;
+  bossName: string;
+  /** @nullable */
+  expansion: string | null;
+  victory: AdminQuestVictoryItem[];
+  expired: AdminQuestExpiredItem[];
+  victoryText: string[];
+  expiredText: string[];
+  edited: boolean;
+}
+
+export type LabUnitOptionsItem = typeof LabUnitOptionsItem[keyof typeof LabUnitOptionsItem];
+
+
+export const LabUnitOptionsItem = {
+  NILLEA: 'NILLEA',
+  TARMARET: 'TARMARET',
+  ALBALACEA: 'ALBALACEA',
+  MELLIS: 'MELLIS',
+  ANTHEMON: 'ANTHEMON',
+  SELICORNIA: 'SELICORNIA',
+} as const;
+
+export interface LabUnit {
+  options: LabUnitOptionsItem[];
+  any: boolean;
+}
+
+export interface LabCostRequest {
+  /**
+     * @minItems 1
+     * @maxItems 4
+     */
+  units: LabUnit[];
+}
+
+export interface AdminLabPotion {
+  code: string;
+  name: string;
+  units: LabUnit[];
+  edited: boolean;
+}
+
+export type ForgeCostRequestCostsItem = {[key: string]: number};
+
+export interface ForgeCostRequest {
+  /**
+     * @minItems 3
+     * @maxItems 3
+     */
+  costs: ForgeCostRequestCostsItem[];
+}
+
+export type AdminForgeItemElement = typeof AdminForgeItemElement[keyof typeof AdminForgeItemElement];
+
+
+export const AdminForgeItemElement = {
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export type AdminForgeItemSlot = typeof AdminForgeItemSlot[keyof typeof AdminForgeItemSlot];
+
+
+export const AdminForgeItemSlot = {
+  GREATSWORD: 'GREATSWORD',
+  GREATBOW: 'GREATBOW',
+  HAMMER: 'HAMMER',
+  SWORD_AND_SHIELD: 'SWORD_AND_SHIELD',
+  DUAL_BLADES: 'DUAL_BLADES',
+  GUN: 'GUN',
+  SPEAR: 'SPEAR',
+  DRUM: 'DRUM',
+  HELMET: 'HELMET',
+  ARMOR: 'ARMOR',
+  ITEM: 'ITEM',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminForgeItemHunterClass = typeof AdminForgeItemHunterClass[keyof typeof AdminForgeItemHunterClass] | null;
+
+
+export const AdminForgeItemHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export type ForgeCostMaterials = {[key: string]: number};
+
+export interface ForgeCost {
+  level: number;
+  materials: ForgeCostMaterials;
+}
+
+export interface AdminForgeItem {
+  code: string;
+  element: AdminForgeItemElement;
+  name: string;
+  slot: AdminForgeItemSlot;
+  /** @nullable */
+  hunterClass: AdminForgeItemHunterClass;
+  costs: ForgeCost[];
+  edited: boolean;
+}
+
+export type ChapterEffectsRequestEffectsItem = {[key: string]: unknown};
+
+export interface ChapterEffectsRequest {
+  /** Эффекты главы */
+  effects: ChapterEffectsRequestEffectsItem[];
+}
+
+export type AdminChapterEffectsItem = {[key: string]: unknown};
+
+export interface AdminChapter {
+  chapter: number;
+  effects: AdminChapterEffectsItem[];
+  text: string[];
+  edited: boolean;
+}
+
+export type StanceInputMode = typeof StanceInputMode[keyof typeof StanceInputMode];
+
+
+export const StanceInputMode = {
+  HEALTH: 'HEALTH',
+  ON_DEMAND: 'ON_DEMAND',
+  FINAL: 'FINAL',
+} as const;
+
+export interface StanceInput {
+  /** @nullable */
+  toughnessPerHunter: number | null;
+  mode: StanceInputMode;
+  /** @nullable */
+  atHealth: number | null;
+}
+
+export type BossStancesRequestDifficulties = {[key: string]: StanceInput[]};
+
+export interface BossStancesRequest {
+  difficulties: BossStancesRequestDifficulties;
+}
+
+export type StanceChangeMode = typeof StanceChangeMode[keyof typeof StanceChangeMode];
+
+
+export const StanceChangeMode = {
+  HEALTH: 'HEALTH',
+  ON_DEMAND: 'ON_DEMAND',
+  FINAL: 'FINAL',
+} as const;
+
+export interface StanceChange {
+  mode: StanceChangeMode;
+  /** @nullable */
+  atHealth: number | null;
+}
+
+export interface Stance {
+  stance: number;
+  /** @nullable */
+  toughnessPerHunter: number | null;
+  stanceChange: StanceChange;
+}
+
+export type AdminBossDifficulties = {[key: string]: Stance[]};
+
+export interface AdminBoss {
+  code: string;
+  name: string;
+  /** @nullable */
+  element: string | null;
+  /** @nullable */
+  expansion: string | null;
+  difficulties: AdminBossDifficulties;
+  edited: boolean;
 }
 
 export interface JoinRequest {
@@ -970,23 +1210,6 @@ export interface Quest {
   expired: Rewards;
 }
 
-export type LabUnitOptionsItem = typeof LabUnitOptionsItem[keyof typeof LabUnitOptionsItem];
-
-
-export const LabUnitOptionsItem = {
-  NILLEA: 'NILLEA',
-  TARMARET: 'TARMARET',
-  ALBALACEA: 'ALBALACEA',
-  MELLIS: 'MELLIS',
-  ANTHEMON: 'ANTHEMON',
-  SELICORNIA: 'SELICORNIA',
-} as const;
-
-export interface LabUnit {
-  options: LabUnitOptionsItem[];
-  any: boolean;
-}
-
 export interface LabPotion {
   code: string;
   name: string;
@@ -1041,13 +1264,6 @@ export const ForgeItemHunterClass = {
   DRUSK: 'DRUSK',
   ZARAIA: 'ZARAIA',
 } as const;
-
-export type ForgeCostMaterials = {[key: string]: number};
-
-export interface ForgeCost {
-  level: number;
-  materials: ForgeCostMaterials;
-}
 
 export interface ForgeItem {
   code: string;
@@ -1112,28 +1328,6 @@ export interface Chapter {
   finalBattle: BossRef | null;
   rules: string[];
   decisions: DecisionView[];
-}
-
-export type StanceChangeMode = typeof StanceChangeMode[keyof typeof StanceChangeMode];
-
-
-export const StanceChangeMode = {
-  HEALTH: 'HEALTH',
-  ON_DEMAND: 'ON_DEMAND',
-  FINAL: 'FINAL',
-} as const;
-
-export interface StanceChange {
-  mode: StanceChangeMode;
-  /** @nullable */
-  atHealth: number | null;
-}
-
-export interface Stance {
-  stance: number;
-  /** @nullable */
-  toughnessPerHunter: number | null;
-  stanceChange: StanceChange;
 }
 
 export type BossDifficulties = {[key: string]: Stance[]};
@@ -1330,6 +1524,40 @@ export interface DeviceSummary {
   createdAt: string;
   lastSeenAt: string;
   current: boolean;
+}
+
+export interface Counter {
+  total: number;
+  last30Days: number;
+  last7Days: number;
+}
+
+export interface CampaignStats {
+  created: Counter;
+  active: number;
+  completed: number;
+}
+
+export interface BattleStats {
+  played: Counter;
+  victories: number;
+  defeats: number;
+  inProgress: number;
+}
+
+export interface AdminStats {
+  accounts: Counter;
+  campaigns: CampaignStats;
+  battles: BattleStats;
+  generatedAt: string;
+}
+
+export interface AdminCatalog {
+  quests: AdminQuest[];
+  chapters: AdminChapter[];
+  forge: AdminForgeItem[];
+  lab: AdminLabPotion[];
+  bosses: AdminBoss[];
 }
 
 export type GetChapterTransitionParams = {

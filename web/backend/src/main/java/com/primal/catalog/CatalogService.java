@@ -8,11 +8,16 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-/** Каталог игры в памяти: загружается один раз при старте из тех же YAML, что и таблицы БД. */
+/**
+ * Каталог игры в памяти: загружается при старте из тех же YAML, что и таблицы БД. Правки наград администратора
+ * ({@link CatalogEditor}) накладываются поверх: {@code base} — исходный YAML, {@code catalog} — действующий.
+ */
 @Service
 public class CatalogService {
 
-    private final Catalog catalog = CatalogLoader.load();
+    private final Catalog base = CatalogLoader.load();
+
+    private volatile Catalog catalog = base;
 
     private final EffectDescriber describer = new EffectDescriber(this::achievementName, this::bossName);
 
@@ -91,8 +96,30 @@ public class CatalogService {
         return catalog.boss(code).map(BossDef::name).orElse(code);
     }
 
-    /** Контрольная сумма каталога — ETag ответов API каталога. */
+    /** Контрольная сумма каталога с правками — ETag ответов API каталога. */
     public String checksum() {
         return catalog.checksum();
+    }
+
+    /** Задание из YAML без правок администратора. */
+    public Optional<QuestDef> originalQuest(int number) {
+        return base.quest(number);
+    }
+
+    /** Глава из YAML без правок администратора. */
+    public Optional<ChapterDef> originalChapter(int number) {
+        return base.chapter(number);
+    }
+
+    Catalog base() {
+        return base;
+    }
+
+    Catalog current() {
+        return catalog;
+    }
+
+    void replace(Catalog next) {
+        catalog = next;
     }
 }

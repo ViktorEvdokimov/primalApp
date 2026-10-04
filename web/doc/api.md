@@ -79,6 +79,7 @@ Content-Type: application/problem+json
 | `POST /auth/login` | Вход по логину и паролю, запомнить устройство | — |
 | `GET /auth/me` · `PATCH /auth/me` | Кто я (пользователь или гость), имя | — |
 | `PUT /auth/me/login` · `PUT /auth/me/password` | Смена логина и пароля | — |
+| `PUT /auth/me/expansions` | Дополнения игрока (qa № 138) | — |
 | `POST /auth/logout` | Выйти на этом устройстве | — |
 | `GET /auth/devices` · `DELETE /auth/devices/{id}` · `POST /auth/devices/revoke-others` | Мои устройства, отзыв | — |
 | **Ссылки и совместная игра** | | |
@@ -134,7 +135,7 @@ POST /auth/register
 { "login": "alice", "password": "correct horse", "displayName": "Алиса" }
 → 201, Set-Cookie: PRIMAL_DEVICE=…; Path=/api; Max-Age=34560000; HttpOnly; SameSite=Lax  (+ Secure на https)
 {
-  "user": { "id": 7, "login": "alice", "displayName": "Алиса", "passwordSet": true },
+  "user": { "id": 7, "login": "alice", "displayName": "Алиса", "passwordSet": true, "admin": false },
   "device": { "id": "a41f…", "userAgent": "Chrome, Android" }
 }
 
@@ -178,6 +179,10 @@ PUT /auth/me/login
 { "login": "alice2" }                       // новый логин; пусто — 400, занят — 409 LOGIN_TAKEN
 → 200 (как GET /auth/me)                    // гость — 403 ACCOUNT_REQUIRED
 
+PUT /auth/me/expansions
+{ "expansions": ["NIGHTMARE", "POISON", "ICE"] }   // включённые; пустой список — только базовая игра
+→ 200 (как GET /auth/me, user.expansions)    // неизвестное — 400; гость — 403 ACCOUNT_REQUIRED
+
 PUT /auth/me/password
 { "currentPassword": "correct horse", "newPassword": "brand new pass" }
 → 204                                       // неверный текущий — 400 INVALID_CREDENTIALS; гость — 403
@@ -191,6 +196,11 @@ POST   /auth/devices/revoke-others → 204    // «Выйти на всех др
 
 GET /auth/csrf → 204                        // выдаёт cookie XSRF-TOKEN, если её ещё нет
 ```
+
+`user.expansions` — дополнения игрока, по умолчанию все (qa № 138): задания отключённых сайт ему не
+показывает (они остаются в кампании), а условие `{ expansion: … }` в наградах проверяется по дополнениям
+**владельца** кампании — так итог не зависит от того, кто из участников принял награды. У гостя аккаунта нет —
+ему видны все задания.
 
 Пустое `displayName` в `PATCH /auth/me` сбрасывает имя (пробелы по краям обрезаются, до 60 символов).
 Пустое имя пользователя показывается другим участникам как «Игрок» — логин им не виден.
@@ -933,6 +943,81 @@ data: {}
   вырасти, но клиенту нужно перезапросить баннер идущих боёв и историю.
 - `access.revoked` — отзыв или перевыпуск ссылки (у кого доступа больше нет), удаление кампании, выход или
   отзыв устройства подписчика.
+
+---
+
+### 9.4 Администрирование: награды заданий и глав
+
+Только администратору (`user.admin = true` в «Кто я»; роль — `app_admin`, назначается скриптом
+`deploy/grant-admin.sh`, setup.md §3.13). Остальным любой адрес ниже отвечает `404`, без входа — `401`.
+
+```http
+GET /admin/catalog
+→ 200 {
+  "quests": [ { "number": 1, "name": "Память пустыни", "bossCode": "TORAMAT", "bossName": "Торамат",
+                "expansion": null,
+                "victory": [ { "resources": { "BONES": 2, … } },
+                             { "if": { "chapterIn": [1, 2] }, "then": [ { "openQuest": 4 } ], "else": [ { "openQuest": 6 } ] } ],
+                "expired": [ { "openQuest": 6 } ],
+                "victoryText": [ "Каждый охотник получает Кости 2, …", "Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6" ],
+                "expiredText": [ "Добавить задание 6" ],
+                "edited": false }, … ],
+  "chapters": [ { "chapter": 1, "effects": [ … ], "text": [ … ], "edited": false }, … ]
+}
+
+PUT    /admin/quests/1     { "victory": [ …эффекты… ], "expired": [ …эффекты… ] }  → 200 AdminQuest
+DELETE /admin/quests/1                                                         → 200 AdminQuest (из YAML)
+PUT    /admin/chapters/4   { "effects": [ …эффекты… ] }                          → 200 AdminChapter
+DELETE /admin/chapters/4                                                       → 200 AdminChapter
+```
+
+- Эффекты — язык каталога (`data-model.md` §4.3), тот же, что в `quests.yaml`/`chapters.yaml`.
+- Правка проверяется тем же разбором и ссылочной целостностью, что и YAML: неизвестный вид эффекта, стихия в
+  `resources`, ссылка на несуществующее задание/достижение/босса — `400` с полем (`victory`, `expired`,
+  `effects`) и пояснением; ничего не сохраняется. Нет задания или главы — `404`.
+- Правка действует сразу для всех кампаний (каталог в памяти; `ETag` каталога меняется). Решения главы не
+  редактируются. `edited` — награды отличаются от YAML; `DELETE` возвращает исходные.
+**Статистика** (qa № 140):
+
+```http
+GET /admin/stats
+→ 200 {
+  "accounts":  { "total": 12, "last30Days": 5, "last7Days": 2 },              // учётные записи (по дате создания)
+  "campaigns": { "created": { "total": 7, "last30Days": 3, "last7Days": 1 }, "active": 6, "completed": 1 },
+  "battles":   { "played": { "total": 40, "last30Days": 18, "last7Days": 4 },  // бои кампаний с результатом
+                 "victories": 25, "defeats": 15, "inProgress": 2 },
+  "generatedAt": "2026-10-04T12:00:00Z"
+}
+```
+
+Сыгранный бой — бой кампании с отправленным результатом (принятым или отклонённым), период — по дате окончания
+боя. Брошенные бои не считаются, `inProgress` — начатые и не завершённые. Экспедиции проходят только в браузере,
+сервер о них не знает. `active` — кампании, которые идут (в том числе ждут перехода главы).
+
+**Цены кузни и лаборатории, монстры** (qa № 138) — в том же `GET /admin/catalog`: `forge` (108 предметов:
+`code`, `element`, `name`, `slot`, `hunterClass`, `costs: [{ level, materials: { BONES: 1, … } }]`), `lab`
+(6 зелий: `units: [{ options: [...], any }]`), `bosses` (`difficulties: { "0": [Stance], … }`, как в
+`GET /catalog/bosses`); у каждого `edited`.
+
+```http
+PUT    /admin/forge/FIRE_01   { "costs": [ { "ZLATIA": 2 }, { "SCALES": 1, "BLOOD": 1 }, { "BONES": 1, "BLOOD": 1 } ] }
+PUT    /admin/lab/LAB_05      { "units": [ { "options": ["NILLEA"], "any": false }, { "options": [], "any": true } ] }
+PUT    /admin/bosses/KOROVON  { "difficulties": { "0": [ { "toughnessPerHunter": 2, "mode": "HEALTH", "atHealth": 6 },
+                                                        { "toughnessPerHunter": null, "mode": "ON_DEMAND", "atHealth": null },
+                                                        { "toughnessPerHunter": 4, "mode": "FINAL", "atHealth": null } ], … } }
+DELETE /admin/forge/FIRE_01 · /admin/lab/LAB_05 · /admin/bosses/KOROVON          → исходное из YAML
+```
+
+- Кузня: 3 уровня, на уровне от 1 до 4 материй (стихий нет — 1 стихия кузни добавляется всегда).
+  Лаборатория: от 1 до 4 растений, у каждого — список на выбор или «любое».
+  Монстр: уровни враждебности те же, что в каталоге; на уровне 3–9 стоек; прочность > 0 или `null`, порог
+  смены по здоровью 1–9. Неверное — `400` с полем `costs`/`units`/`stances`.
+- Действует сразу: крафт и зелья считаются по новым ценам, новые бои — по новым стойкам (бой, уже идущий в
+  браузере, хранит стойки у себя). Справочники отдаются с `Cache-Control: no-cache` и `ETag` — браузер каждый
+  раз сверяется и получает `304`, если ничего не менялось.
+- Условие `{ "expansion": "FEATHER" }` («Есть дополнение») доступно в наградах заданий и глав.
+- `quests[].expansion` (и `expansion` заданий в листе кампании и каталоге): `NIGHTMARE` («Кошмар», 31–35),
+  `FEATHER` («Перо», 36–40), `POISON` («Яд», 41–45), `ICE` («Лёд», 46–50); `null` — базовая игра (1–30).
 
 ---
 
