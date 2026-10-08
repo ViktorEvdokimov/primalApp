@@ -7,7 +7,7 @@ import { PendingResultBanner } from '../progression/PendingResultBanner';
 
 /**
  * Главное меню (аналог MainMenuScreen в app). «Вернуться к бою» — если в браузере есть незаконченный бой;
- * без входа — «Войти», после входа — «Настройки». «Кампании» без входа ведут на вход.
+ * без входа — «Войти», после входа — «Настройки». «Кампании» без входа ведут на вход; «Инфо» открывается без входа.
  */
 export function MainMenuPage() {
   const active = useActiveBattle();
@@ -40,6 +40,9 @@ export function MainMenuPage() {
         </Button>
         <Button component={Link} to="/campaigns" size="lg" variant="light" data-testid="menu-campaigns">
           {ru.menu.campaigns}
+        </Button>
+        <Button component={Link} to="/info" size="lg" variant="light" data-testid="menu-info">
+          {ru.info.open}
         </Button>
         {me?.user?.admin === true && (
           <Button component={Link} to="/admin" size="lg" variant="default" data-testid="menu-admin">

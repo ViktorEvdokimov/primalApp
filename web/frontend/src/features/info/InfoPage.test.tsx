@@ -154,6 +154,20 @@ describe('Инфо', () => {
     ]);
   });
 
+  it('главное меню: «Инфо» без входа; «Назад» — в меню', async () => {
+    // подготовка
+    const { router } = renderRoutes(routes, '/');
+    const user = userEvent.setup();
+
+    // вызов
+    await user.click(await screen.findByTestId('menu-info'));
+
+    // проверка
+    expect(await screen.findAllByTestId('info-section')).toHaveLength(3);
+    await user.click(screen.getByTestId('info-back'));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'));
+  });
+
   it('ссылка «Инфо» — в бою и на листе кампании; «Назад» возвращает', async () => {
     // подготовка: бой
     const activeBattle = memoryActiveBattle();
