@@ -181,9 +181,14 @@ function BattleView({ battle }: { battle: LocalBattle }) {
       >
         {ru.battle.surrender}
       </Button>
-      <Button fullWidth variant="subtle" component={Link} to="/" data-testid="battle-menu">
-        {ru.battle.toMenu}
-      </Button>
+      <Group grow>
+        <Button variant="light" component={Link} to="/info" data-testid="battle-info">
+          {ru.info.open}
+        </Button>
+        <Button variant="subtle" component={Link} to="/" data-testid="battle-menu">
+          {ru.battle.toMenu}
+        </Button>
+      </Group>
 
       <StanceDialog pending={state.pendingStance} onConfirm={run} onCancel={undoLast} />
       <RageSurgeDialog

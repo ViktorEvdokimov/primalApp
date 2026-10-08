@@ -1019,6 +1019,55 @@ DELETE /admin/forge/FIRE_01 · /admin/lab/LAB_05 · /admin/bosses/KOROVON       
 - `quests[].expansion` (и `expansion` заданий в листе кампании и каталоге): `NIGHTMARE` («Кошмар», 31–35),
   `FEATHER` («Перо», 36–40), `POISON` («Яд», 41–45), `ICE` («Лёд», 46–50); `null` — базовая игра (1–30).
 
+### 9.5 Инфо
+
+«Инфо» (qa № 142): разделы «Ключевые слова», «Символы реакций монстров», «Жетоны окружения». Читают все, и без
+входа (его открывают из боя экспедиции), правит администратор.
+
+```http
+GET /info                                   // без входа; Cache-Control: no-cache + ETag
+→ 200 { "sections": [ { "code": "KEYWORDS", "title": "Ключевые слова", "titled": true,
+                        "entries": [ { "id": 7, "section": "KEYWORDS", "title": "Защита / жетон защиты ( )",
+                                       "body": "Текст.\n\n**Примечание.** …\n\n(См. также **«Проверка на натиск»** .)",
+                                       "imageUrl": "/api/v1/info/images/0b8f…" } ] },
+                      { "code": "REACTIONS", … }, { "code": "TOKENS", … } ],
+        "version": "…" }
+GET /info/images/{id}                       // без входа; image/png|jpeg|webp|gif; кэш на год (immutable)
+
+// администратор (остальным — 404)
+POST   /admin/info/entries         { "section": "TOKENS", "title": "Камень", "body": "…" }   → 201 InfoEntry
+PUT    /admin/info/entries/{id}    { "section": …, "title": …, "body": … }                  → 200 InfoEntry
+DELETE /admin/info/entries/{id}                                                           → 204
+PUT    /admin/info/entries/{id}/image   multipart: file  (PNG, JPEG, WebP, GIF до 2 МБ)      → 200 InfoEntry
+DELETE /admin/info/entries/{id}/image                                                     → 200 InfoEntry
+POST   /admin/info/import               multipart: file  (Markdown-файл правил)           → 200 { "found", "created", "skipped" }
+GET    /admin/info/export               → 200 InfoSnapshot, Content-Disposition: attachment; filename="default-info.json"
+POST   /admin/info/restore              multipart: file  (InfoSnapshot)                    → 200 { "restored": 96 }
+```
+
+```json
+{ "format": 1,
+  "entries": [ { "section": "KEYWORDS", "title": "Берсерк", "body": "…", "image": null },
+               { "section": "REACTIONS", "title": null, "body": "…",
+                 "image": { "contentType": "image/png", "data": "iVBORw0KGgo…" } } ] }
+```
+
+- У символов реакций (`REACTIONS`, `titled: false`) названия нет — только картинка и описание (qa № 143):
+  `title = null`, переданное название не сохраняется; статьи — в порядке добавления. В остальных разделах
+  название обязательно; при переносе статьи из реакций в другой раздел его нужно указать.
+- Статьи раздела — по алфавиту. Текст: абзацы через пустую строку, `**жирный**`; в «(См. также «Название» .)»
+  сайт делает названия ссылками на статьи (сравнение без регистра и «ё», без пустых скобок значков «( )»; по
+  точному названию, по первой части до « / » или « (», по началу названия).
+- Название в разделе уникально без учёта регистра (`400` с полем `title`); до 120 символов, текст — до 20 000.
+- Картинка: тип определяется по содержимому файла (подпись PNG/JPEG/GIF/WebP), иначе `400`; новая картинка —
+  новый адрес, старая удаляется.
+- Выгрузка (qa № 145): все статьи в порядке добавления, картинки — Base64. `restore` заменяет всё «Инфо»:
+  сначала проверяет весь файл (раздел, названия и их уникальность, тексты, картинки по содержимому) — при
+  ошибке `400` и ничего не меняется. Тот же формат — у файла по умолчанию `info/default-info.json`, которым
+  сервер при запуске заполняет пустое «Инфо» (`deploy/export-info.sh`, setup.md §3.14).
+- Импорт: из раздела «Ключевые слова» Markdown-файла правил (до следующего заголовка уровня 1–4) создаются
+  статьи, которых ещё нет; существующие (в том числе изменённые администратором) не меняются. Нет раздела — `400`.
+
 ---
 
 ## 10. Сценарии и состояния

@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 class ArchitectureTest {
 
     private static final List<String> MODULES = List.of(
-            "common", "identity", "access", "mail", "realtime", "catalog", "rules", "campaign", "progression", "admin");
+            "common", "identity", "access", "mail", "realtime", "catalog", "rules", "campaign", "progression", "admin", "info");
 
     /** Правила наград и условий — чистая Java: только JDK и сам модуль {@code rules}. */
     @ArchTest

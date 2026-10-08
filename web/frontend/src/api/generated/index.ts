@@ -5,4 +5,5 @@ export * from './campaigns/campaigns';
 export * from './catalog/catalog';
 export * from './chapters/chapters';
 export * from './events/events';
+export * from './info/info';
 export * from './sharing/sharing';

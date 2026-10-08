@@ -185,6 +185,9 @@ function BattleActions({ sheet }: { sheet: CampaignSheet }) {
         <Button component={Link} to={`/campaigns/${sheet.id}/lab`} variant="light" data-testid="sheet-open-lab">
           {ru.lab.open}
         </Button>
+        <Button component={Link} to="/info" variant="light" data-testid="sheet-open-info">
+          {ru.info.open}
+        </Button>
       </Group>
     </Stack>
   );

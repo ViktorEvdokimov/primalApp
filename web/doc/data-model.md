@@ -135,6 +135,28 @@ create table user_hidden_expansion (
     expansion  varchar(16) not null check (expansion in ('NIGHTMARE','FEATHER','POISON','ICE')),
     primary key (user_id, expansion)
 );
+
+-- V11 (qa № 142): «Инфо» — статьи разделов с картинками. Источник — БД (правит администратор, ключевые слова
+-- можно импортировать из файла правил); YAML-каталога у «Инфо» нет.
+create table info_image (
+    id            uuid        primary key,
+    content_type  varchar(32) not null check (content_type in ('image/png','image/jpeg','image/webp','image/gif')),
+    data          bytea       not null,
+    created_at    timestamptz not null default now()
+);
+create table info_entry (
+    id          bigint generated always as identity primary key,
+    section     varchar(16)  not null check (section in ('KEYWORDS','REACTIONS','TOKENS')),
+    title       varchar(120) not null,
+    body        text         not null default '',     -- абзацы через пустую строку, **жирный**, «(См. также «…» .)»
+    image_id    uuid         references info_image(id) on delete set null,
+    created_at  timestamptz  not null default now(),
+    updated_at  timestamptz  not null default now(),
+    updated_by  bigint       references app_user(id) on delete set null
+);
+create unique index ux_info_entry_title on info_entry (section, lower(title));
+-- V12 (qa № 143): у символов реакций названия нет — title null только в REACTIONS
+--   check (title is not null or section = 'REACTIONS'); уникальность — where title is not null
 ```
 
 Пока логином был телефон (V4), номера хранились в столбце `phone` (`+79123456789`). V5 перенесла их в

@@ -45,6 +45,8 @@ class RequestIdFilterTest {
 
         // вызов и проверка
         assertThat(run(fromProxy, new MockHttpServletResponse())).containsExactly("caddy-42", "caddy-42");
-        assertThat(run(injected, new MockHttpServletResponse())[1]).doesNotContain("bad").hasSize(36);
+        // подстроку «bad» случайный UUID содержать может (69bad52e-…) — проверяется, что это новый UUID
+        assertThat(run(injected, new MockHttpServletResponse())[1])
+                .matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
     }
 }

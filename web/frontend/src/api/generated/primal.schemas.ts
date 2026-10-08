@@ -168,6 +168,41 @@ export interface AdminLabPotion {
   edited: boolean;
 }
 
+export type InfoEntryRequestSection = typeof InfoEntryRequestSection[keyof typeof InfoEntryRequestSection];
+
+
+export const InfoEntryRequestSection = {
+  KEYWORDS: 'KEYWORDS',
+  REACTIONS: 'REACTIONS',
+  TOKENS: 'TOKENS',
+} as const;
+
+export interface InfoEntryRequest {
+  section: InfoEntryRequestSection;
+  /** @nullable */
+  title: string | null;
+  body: string;
+}
+
+export type InfoEntrySection = typeof InfoEntrySection[keyof typeof InfoEntrySection];
+
+
+export const InfoEntrySection = {
+  KEYWORDS: 'KEYWORDS',
+  REACTIONS: 'REACTIONS',
+  TOKENS: 'TOKENS',
+} as const;
+
+export interface InfoEntry {
+  id: number;
+  section: InfoEntrySection;
+  /** @nullable */
+  title: string | null;
+  body: string;
+  /** @nullable */
+  imageUrl: string | null;
+}
+
 export type ForgeCostRequestCostsItem = {[key: string]: number};
 
 export interface ForgeCostRequest {
@@ -1119,6 +1154,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RestoreResult {
+  restored: number;
+}
+
+export interface ImportResult {
+  found: number;
+  created: number;
+  skipped: number;
+}
+
 export interface UpdateCampaignRequest {
   expectedVersion: number;
   /**
@@ -1180,6 +1225,27 @@ export interface InvitationView {
   kind: InvitationViewKind;
   name: string;
   ownerName: string;
+}
+
+export type InfoSectionViewCode = typeof InfoSectionViewCode[keyof typeof InfoSectionViewCode];
+
+
+export const InfoSectionViewCode = {
+  KEYWORDS: 'KEYWORDS',
+  REACTIONS: 'REACTIONS',
+  TOKENS: 'TOKENS',
+} as const;
+
+export interface InfoSectionView {
+  code: InfoSectionViewCode;
+  title: string;
+  titled: boolean;
+  entries: InfoEntry[];
+}
+
+export interface InfoView {
+  sections: InfoSectionView[];
+  version: string;
 }
 
 export interface BossRef {
@@ -1552,6 +1618,33 @@ export interface AdminStats {
   generatedAt: string;
 }
 
+export type SnapshotEntrySection = typeof SnapshotEntrySection[keyof typeof SnapshotEntrySection];
+
+
+export const SnapshotEntrySection = {
+  KEYWORDS: 'KEYWORDS',
+  REACTIONS: 'REACTIONS',
+  TOKENS: 'TOKENS',
+} as const;
+
+export interface SnapshotImage {
+  contentType: string;
+  data: string;
+}
+
+export interface SnapshotEntry {
+  section: SnapshotEntrySection;
+  /** @nullable */
+  title: string | null;
+  body: string;
+  image: SnapshotImage | null;
+}
+
+export interface InfoSnapshot {
+  format: number;
+  entries: SnapshotEntry[];
+}
+
 export interface AdminCatalog {
   quests: AdminQuest[];
   chapters: AdminChapter[];
@@ -1559,6 +1652,10 @@ export interface AdminCatalog {
   lab: AdminLabPotion[];
   bosses: AdminBoss[];
 }
+
+export type UploadInfoImageBody = {
+  file: Blob | File;
+};
 
 export type GetChapterTransitionParams = {
 /**
@@ -1580,6 +1677,14 @@ export const ListBattlesStatus = {
   DISMISSED: 'DISMISSED',
   ABANDONED: 'ABANDONED',
 } as const;
+
+export type RestoreInfoBody = {
+  file: Blob | File;
+};
+
+export type ImportInfoKeywordsBody = {
+  file: Blob | File;
+};
 
 export type GetBattleSetupParams = {
 questNumber?: number;

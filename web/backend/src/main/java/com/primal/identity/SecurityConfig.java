@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class SecurityConfig {
 
     private static final String[] PUBLIC = {
-        "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v1/share/**", "/api/v1/catalog/**",
+        "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v1/share/**", "/api/v1/catalog/**", "/api/v1/info", "/api/v1/info/images/**",
         "/api/actuator/health", "/error",
         // описание API — только в профиле dev, где springdoc включён
         "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",

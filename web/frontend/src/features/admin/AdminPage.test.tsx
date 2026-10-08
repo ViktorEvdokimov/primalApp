@@ -1,11 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
 import type { AdminCatalog, AdminQuest, MeResponse } from '../../api/generated/primal.schemas';
 import { achievementsFixture } from '../../test/fixtures/campaign';
 import { userMe } from '../../test/fixtures/auth';
+import { infoFixture } from '../../test/fixtures/info';
 import { renderRoutes } from '../../test/render';
 import { server, signedIn } from '../../test/server';
 
@@ -22,7 +23,10 @@ const questOne: AdminQuest = {
     { if: { chapterIn: [1, 2] }, then: [{ openQuest: 4 }], else: [{ openQuest: 6 }] },
   ],
   expired: [{ openQuest: 6 }],
-  victoryText: ['Каждый охотник получает Кости 2', 'Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6'],
+  victoryText: [
+    'Каждый охотник получает Кости 2',
+    'Если текущая глава 1 или 2, то добавить задание 4, иначе добавить задание 6',
+  ],
   expiredText: ['Добавить задание 6'],
   edited: false,
 };
@@ -30,7 +34,16 @@ const questOne: AdminQuest = {
 const catalog: AdminCatalog = {
   quests: [
     questOne,
-    { ...questOne, number: 33, name: 'Последняя страница', expansion: 'NIGHTMARE', victory: [], expired: [], victoryText: [], expiredText: [] },
+    {
+      ...questOne,
+      number: 33,
+      name: 'Последняя страница',
+      expansion: 'NIGHTMARE',
+      victory: [],
+      expired: [],
+      victoryText: [],
+      expiredText: [],
+    },
   ],
   chapters: [{ chapter: 4, effects: [{ forgeLevelUp: true }], text: ['Повышение уровня кузни'], edited: false }],
   forge: [
@@ -150,7 +163,12 @@ describe('Администрирование: награды задания', ()
     // проверка
     const victory = within(screen.getByTestId('admin-victory'));
     // вложенные эффекты «то» и «иначе» — тоже карточки
-    expect(victory.getAllByTestId('effect').map((node) => node.dataset.kind)).toEqual(['resources', 'if', 'openQuest', 'openQuest']);
+    expect(victory.getAllByTestId('effect').map((node) => node.dataset.kind)).toEqual([
+      'resources',
+      'if',
+      'openQuest',
+      'openQuest',
+    ]);
     expect(screen.getAllByTestId('admin-preview-line')[1]).toHaveTextContent('Если текущая глава 1 или 2');
     expect(screen.getByTestId('admin-quest')).toHaveValue('1. Память пустыни');
     expect(screen.getByTestId('admin-save')).toBeDisabled();
@@ -253,7 +271,9 @@ describe('Администрирование: награды задания', ()
     let deleted = 0;
     serveAdmin();
     server.use(
-      http.get('*/api/v1/admin/catalog', () => HttpResponse.json({ ...catalog, quests: [{ ...questOne, edited: true }] })),
+      http.get('*/api/v1/admin/catalog', () =>
+        HttpResponse.json({ ...catalog, quests: [{ ...questOne, edited: true }] }),
+      ),
       http.delete('*/api/v1/admin/quests/1', () => {
         deleted += 1;
         return HttpResponse.json(questOne);
@@ -317,7 +337,9 @@ describe('Администрирование: условие «есть допо
     await user.selectOptions(expired.getByTestId('condition-kind'), 'expansion');
     await user.click(expired.getByTestId('condition-expansion'));
     // «Перо» есть и в пометке дополнения у карточек (обычный select) — нужен пункт выпадающего списка
-    const feather = (await screen.findAllByRole('option', { name: 'Перо' })).find((node) => node.hasAttribute('data-combobox-option'));
+    const feather = (await screen.findAllByRole('option', { name: 'Перо' })).find((node) =>
+      node.hasAttribute('data-combobox-option'),
+    );
     await user.click(feather!);
     const then = within(expired.getByTestId('effect-then'));
     await user.click(then.getByTestId('effect-add'));
@@ -354,7 +376,15 @@ describe('Администрирование: цены и монстры', () =>
 
     // проверка
     await waitFor(() =>
-      expect(bodies).toEqual([{ costs: [{ BONES: 2, BLOOD: 1 }, { SCALES: 1, BLOOD: 1 }, { BONES: 1, BLOOD: 1 }] }]),
+      expect(bodies).toEqual([
+        {
+          costs: [
+            { BONES: 2, BLOOD: 1 },
+            { SCALES: 1, BLOOD: 1 },
+            { BONES: 1, BLOOD: 1 },
+          ],
+        },
+      ]),
     );
     expect(await screen.findByText('Награды сохранены — действуют для всех кампаний.')).toBeInTheDocument();
   });
@@ -444,5 +474,186 @@ describe('Администрирование: статистика', () => {
     expect(screen.getByTestId('admin-stats-battle-results')).toHaveTextContent(
       'Бои: побед — 25, поражений — 15; идут сейчас — 2.',
     );
+  });
+});
+
+/**
+ * Загрузка файла: в Vitest с этой версией jsdom fetch не принимает FormData из jsdom («_bytes» в слое совместимости),
+ * поэтому запросы с файлом перехватываются до fetch. Возвращает отправленные FormData.
+ */
+function stubUpload(path: string, response: unknown): FormData[] {
+  const sent: FormData[] = [];
+  const original = globalThis.fetch;
+  vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+    if (String(input).includes(path) && init?.body instanceof FormData) {
+      sent.push(init.body);
+      return Promise.resolve(
+        new Response(JSON.stringify(response), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+      );
+    }
+    return original(input, init);
+  });
+  return sent;
+}
+
+describe('Администрирование: «Инфо»', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function openInfo() {
+    serveAdmin();
+    server.use(http.get('*/api/v1/info', () => HttpResponse.json(infoFixture())));
+    renderRoutes(routes, '/admin');
+    const user = userEvent.setup();
+    await user.click(await screen.findByText('Инфо'));
+    await screen.findByTestId('admin-info');
+    return user;
+  }
+
+  it('новая статья: название, раздел, текст с предпросмотром ссылок — POST', async () => {
+    // подготовка
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('*/api/v1/admin/info/entries', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json(
+          { id: 9, section: 'TOKENS', title: 'Ярость', body: 'Текст', imageUrl: null },
+          { status: 201 },
+        );
+      }),
+    );
+    const user = await openInfo();
+
+    // вызов
+    await user.click(screen.getByTestId('admin-info-new'));
+    const form = within(await screen.findByTestId('admin-info-form'));
+    await user.type(form.getByTestId('admin-info-title'), 'Ярость');
+    await user.selectOptions(form.getByTestId('admin-info-target'), 'TOKENS');
+    await user.type(form.getByTestId('admin-info-body'), 'Текст (См. также «Защита» .)');
+    expect(within(form.getByTestId('admin-info-preview')).getByTestId('info-link')).toHaveTextContent('«Защита»');
+    await user.click(form.getByTestId('admin-info-save'));
+
+    // проверка
+    await waitFor(() =>
+      expect(bodies).toEqual([{ section: 'TOKENS', title: 'Ярость', body: 'Текст (См. также «Защита» .)' }]),
+    );
+    expect(await screen.findByText('Статья сохранена.')).toBeInTheDocument();
+  });
+
+  it('картинка загружается файлом; удаление статьи — с подтверждением', async () => {
+    // подготовка
+    const uploads = stubUpload('/api/v1/admin/info/entries/1/image', {
+      ...infoFixture().sections[0]!.entries[1]!,
+      imageUrl: '/api/v1/info/images/new',
+    });
+    let deleted = 0;
+    server.use(
+      http.delete('*/api/v1/admin/info/entries/1', () => {
+        deleted += 1;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = await openInfo();
+
+    // вызов: картинка
+    await user.click(screen.getByTestId('admin-info-entry'));
+    await user.click(await screen.findByRole('option', { name: 'Защита / жетон защиты ( )' }));
+    const form = within(await screen.findByTestId('admin-info-form'));
+    const input = document.querySelector('input[type="file"][accept^="image"]') as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'stone.png', { type: 'image/png' }));
+
+    // проверка
+    await waitFor(() => expect(uploads).toHaveLength(1));
+    expect((uploads[0]!.get('file') as File).name).toBe('stone.png');
+    expect(await form.findByTestId('admin-info-image')).toHaveAttribute('src', '/api/v1/info/images/new');
+
+    // вызов: удаление
+    await user.click(form.getByTestId('admin-info-delete'));
+    await user.click(await screen.findByTestId('admin-info-delete-confirm'));
+
+    // проверка
+    await waitFor(() => expect(deleted).toBe(1));
+    expect(await screen.findByText('Статья удалена.')).toBeInTheDocument();
+  });
+
+  it('символ реакции: поля «Название» нет — уходит title: null', async () => {
+    // подготовка
+    const bodies: unknown[] = [];
+    server.use(
+      http.post('*/api/v1/admin/info/entries', async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json(
+          { id: 9, section: 'REACTIONS', title: null, body: 'Разворот.', imageUrl: null },
+          { status: 201 },
+        );
+      }),
+    );
+    const user = await openInfo();
+
+    // вызов
+    await user.click(screen.getByText('Символы реакций монстров'));
+    await user.click(screen.getByTestId('admin-info-new'));
+    const form = within(await screen.findByTestId('admin-info-form'));
+    expect(form.queryByTestId('admin-info-title')).not.toBeInTheDocument();
+    expect(form.getByTestId('admin-info-no-title')).toBeInTheDocument();
+    await user.type(form.getByTestId('admin-info-body'), 'Разворот.');
+    await user.click(form.getByTestId('admin-info-save'));
+
+    // проверка
+    await waitFor(() => expect(bodies).toEqual([{ section: 'REACTIONS', title: null, body: 'Разворот.' }]));
+  });
+
+  it('перенос: «Выгрузить всё» скачивает файл; «Заменить всё из выгрузки» — после подтверждения', async () => {
+    // подготовка
+    let exported = 0;
+    server.use(
+      http.get('*/api/v1/admin/info/export', () => {
+        exported += 1;
+        return HttpResponse.json({ format: 1, entries: [] });
+      }),
+    );
+    const created: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => {
+      created.push(blob);
+      return 'blob:info';
+    });
+    URL.revokeObjectURL = vi.fn();
+    const uploads = stubUpload('/api/v1/admin/info/restore', { restored: 96 });
+    const user = await openInfo();
+
+    // вызов: выгрузка
+    await user.click(screen.getByTestId('admin-info-export'));
+
+    // проверка
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(exported).toBe(1);
+    expect(created[0]!.type).toBe('application/json');
+
+    // вызов: замена — сначала подтверждение
+    const input = document.querySelector('input[type="file"][accept^=".json"]') as HTMLInputElement;
+    await user.upload(input, new File(['{}'], 'default-info.json', { type: 'application/json' }));
+    expect(uploads).toHaveLength(0);
+    await user.click(await screen.findByTestId('admin-info-restore-confirm'));
+
+    // проверка
+    expect(await screen.findByTestId('admin-info-transfer-result')).toHaveTextContent('«Инфо» заменено: статей 96.');
+    expect((uploads[0]!.get('file') as File).name).toBe('default-info.json');
+  });
+
+  it('импорт ключевых слов из файла правил — итог', async () => {
+    // подготовка
+    const uploads = stubUpload('/api/v1/admin/info/import', { found: 93, created: 91, skipped: 2 });
+    const user = await openInfo();
+
+    // вызов
+    const input = document.querySelector('input[type="file"][accept^=".md"]') as HTMLInputElement;
+    await user.upload(input, new File(['# Правила'], 'rules.md', { type: 'text/markdown' }));
+
+    // проверка
+    expect(await screen.findByTestId('admin-info-import-result')).toHaveTextContent(
+      'Найдено статей: 93; добавлено: 91; уже были: 2.',
+    );
+    expect((uploads[0]!.get('file') as File).name).toBe('rules.md');
   });
 });

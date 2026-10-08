@@ -11,6 +11,7 @@ import { CampaignSheetPage } from '../features/campaign/CampaignSheetPage';
 import { ExpeditionSetupPage } from '../features/expedition/ExpeditionSetupPage';
 import { ForgePage } from '../features/forge/ForgePage';
 import { LabPage } from '../features/lab/LabPage';
+import { InfoPage, InfoSectionPage } from '../features/info/InfoPage';
 import { MainMenuPage } from '../features/menu/MainMenuPage';
 import { CampaignBattleSetupPage } from '../features/progression/CampaignBattleSetupPage';
 import { OutcomePage } from '../features/progression/OutcomePage';
@@ -66,6 +67,9 @@ export const routes: RouteObject[] = [
         return { path: screen.path, element: isProtectedPath(screen.path) ? <RequireAuth>{page}</RequireAuth> : page };
       }),
       { path: '/admin', element: <RequireAdmin /> },
+      // «Инфо» — без входа: его открывают из боя экспедиции (qa № 142)
+      { path: '/info', element: <InfoPage /> },
+      { path: '/info/:section', element: <InfoSectionPage /> },
       { path: '*', element: <PageStub title={ru.pages.notFound} testId="page-not-found" /> },
     ],
   },

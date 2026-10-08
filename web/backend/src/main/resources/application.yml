@@ -16,6 +16,11 @@ spring:
       ddl-auto: validate
   flyway:
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      # Картинки раздела «Инфо» (до 2 МБ) и файл правил для импорта ключевых слов (около 0,4 МБ), qa № 142
+      max-file-size: 5MB
+      max-request-size: 6MB
   web:
     resources:
       add-mappings: false

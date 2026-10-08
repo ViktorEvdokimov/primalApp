@@ -18,11 +18,12 @@ import { useCatalogCache } from './adminHooks';
 import { Actions } from './adminShared';
 import { BossEditor } from './BossEditor';
 import { EffectList, type EditorOptions } from './EffectEditor';
+import { InfoEditor } from './InfoEditor';
 import { effectsFromJson, effectsToJson, problems, type EffectModel } from './effects';
 import { ForgeEditor, LabEditor } from './PriceEditors';
 import { StatsView } from './StatsView';
 
-type Mode = 'STATS' | 'QUESTS' | 'CHAPTERS' | 'FORGE' | 'LAB' | 'BOSSES';
+type Mode = 'STATS' | 'QUESTS' | 'CHAPTERS' | 'FORGE' | 'LAB' | 'BOSSES' | 'INFO';
 
 const CATALOG_STALE_MS = 60 * 60 * 1000;
 
@@ -82,6 +83,7 @@ export default function AdminPage() {
     { value: 'FORGE', label: ru.admin.forge },
     { value: 'LAB', label: ru.admin.lab },
     { value: 'BOSSES', label: ru.admin.bosses },
+    { value: 'INFO', label: ru.adminInfo.tab },
   ];
 
   return (
@@ -102,6 +104,7 @@ export default function AdminPage() {
       {mode === 'FORGE' && <ForgeEditor catalog={catalog.data} dictionaries={dictionaries.data} />}
       {mode === 'LAB' && <LabEditor catalog={catalog.data} dictionaries={dictionaries.data} />}
       {mode === 'BOSSES' && <BossEditor catalog={catalog.data} />}
+      {mode === 'INFO' && <InfoEditor />}
     </Stack>
   );
 }

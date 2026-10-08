@@ -34,8 +34,16 @@ import type {
   BossStancesRequest,
   ChapterEffectsRequest,
   ForgeCostRequest,
+  ImportInfoKeywordsBody,
+  ImportResult,
+  InfoEntry,
+  InfoEntryRequest,
+  InfoSnapshot,
   LabCostRequest,
-  QuestEffectsRequest
+  QuestEffectsRequest,
+  RestoreInfoBody,
+  RestoreResult,
+  UploadInfoImageBody
 } from '../primal.schemas';
 
 import { apiFetch } from '../../http';
@@ -357,6 +365,294 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getResetLabCostMutationOptions(options), queryClient);
+    }
+    export const getUpdateInfoEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/admin/info/entries/${id}`
+}
+
+export const updateInfoEntry = async (id: number,
+    infoEntryRequest: InfoEntryRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InfoEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<InfoEntry>(getUpdateInfoEntryUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(infoEntryRequest)
+  }
+);}
+
+
+
+
+
+export const getUpdateInfoEntryMutationKey = () => ['updateInfoEntry'] as const;
+
+export const getUpdateInfoEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInfoEntry>>, TError,UpdateInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateInfoEntry>>, TError,UpdateInfoEntryMutationVariables, TContext> => {
+
+const mutationKey = getUpdateInfoEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateInfoEntry>>, UpdateInfoEntryMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateInfoEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateInfoEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateInfoEntry>>>
+    export type UpdateInfoEntryMutationBody = InfoEntryRequest
+    export type UpdateInfoEntryMutationError = unknown
+    export type UpdateInfoEntryMutationVariables = {id: number;data: InfoEntryRequest}
+
+    export const useUpdateInfoEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateInfoEntry>>, TError,UpdateInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateInfoEntry>>,
+        TError,
+        UpdateInfoEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateInfoEntryMutationOptions(options), queryClient);
+    }
+    export const getDeleteInfoEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/admin/info/entries/${id}`
+}
+
+export const deleteInfoEntry = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteInfoEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteInfoEntryMutationKey = () => ['deleteInfoEntry'] as const;
+
+export const getDeleteInfoEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInfoEntry>>, TError,DeleteInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteInfoEntry>>, TError,DeleteInfoEntryMutationVariables, TContext> => {
+
+const mutationKey = getDeleteInfoEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteInfoEntry>>, DeleteInfoEntryMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteInfoEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteInfoEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteInfoEntry>>>
+
+    export type DeleteInfoEntryMutationError = unknown
+    export type DeleteInfoEntryMutationVariables = {id: number}
+
+    export const useDeleteInfoEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInfoEntry>>, TError,DeleteInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteInfoEntry>>,
+        TError,
+        DeleteInfoEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteInfoEntryMutationOptions(options), queryClient);
+    }
+    export const getUploadInfoImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/admin/info/entries/${id}/image`
+}
+
+export const uploadInfoImage = async (id: number,
+    uploadInfoImageBody?: UploadInfoImageBody, options?: Parameters<typeof apiFetch>[1]): Promise<InfoEntry> => {
+    const formData = new FormData();
+if(uploadInfoImageBody?.file !== undefined) {
+ formData.append(`file`, uploadInfoImageBody.file);
+ }
+
+  return apiFetch<InfoEntry>(getUploadInfoImageUrl(id),
+  {
+    ...options,
+    method: 'PUT'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadInfoImageMutationKey = () => ['uploadInfoImage'] as const;
+
+export const getUploadInfoImageMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadInfoImage>>, TError,UploadInfoImageMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadInfoImage>>, TError,UploadInfoImageMutationVariables, TContext> => {
+
+const mutationKey = getUploadInfoImageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadInfoImage>>, UploadInfoImageMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  uploadInfoImage(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadInfoImageMutationResult = NonNullable<Awaited<ReturnType<typeof uploadInfoImage>>>
+    export type UploadInfoImageMutationBody = UploadInfoImageBody | undefined
+    export type UploadInfoImageMutationError = unknown
+    export type UploadInfoImageMutationVariables = {id: number;data?: UploadInfoImageBody}
+
+    export const useUploadInfoImage = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadInfoImage>>, TError,UploadInfoImageMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof uploadInfoImage>>,
+        TError,
+        UploadInfoImageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadInfoImageMutationOptions(options), queryClient);
+    }
+    export const getRemoveInfoImageUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/admin/info/entries/${id}/image`
+}
+
+export const removeInfoImage = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<InfoEntry> => {
+
+  return apiFetch<InfoEntry>(getRemoveInfoImageUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveInfoImageMutationKey = () => ['removeInfoImage'] as const;
+
+export const getRemoveInfoImageMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeInfoImage>>, TError,RemoveInfoImageMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeInfoImage>>, TError,RemoveInfoImageMutationVariables, TContext> => {
+
+const mutationKey = getRemoveInfoImageMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeInfoImage>>, RemoveInfoImageMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeInfoImage(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveInfoImageMutationResult = NonNullable<Awaited<ReturnType<typeof removeInfoImage>>>
+
+    export type RemoveInfoImageMutationError = unknown
+    export type RemoveInfoImageMutationVariables = {id: number}
+
+    export const useRemoveInfoImage = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeInfoImage>>, TError,RemoveInfoImageMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeInfoImage>>,
+        TError,
+        RemoveInfoImageMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveInfoImageMutationOptions(options), queryClient);
     }
     export const getUpdateForgeCostUrl = (code: string,) => {
 
@@ -805,6 +1101,229 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getResetBossStancesMutationOptions(options), queryClient);
     }
+    export const getRestoreInfoUrl = () => {
+
+
+
+
+  return `/api/v1/admin/info/restore`
+}
+
+export const restoreInfo = async (restoreInfoBody?: RestoreInfoBody, options?: Parameters<typeof apiFetch>[1]): Promise<RestoreResult> => {
+    const formData = new FormData();
+if(restoreInfoBody?.file !== undefined) {
+ formData.append(`file`, restoreInfoBody.file);
+ }
+
+  return apiFetch<RestoreResult>(getRestoreInfoUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getRestoreInfoMutationKey = () => ['restoreInfo'] as const;
+
+export const getRestoreInfoMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreInfo>>, TError,RestoreInfoMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreInfo>>, TError,RestoreInfoMutationVariables, TContext> => {
+
+const mutationKey = getRestoreInfoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreInfo>>, RestoreInfoMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  restoreInfo(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreInfoMutationResult = NonNullable<Awaited<ReturnType<typeof restoreInfo>>>
+    export type RestoreInfoMutationBody = RestoreInfoBody | undefined
+    export type RestoreInfoMutationError = unknown
+    export type RestoreInfoMutationVariables = {data?: RestoreInfoBody}
+
+    export const useRestoreInfo = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreInfo>>, TError,RestoreInfoMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreInfo>>,
+        TError,
+        RestoreInfoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreInfoMutationOptions(options), queryClient);
+    }
+    export const getImportInfoKeywordsUrl = () => {
+
+
+
+
+  return `/api/v1/admin/info/import`
+}
+
+export const importInfoKeywords = async (importInfoKeywordsBody?: ImportInfoKeywordsBody, options?: Parameters<typeof apiFetch>[1]): Promise<ImportResult> => {
+    const formData = new FormData();
+if(importInfoKeywordsBody?.file !== undefined) {
+ formData.append(`file`, importInfoKeywordsBody.file);
+ }
+
+  return apiFetch<ImportResult>(getImportInfoKeywordsUrl(),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getImportInfoKeywordsMutationKey = () => ['importInfoKeywords'] as const;
+
+export const getImportInfoKeywordsMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importInfoKeywords>>, TError,ImportInfoKeywordsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importInfoKeywords>>, TError,ImportInfoKeywordsMutationVariables, TContext> => {
+
+const mutationKey = getImportInfoKeywordsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importInfoKeywords>>, ImportInfoKeywordsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importInfoKeywords(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportInfoKeywordsMutationResult = NonNullable<Awaited<ReturnType<typeof importInfoKeywords>>>
+    export type ImportInfoKeywordsMutationBody = ImportInfoKeywordsBody | undefined
+    export type ImportInfoKeywordsMutationError = unknown
+    export type ImportInfoKeywordsMutationVariables = {data?: ImportInfoKeywordsBody}
+
+    export const useImportInfoKeywords = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importInfoKeywords>>, TError,ImportInfoKeywordsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importInfoKeywords>>,
+        TError,
+        ImportInfoKeywordsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportInfoKeywordsMutationOptions(options), queryClient);
+    }
+    export const getCreateInfoEntryUrl = () => {
+
+
+
+
+  return `/api/v1/admin/info/entries`
+}
+
+export const createInfoEntry = async (infoEntryRequest: InfoEntryRequest, options?: Parameters<typeof apiFetch>[1]): Promise<InfoEntry> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<InfoEntry>(getCreateInfoEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(infoEntryRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateInfoEntryMutationKey = () => ['createInfoEntry'] as const;
+
+export const getCreateInfoEntryMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInfoEntry>>, TError,CreateInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createInfoEntry>>, TError,CreateInfoEntryMutationVariables, TContext> => {
+
+const mutationKey = getCreateInfoEntryMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createInfoEntry>>, CreateInfoEntryMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createInfoEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateInfoEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createInfoEntry>>>
+    export type CreateInfoEntryMutationBody = InfoEntryRequest
+    export type CreateInfoEntryMutationError = unknown
+    export type CreateInfoEntryMutationVariables = {data: InfoEntryRequest}
+
+    export const useCreateInfoEntry = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInfoEntry>>, TError,CreateInfoEntryMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createInfoEntry>>,
+        TError,
+        CreateInfoEntryMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateInfoEntryMutationOptions(options), queryClient);
+    }
     export const getGetAdminStatsUrl = () => {
 
 
@@ -888,6 +1407,100 @@ export function useGetAdminStats<TData = Awaited<ReturnType<typeof getAdminStats
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetAdminStatsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getExportInfoUrl = () => {
+
+
+
+
+  return `/api/v1/admin/info/export`
+}
+
+export const exportInfo = async ( options?: Parameters<typeof apiFetch>[1]): Promise<InfoSnapshot> => {
+
+  return apiFetch<InfoSnapshot>(getExportInfoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportInfoQueryKey = () => {
+    return [
+    `/api/v1/admin/info/export`
+    ] as const;
+    }
+
+
+export const getExportInfoQueryOptions = <TData = Awaited<ReturnType<typeof exportInfo>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportInfoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportInfo>>> = ({ signal }) => exportInfo({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ExportInfoQueryResult = NonNullable<Awaited<ReturnType<typeof exportInfo>>>
+export type ExportInfoQueryError = unknown
+
+
+export function useExportInfo<TData = Awaited<ReturnType<typeof exportInfo>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportInfo>>,
+          TError,
+          Awaited<ReturnType<typeof exportInfo>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportInfo<TData = Awaited<ReturnType<typeof exportInfo>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof exportInfo>>,
+          TError,
+          Awaited<ReturnType<typeof exportInfo>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useExportInfo<TData = Awaited<ReturnType<typeof exportInfo>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useExportInfo<TData = Awaited<ReturnType<typeof exportInfo>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof exportInfo>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getExportInfoQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

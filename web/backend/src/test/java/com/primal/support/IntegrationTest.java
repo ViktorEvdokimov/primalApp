@@ -35,6 +35,8 @@ public abstract class IntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // «Инфо» по умолчанию (info/default-info.json) в тестах не загружается — тесты проверяют пустое «Инфо»
+        registry.add("primal.info.seed", () -> "false");
     }
 
     @Autowired
