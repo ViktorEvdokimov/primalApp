@@ -28,6 +28,17 @@ export default defineConfig({
         orientation: 'portrait',
         background_color: '#1a1b1e',
         theme_color: '#1a1b1e',
+        // Приложение для Android: сайт узнаёт, что оно установлено (navigator.getInstalledRelatedApps), и предлагает
+        // открыть страницу в нём (OpenInAppBanner). Связь подтверждают /.well-known/assetlinks.json и asset_statements
+        // в манифесте приложения.
+        related_applications: [
+          {
+            platform: 'play',
+            id: 'com.primalapp.android',
+            url: 'https://play.google.com/store/apps/details?id=com.primalapp.android',
+          },
+        ],
+        prefer_related_applications: false,
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

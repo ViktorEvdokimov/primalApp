@@ -1,12 +1,14 @@
 package com.primalapp.database
 
-import platform.Foundation.NSDocumentDirectory
-import platform.Foundation.NSFileManager
-import platform.Foundation.NSUserDomainMask
-import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import androidx.room.Room
-import androidx.room.RoomDatabase
-import androidx.sqlite.SQLiteConnection
+import kotlinx.cinterop.ExperimentalForeignApi
+import platform.Foundation.NSBundle
+import platform.Foundation.NSDocumentDirectory
+import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSString
+import platform.Foundation.NSUTF8StringEncoding
+import platform.Foundation.NSUserDomainMask
+import platform.Foundation.stringWithContentsOfFile
 
 actual fun currentTimeMillis(): Long = (platform.Foundation.NSDate().timeIntervalSince1970 * 1000).toLong()
 
@@ -17,15 +19,13 @@ actual fun createPrimalDatabase(context: PlatformContext): PrimalDatabase {
         NSDocumentDirectory, NSUserDomainMask, true
     ).first() as String) + "/primal.db"
     return Room.databaseBuilder<PrimalDatabase>(name = dbPath)
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
-        .addCallback(object : RoomDatabase.Callback() {
-            override fun onCreate(db: SQLiteConnection) {
-                super.onCreate(db)
-                seedBosses(db)
-                seedTaskInfo(db)
-                seedChapterInfo(db)
-            }
-        })
+        .addMigrations(*ALL_MIGRATIONS)
         .fallbackToDestructiveMigration(true)
         .build()
+}
+
+@OptIn(ExperimentalForeignApi::class)
+actual fun readBundledText(context: PlatformContext, name: String): String? {
+    val path = NSBundle.mainBundle.pathForResource(name.substringBeforeLast('.'), name.substringAfterLast('.')) ?: return null
+    return NSString.stringWithContentsOfFile(path, NSUTF8StringEncoding, null)
 }

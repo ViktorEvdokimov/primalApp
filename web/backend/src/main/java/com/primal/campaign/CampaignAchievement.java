@@ -57,6 +57,15 @@ public class CampaignAchievement {
         this.grantedAt = now;
     }
 
+    /** Состояние из снимка мобильного приложения ({@code doc/api.md} §11). */
+    void restore(String achievementCode, String name, String normalizedName, Source source, int chapter) {
+        this.achievementCode = achievementCode;
+        this.name = name;
+        this.normalizedName = normalizedName;
+        this.source = source;
+        this.grantedInChapter = (short) chapter;
+    }
+
     public Long getId() {
         return id;
     }

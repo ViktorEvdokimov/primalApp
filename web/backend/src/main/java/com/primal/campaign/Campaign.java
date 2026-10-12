@@ -128,6 +128,22 @@ public class Campaign {
         progressSeq++;
     }
 
+    /**
+     * Состояние из снимка мобильного приложения ({@code doc/api.md} §11). {@code progress_seq} не уменьшается:
+     * приложение растит его по тем же правилам (принятая победа, переход и ручная правка главы).
+     */
+    void restore(String name, String notes, int chapter, Status status, int forgeLevel, int labLevel,
+                 String finalBossCode, int progressSeq) {
+        this.name = name;
+        this.notes = notes;
+        this.chapter = (short) chapter;
+        this.status = status;
+        this.forgeLevel = (short) forgeLevel;
+        this.labLevel = (short) labLevel;
+        this.finalBossCode = finalBossCode;
+        this.progressSeq = Math.max(this.progressSeq, progressSeq);
+    }
+
     /** Следующий бой — только с этим боссом (глава 11). */
     void setFinalBoss(String bossCode) {
         this.finalBossCode = bossCode;
@@ -179,5 +195,9 @@ public class Campaign {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }

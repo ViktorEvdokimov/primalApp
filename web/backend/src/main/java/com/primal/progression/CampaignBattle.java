@@ -201,4 +201,8 @@ public class CampaignBattle {
     public Instant getSubmittedAt() {
         return submittedAt;
     }
+
+    public Instant getFinishedAt() {
+        return finishedAt;
+    }
 }

@@ -125,34 +125,6 @@ class MigrationTest {
 
     //endregion
 
-    //region 27.2. onCreate-seed на чистой установке (версия 9)
-
-    @Test
-    fun `onCreate seed на чистой установке содержит 23 босса с NULL dfw и NULL hsc`() {
-        // Подготовка: открываем реальную БД через билдер с onCreate-колбэком (seedBosses)
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val db = createPrimalDatabase(PlatformContext(context))
-        val bossDao = db.bossDao()
-
-        // Вызов проверяемого кода: читаем всех боссов из свежесозданной БД
-        val bosses = runBlocking { bossDao.getAllBosses() }
-
-        // Проверка: 23 уникальных имени боссов (89 строк: 22 босса × 4 сложности + «Пробуждённый»),
-        // включая Коровона (NULL dfw) и Кситероса (NULL hsc на Ст2)
-        assertEquals(23, bosses.map { it.name }.distinct().size,
-            "onCreate-seed должен создать 23 уникальных имени боссов")
-        assertEquals(89, bosses.size, "onCreate-seed должен создать 89 строк боссов")
-        val korovon = bosses.firstOrNull { it.name == "Коровон" }
-        assertTrue(korovon != null, "Коровон должен быть в seed")
-        assertNull(korovon!!.stance2Dfw, "Коровон: stance2_dfw должен быть NULL")
-        val ksiteros = bosses.firstOrNull { it.name == "Кситерос" }
-        assertTrue(ksiteros != null, "Кситерос должен быть в seed")
-        assertNull(ksiteros!!.stance2Hsc, "Кситерос: stance2_hsc (Ст2) должен быть NULL")
-        db.close()
-    }
-
-    //endregion
-
     //region 42.1. Миграция 13→14: канонические названия достижений
 
     private fun SupportSQLiteDatabase.queryStrings(sql: String): List<String> =
@@ -357,80 +329,6 @@ class MigrationTest {
         migrated.close()
     }
 
-    @Test
-    fun `повторная выдача достижения через репозиторий не создаёт дубль`() {
-        // Подготовка: реальная БД последней версии
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val db = createPrimalDatabase(PlatformContext(context))
-        val repository = CampaignRepositoryImpl(db)
-        val achievement = com.primalapp.model.campaign.Achievement(id = "Затишье", name = "Затишье", unlocked = true)
-
-        // Вызов проверяемого кода
-        val achievements = runBlocking {
-            val campaignId = repository.createCampaign("Дубли")
-            repository.saveAchievement(campaignId, achievement)
-            repository.saveAchievement(campaignId, achievement)
-            repository.getAchievements(campaignId)
-        }
-
-        // Проверка
-        assertEquals(listOf("Затишье"), achievements.map { it.name })
-        db.close()
-    }
-
-    //endregion
-
-    //region «Отмена» у выполненного задания
-
-    @Test
-    fun `выполненное задание возвращается в открытые через репозиторий`() {
-        // Подготовка: реальная БД, задание 1 открыто и выполнено
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val db = createPrimalDatabase(PlatformContext(context))
-        val repository = CampaignRepositoryImpl(db)
-        val quest = com.primalapp.model.campaign.Quest(id = "1", name = "Задание 1", chapter = 2, questNumber = 1, isAvailable = true)
-
-        // Вызов проверяемого кода
-        val (afterComplete, afterUndo) = runBlocking {
-            val campaignId = repository.createCampaign("Отмена")
-            repository.saveQuest(campaignId, quest)
-            repository.completeQuest(campaignId, "1")
-            val completed = repository.getQuests(campaignId).single()
-            repository.uncompleteQuest(campaignId, "1")
-            completed to repository.getQuests(campaignId).single()
-        }
-
-        // Проверка
-        assertTrue(afterComplete.isCompleted)
-        assertFalse(afterUndo.isCompleted, "«Отмена» снимает отметку выполнения")
-        assertTrue(afterUndo.isAvailable, "Задание снова открыто")
-        db.close()
-    }
-
-    @Test
-    fun `повторное сохранение задания обновляет его без дубля и не снимает выполнение`() {
-        // Подготовка: апсерт без ON CONFLICT DO UPDATE — работает и на SQLite старше 3.24 (Android 8–10)
-        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        val db = createPrimalDatabase(PlatformContext(context))
-        val repository = CampaignRepositoryImpl(db)
-        val quest = com.primalapp.model.campaign.Quest(id = "5", name = "Задание 5", chapter = 2, questNumber = 5, isAvailable = true)
-
-        // Вызов проверяемого кода
-        val quests = runBlocking {
-            val campaignId = repository.createCampaign("Апсерт")
-            repository.saveQuest(campaignId, quest)
-            repository.completeQuest(campaignId, "5")
-            repository.saveQuest(campaignId, quest.copy(chapter = 3, isCompleted = false))
-            repository.getQuests(campaignId)
-        }
-
-        // Проверка
-        assertEquals(1, quests.size, "Задание не дублируется")
-        assertEquals(3, quests.single().chapter, "Поля задания обновлены")
-        assertTrue(quests.single().isCompleted, "Выполненное задание остаётся выполненным (D-5)")
-        db.close()
-    }
-
     //endregion
 
     //region Миграция 16→17: формулировка решения главы 7
@@ -458,6 +356,80 @@ class MigrationTest {
         )
         assertEquals(11, migrated.queryInt("SELECT COUNT(*) FROM chapter_info"))
         migrated.close()
+    }
+
+    //endregion
+
+    //region Миграция 17→18: кампании — документами, справочники — из файла приложения
+
+    @Test
+    fun `миграция 17→18 переносит кампанию в новый формат с книжной главой и кодами каталога`() {
+        // Подготовка: БД версии 17 — кампания в главе 3 приложения (глава 2 книги), охотник с навыками и ресурсами,
+        // задания (открытое, выполненное, истёкшее), достижение в старом написании и трофеи
+        helper.createDatabase(TEST_DB, 17).apply {
+            execSQL(
+                "INSERT INTO campaigns (id, name, current_chapter, forge_level, lab_level, notes, created_at, updated_at) " +
+                    "VALUES (1, 'Старая', 3, 2, 1, 'заметка', 100, 200)"
+            )
+            execSQL("INSERT INTO hunters (id, campaign_id, player_name, class_name) VALUES (10, 1, 'Иван', 'DAREON')")
+            execSQL("INSERT INTO hunters (id, campaign_id, player_name, class_name) VALUES (11, 1, 'Мира', 'MIRA')")
+            execSQL("INSERT INTO skills (hunter_id, branch, tier, unlocked) VALUES (10, 'A', 1, 1)")
+            execSQL("INSERT INTO skills (hunter_id, branch, tier, unlocked) VALUES (10, 'A', 2, 1)")
+            execSQL("INSERT INTO skills (hunter_id, branch, tier, unlocked) VALUES (10, 'B', 1, 0)")
+            execSQL("INSERT INTO resources (hunter_id, resource_type, resource_name, quantity) VALUES (10, 'MATERIAL', 'BONES', 3)")
+            execSQL("INSERT INTO resources (hunter_id, resource_type, resource_name, quantity) VALUES (10, 'ELEMENT', 'FIRE', 2)")
+            execSQL(
+                "INSERT INTO quests (campaign_id, quest_id, name, chapter, quest_number, is_completed, is_available) VALUES " +
+                    "(1, '1', 'Память пустыни', 2, 1, 1, 1), (1, '4', 'Вожак стаи', 3, 4, 0, 1), (1, '3', 'Рёв моря', 2, 3, 0, 0)"
+            )
+            execSQL("INSERT INTO achievements (campaign_id, achievement_id, name, description, unlocked) VALUES (1, 'яд  пазиса', 'яд  пазиса', '', 1)")
+            execSQL("INSERT INTO achievements (campaign_id, achievement_id, name, description, unlocked) VALUES (1, 'Своё', 'Своё', '', 1)")
+            execSQL("INSERT INTO trophies (campaign_id, boss_name, element, chapter, acquired_at) VALUES (1, 'Вираксен', 'FIRE', 1, 0)")
+            execSQL("INSERT INTO trophies (campaign_id, boss_name, element, chapter, acquired_at) VALUES (1, 'Торамат', 'HORN', 2, 0)")
+            close()
+        }
+
+        // Вызов проверяемого кода
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 18, true, MIGRATION_17_18)
+
+        // Проверка: старые таблицы удалены, кампания — документом «только на устройстве»
+        assertEquals(1, migrated.queryInt("SELECT COUNT(*) FROM campaign_store WHERE access = 'LOCAL'"))
+        assertEquals(0, migrated.queryInt("SELECT COUNT(*) FROM sqlite_master WHERE name IN ('campaigns', 'bosses', 'task_info')"))
+        val json = migrated.queryStrings("SELECT state_json FROM campaign_store").single()
+        val state = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+            .decodeFromString(com.primalapp.campaign.CampaignState.serializer(), json)
+        assertEquals("Старая", state.name)
+        assertEquals(2, state.chapter, "Глава книги = глава приложения − 1")
+        assertEquals(2, state.forgeLevel)
+        assertEquals("заметка", state.notes)
+        assertEquals(listOf("Иван", "Мира"), state.squad.map { it.playerName })
+        val dareon = state.squad.first()
+        assertEquals(2, dareon.skills.size, "Открытые ступени: А1 и А2")
+        assertEquals(3, dareon.resources[com.primalapp.model.campaign.ResourceCode.BONES])
+        assertEquals(
+            listOf(1 to com.primalapp.campaign.QuestStatus.COMPLETED, 3 to com.primalapp.campaign.QuestStatus.EXPIRED,
+                4 to com.primalapp.campaign.QuestStatus.OPEN),
+            state.quests.map { it.number to it.status }
+        )
+        assertEquals(listOf("YAD_PAZISA" to "Яд Пазиса", null to "Своё"), state.achievements.map { it.code to it.name })
+        assertEquals(listOf("VIRAXEN" to 0, "TORAMAT" to 1), state.trophies.map { it.bossCode to it.chapter })
+        migrated.close()
+    }
+
+    @Test
+    fun `чистая установка версии 18 — пустые кампании и настройки`() {
+        // Подготовка
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val db = createPrimalDatabase(PlatformContext(context))
+
+        // Вызов проверяемого кода
+        val campaigns = runBlocking { db.campaignStoreDao().all() }
+        val setting = runBlocking { db.keyValueDao().get("mode") }
+
+        // Проверка
+        assertTrue(campaigns.isEmpty())
+        assertNull(setting)
+        db.close()
     }
 
     //endregion

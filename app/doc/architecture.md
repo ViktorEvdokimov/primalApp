@@ -3,117 +3,56 @@
 ## 1. Модульная структура
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        primalApp                        │
-│                                                         │
-│  ┌─────────────────┐  ┌─────────────┐  ┌─────────────┐ │
-│  │     :shared      │  │ :androidApp │  │   iosApp    │ │
-│  │   (KMP Library)  │  │  (Android)  │  │   (iOS)     │ │
-│  │                  │  │             │  │             │ │
-│  │  commonMain      │  │  Compose UI │  │  SwiftUI    │ │
-│  │  ├── model/       │  │  ↓          │  │  ↓          │ │
-│  │  ├── model/campaign/│ │  ViewModel  │  │  ViewModel  │ │
-│  │  ├── model/ext/   │  │  ↑          │  │  ↑          │ │
-│  │  ├── domain/      │  │  depends──→ │  │  depends──→ │ │
-│  │  ├── viewmodel/   │  │             │  │             │ │
-│  │  ├── repository/  │  │             │  │             │ │
-│  │  └── database/    │  │             │  │             │ │
-│  │      ├── entity/  │  └─────────────┘  └─────────────┘ │
-│  │      ├── dao/     │                                   │
-│  │      └── mapper/  │                                   │
-│  │  commonTest      │  │             │  │             │ │
-│  │  ├── MonsterTest │  └─────────────┘  └─────────────┘ │
-│  │  └── HunterTest  │                                   │
-│  │                  │                                   │
-│  │  androidMain     │                                   │
-│  │  iosMain         │                                   │
-│  └─────────────────┘                                   │
-└─────────────────────────────────────────────────────────┘
+primalApp/
+├── app/                        мобильное приложение (этот документ)
+│   ├── shared/                 KMP-модуль: вся логика
+│   │   └── commonMain/kotlin/com/primalapp/
+│   │       ├── model/          бой: Monster, Hunter, Boss; перечисления (Element, Material, Plant,
+│   │       │                   ResourceCode, HunterClass, SkillBranch, Expansion, ForgeSlot)
+│   │       ├── model/ext/      правила боя (MonsterExt, HunterExt)
+│   │       ├── catalog/        каталог и язык эффектов: Catalog, CatalogJson, Effect, EffectPlanner,
+│   │       │                   EffectDescriber, toBattleBoss
+│   │       ├── campaign/       кампания: CampaignState, CampaignRules, CampaignOp, превью итогов
+│   │       ├── info/           «Инфо»: модели, разбор, разметка текста
+│   │       ├── database/       Room: entity, dao, миграции 1–18, старые сиды (для миграций)
+│   │       ├── net/            Ktor-клиент API сервера, cookie, DTO
+│   │       ├── sync/           AppCore, SettingsStore, справочники, CampaignStore, SyncEngine
+│   │       ├── viewmodel/      BattleViewModel и ViewModel экранов
+│   │       └── domain/         сравнение названий достижений
+│   ├── androidApp/             Compose UI, App Links, assets (каталог и «Инфо» по умолчанию)
+│   └── iosApp/                 заготовка SwiftUI
+├── web/                        сайт: backend (Spring Boot), frontend (React), doc
+└── test/                       UI-тесты Appium (pytest)
 ```
 
 ---
 
-## 2. Слои приложения (MVVM + Clean Architecture)
+## 2. Слои приложения (MVVM)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Presentation Layer                    │
-│  ┌──────────────────────┐  ┌──────────────────────────┐ │
-│  │  Android: Compose UI  │  │  iOS: SwiftUI Views      │ │
-│  │  MainActivity.kt      │  │  ContentView.swift       │ │
-│  │  ├── QuickBattleHost  │  │                          │ │
-│  │  ├── BattleScreen     │  │                          │ │
-│  │  ├── PhaseChangeDialog│  │                          │ │
-│  │  ├── RageSurgeDialog  │  │                          │ │
-│  │  ├── VictoryScreen    │  │                          │ │
-│  │  └── DefeatScreen     │  │                          │ │
-│  └──────────┬───────────┘  └─────────────┬────────────┘ │
-│             │ collectAsState()            │ @Observed    │
-│             ▼                             ▼              │
-├─────────────────────────────────────────────────────────┤
-│                     ViewModel Layer                      │
-│  ┌──────────────────────────────────────────────────────┐│
-│  │  BattleViewModel (shared/commonMain)                 ││
-│  │  ├── _state: MutableStateFlow<BattleScreenState>     ││
-│  │  ├── timerJob: Job?                                   ││
-│  │  ├── lastSnapshot: MonsterSnapshot?                   ││
-│  │  └── Methods: startBattle, onDamageInputChanged,       ││
-│  │              onQuickButtonPress, onOkPress,             ││
-│  │              onCancelPress, onUndoPress, commitDamage,  ││
-│  │              addRage, removeRage, toggleHardened,       ││
-│  │              toggleResilient, healWound,                ││
-│  │              endRound, confirmPhaseChange, resetBattle,  ││
-│  │              confirmRageSurge                            ││
-│  └────────────────────────┬─────────────────────────────┘│
-│                           │                              │
-├───────────────────────────┼──────────────────────────────┤
-│                     Domain Layer                          │
-│  ┌────────────────────────┼─────────────────────────────┐│
-│  │  Validators & Progression (shared/commonMain)        ││
-│  │  ├── SkillValidatorImpl.kt: canUnlock,               ││
-│  │  │   getAvailableBranches                             ││
-│  │  └── AchievementNames.kt: сравнение названий          ││
-│  │                                                       ││
-│  │  Extension Functions (shared/commonMain)             ││
-│  │  ├── MonsterExt.kt: takeDamage, addRage, removeRage,  ││
-│  │  │   addRagePerHunter, endRound, toggleHardened,      ││
-│  │  │   toggleResilient, healWound, resetPhase           ││
-│  │  └── HunterExt.kt: takeDamage, heal, revive,          ││
-│  │      isCritical                                       ││
-│  └────────────────────────┬─────────────────────────────┘│
-│                           │                              │
-├───────────────────────────┼──────────────────────────────┤
-│                      Data Layer                           │
-│  ┌────────────────────────┼─────────────────────────────┐│
-│  │  CampaignRepository (interface)                       ││
-│  │  ├── getAllCampaigns, getCampaign, create/save/delete ││
-│  │  ├── getHunters, addHunters                           ││
-│  │  ├── getSkills, unlockSkill                           ││
-│  │  ├── getMaterials/Plants/Elements, addResource        ││
-│  │  ├── updateChapter, forge/lab levels                  ││
-│  │  └── saveVictory, quests, achievements, trophies      ││
-│  │                                                       ││
-│  │  Room Database (shared/commonMain)                    ││
-│  │  ├── Entity: Campaign, Hunter, Skill, Resource,       ││
-│  │  │   Achievement, Trophy, Quest (7 tables)            ││
-│  │  ├── DAO: CampaignDao, HunterDao, SkillDao,           ││
-│  │  │   ResourceDao, AchievementDao, TrophyDao, QuestDao ││
-│  │  ├── Mapper: Entity ↔ Domain                          ││
-│  │  └── Platform: expect/actual для Room.Builder          ││
-│  │                                                       ││
-│  │  Data Classes (shared/commonMain)                    ││
-│  │  ├── Monster: name, currentPhase, currentHealth,      ││
-│  │  │   accumulatedDamage, damageForWound,               ││
-│  │  │   healthForStanceChange, rage, isHardened,         ││
-│  │  │   isResilient,                                     ││
-│  │  │   isDefeated, isLastPhase                          ││
-│  │  ├── Hunter: name, maxHealth, currentHealth,          ││
-│  │  │   isUnconscious, isAlive, healthPercentage         ││
-│  │  └── DamageResult: woundsInflicted, remainingDamage,  ││
-│  │      phaseChanged, newPhase, message                  ││
-│  └──────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────┘
+Compose UI (androidApp/ui)            — «глупый» UI: рисует состояние, передаёт действия
+        │ collectAsState()
+        ▼
+ViewModel (shared/viewmodel)          — AppViewModel (навигация, бой), BattleViewModel, ViewModel экранов
+        │ CampaignOp / запросы
+        ▼
+Домен (shared/catalog, campaign)      — CampaignRules + язык эффектов: чистые функции над CampaignState
+        │
+        ▼
+Данные и синхронизация (shared/sync)  — CampaignStore (Room, документы JSON), справочники, SettingsStore,
+        │                               SyncEngine ⇄ PrimalApi (Ktor) ⇄ сервер web/backend
+        ▼
+Room (shared/database)                — campaign_store, kv_store, cache_blob (версия 18)
 ```
+
+- Действие игрока в кампании: ViewModel создаёт `CampaignOp` → `CampaignStore.perform` применяет его правилами к
+  документу и сохраняет; у кампании с сервера действие попадает в журнал, `SyncEngine` отправляет снимок
+  (`doc/sync.md` §5). Экраны наблюдают документ через `Flow` и обновляются сами — в том числе после изменений других
+  участников.
+- Бой — как раньше: `BattleViewModel` + `MonsterExt` (разделы 3–4); бой кампании начинается и заканчивается через
+  `AppViewModel` (отметка о начале, итог).
+- Корень зависимостей — `AppCore` (один на процесс, `PrimalApplication`): БД, настройки, справочники, хранилище
+  кампаний, API, синхронизация раз в минуту и при возврате приложения на экран.
 
 ---
 
@@ -308,35 +247,14 @@ MainActivity: рекомпозиция — состояние монстра о�
 
 ## 5. Граф зависимостей
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Version Catalog                          │
-│  gradle/libs.versions.toml                                  │
-│  ├── kotlin 2.0.21                                          │
-│  ├── agp 8.13.2                                             │
-│  ├── coroutines 1.8.1                                       │
-│  ├── composeBom 2024.09.00                                  │
-│  ├── activityCompose 1.9.1                                  │
-│  ├── room 2.6.1 (KMP)                                       │
-│  ├── ksp 2.0.21-1.0.28                                      │
-│  └── kotlinx-datetime 0.6.1                                 │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-         ┌─────────────┼─────────────┐
-         ▼             ▼             ▼
-┌─────────────┐ ┌───────────┐ ┌───────────┐
-│   :shared   │ │:androidApp│ │  iosApp   │
-│             │ │    │      │ │    │      │
-│ kotlinx-    │ │    ├──────┤ │    ├──────┤
-│ coroutines  │ │    │shared│ │    │shared│
-│ room-runtime│ │    │      │ │    │      │
-│ room-ktx    │ │ compose │ │ SwiftUI │
-│ room-comp.  │ │ material│ │         │
-│ (KSP)       │ │         │ │         │
-│ kotlinx-    │ │         │ │         │
-│ datetime    │ │         │ │         │
-└─────────────┘ └───────────┘ └───────────┘
-```
+| Модуль | Зависимости |
+|--------|-------------|
+| `:shared` | kotlinx-coroutines 1.8.1, kotlinx-datetime 0.6.1, kotlinx-serialization-json 1.7.3, Room 2.7.0 (KSP 2.0.21-1.0.28), Ktor client 2.3.12 (`ktor-client-okhttp` — Android, `ktor-client-darwin` — iOS); тесты — kotlin-test, coroutines-test, ktor-client-mock, Robolectric, room-testing |
+| `:androidApp` | `:shared`, Compose BOM 2024.09.00 (Material3), activity-compose 1.9.1, ZXing core 3.5.3 (QR-код) |
+| `iosApp` | `Shared.framework` |
+
+Плагины: Kotlin 2.0.21 (multiplatform, android, compose, serialization), AGP 8.13.2, KSP. Версии — в
+`gradle/libs.versions.toml`.
 
 ---
 
@@ -346,7 +264,12 @@ MainActivity: рекомпозиция — состояние монстра о�
 |---------|---------|
 | MVVM, а не MVC/MVP | Чёткое разделение UI и логики, поддержка KMP |
 | StateFlow, а не LiveData | KMP-совместимость (LiveData — Android-only) |
-| Room KMP 2.6.1 для хранения | Единый слой данных в shared/commonMain через expect/actual для Room.Builder; персистентность кампаний доступна на Android и iOS |
+| Room KMP 2.7.0 для хранения | Единый слой данных в shared/commonMain через expect/actual для Room.Builder; персистентность кампаний доступна на Android и iOS |
+| Кампания — документ JSON, а не таблицы | Состояние кампании совпадает со снимком сервера: синхронизация отправляет и получает его целиком, без отдельных таблиц для охотников, заданий и т. п. |
+| Правила кампании в приложении (local-first) | Кампании работают без сети; сервер получает готовое состояние, правила совпадают с сервером (перенос сервисов `web/backend`) |
+| Журнал действий и повтор при конфликте | Правки разных участников складываются, а не затирают друг друга; «первая принятая победа закрывает главу» соблюдается и после работы без сети |
+| Ktor client | KMP-клиент HTTP (OkHttp/Darwin), поток SSE без отдельной библиотеки |
+| Каталог и «Инфо» — файлом в assets | Справочники доступны без сети с первого запуска; онлайн обновляются с сервера по ETag |
 | expect/actual для PlatformContext | Room.databaseBuilder требует платформенный контекст (Android Context vs iOS NSFileManager путь) |
 | expect/actual для currentTimeMillis() | System.currentTimeMillis() недоступен в KMP commonMain; заменён на Kotlin-обёртку |
 | Функции-расширения, а не методы классов | Идиоматичный Kotlin, разделение модели и логики |

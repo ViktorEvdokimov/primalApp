@@ -58,7 +58,13 @@ import com.primalapp.viewmodel.FightPhase
 import com.primalapp.viewmodel.MonsterStatusInfo
 
 @Composable
-fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
+fun BattleScreen(
+    state: BattleScreenState,
+    viewModel: BattleViewModel,
+    onBackToMenu: () -> Unit = {},
+    header: String? = null,
+    onInfo: (() -> Unit)? = null
+) {
     val monster = state.monster
     var showSurrenderDialog by remember { mutableStateOf(false) }
     val vibrate = rememberBattleVibrator()
@@ -79,6 +85,10 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
     }
 
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding((160f / 25.4f).dp)) {
+        if (header != null) {
+            Text(header, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(4.dp))
+        }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             ParamText("Фаза $phaseLabel", state.highlightedParams.contains(BattleParam.PHASE), baseBold = true)
             ParamText("Раунд ${state.currentRound}/${state.maxRounds}", state.highlightedParams.contains(BattleParam.ROUND))
@@ -207,6 +217,12 @@ fun BattleScreen(state: BattleScreenState, viewModel: BattleViewModel, onBackToM
             onBackToMenu()
         }, modifier = Modifier.fillMaxWidth()) {
             Text("Выход в меню")
+        }
+        if (onInfo != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onInfo, modifier = Modifier.fillMaxWidth()) {
+                Text("Инфо")
+            }
         }
         if (state.message.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
@@ -369,33 +385,6 @@ fun RageSurgeDialog(viewModel: BattleViewModel) {
         },
         confirmButton = { TextButton(onClick = { viewModel.confirmRageSurge() }) { Text("OK") } }
     )
-}
-
-@Composable
-fun VictoryScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("ПОБЕДА!", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(16.dp))
-        Text("Монстр повержен!")
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = { viewModel.resetBattle() }) { Text("Новый бой") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onBackToMenu) { Text("Выход в меню") }
-    }
-}
-
-@Composable
-fun DefeatScreen(viewModel: BattleViewModel, onBackToMenu: () -> Unit = {}) {
-    val surrendered = viewModel.state.collectAsState().value.surrendered
-    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(16.dp))
-        Text(defeatReason(surrendered))
-        Spacer(Modifier.height(32.dp))
-        Button(onClick = { viewModel.resetBattle() }) { Text("Новый бой") }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = onBackToMenu) { Text("Выход в меню") }
-    }
 }
 
 /** Причина поражения для экрана поражения (D-14). */

@@ -51,4 +51,8 @@ public class CampaignTrophy {
     public int getChapter() {
         return chapter;
     }
+
+    public UUID getCampaignBattleId() {
+        return campaignBattleId;
+    }
 }

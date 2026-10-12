@@ -2,23 +2,54 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- usesCleartextTraffic: адрес сервера задаётся в настройках, свой сервер в локальной сети может быть по HTTP -->
     <application
+        android:name=".PrimalApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.PrimalApp">
+
+        <!-- Связь с сайтом: сайт предлагает «Открыть в приложении» (navigator.getInstalledRelatedApps) -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- App Links: приглашение и лист кампании открываются в приложении (assetlinks.json на сайте) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="primalhelper.ru" />
+                <data android:pathPrefix="/s/" />
+                <data android:pathPrefix="/campaigns" />
+            </intent-filter>
+
+            <!-- Любая страница сайта — для кнопки «Открыть в приложении» на сайте -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="primalhelper.ru" />
             </intent-filter>
         </activity>
     </application>

@@ -101,4 +101,25 @@ public final class CatalogDtos {
             return new Achievement(def.code(), def.name());
         }
     }
+
+    /**
+     * Задание для мобильного приложения: награды за победу и последствия невыполненного задания — в исходном виде
+     * языка эффектов ({@code doc/data-model.md} §4.3), как в {@code quests.yaml} и правке администратора.
+     */
+    public record BundleQuest(int number, String name, String bossCode, @ApiNullable String expansion,
+                              List<Map<String, Object>> victory, List<Map<String, Object>> expired) {
+    }
+
+    /** Глава для мобильного приложения: эффекты и решения — в исходном виде языка эффектов. */
+    public record BundleChapter(int chapter, List<Map<String, Object>> effects, List<Map<String, Object>> decisions) {
+    }
+
+    /**
+     * Весь каталог одним ответом — для мобильного приложения, которое считает награды само, в том числе без сети
+     * ({@code doc/api.md} §4.1). {@code version} — контрольная сумма каталога (как ETag).
+     */
+    public record CatalogBundle(String version, List<Boss> bosses, List<Achievement> achievements,
+                                List<BundleQuest> quests, List<BundleChapter> chapters, List<ForgeBoard> forge,
+                                List<LabPotion> lab) {
+    }
 }

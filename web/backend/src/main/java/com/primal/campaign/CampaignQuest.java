@@ -60,6 +60,14 @@ public class CampaignQuest {
         this.updatedAt = now;
     }
 
+    /** Состояние из снимка мобильного приложения ({@code doc/api.md} §11). */
+    void restore(Status status, int openedInChapter, Integer closedInChapter, Instant now) {
+        this.status = status;
+        this.openedInChapter = (short) openedInChapter;
+        this.closedInChapter = status == Status.OPEN || closedInChapter == null ? null : closedInChapter.shortValue();
+        this.updatedAt = now;
+    }
+
     public int getQuestNumber() {
         return key.questNumber();
     }

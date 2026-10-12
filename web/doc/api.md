@@ -94,11 +94,14 @@ Content-Type: application/problem+json
 | `GET /catalog/achievements` | Известные достижения (автодополнение) | — |
 | `GET /catalog/forge` | Планшеты кузни 9 стихий: предметы, слоты, цены на 3 уровня | — |
 | `GET /catalog/lab` | Планшет лаборатории: 6 зелий и их растения | — |
+| `GET /catalog/bundle` | Весь каталог одним ответом, эффекты — в исходном виде (мобильное приложение, §4.1) | каталог в `assets` |
 | **Кампании** | | |
 | `GET /campaigns` · `POST /campaigns` | Список и создание | `onCampaignModeSelected`, `onStartCampaign` |
 | `GET /campaigns/{id}` | Лист кампании целиком | `loadCampaignSheet` |
 | `PATCH /campaigns/{id}` | Название, заметки, ручная правка главы | `onSaveNotes`, `onUpdateChapter` |
 | `DELETE /campaigns/{id}` | Удаление | `onDeleteCampaign` |
+| `GET` · `PUT /campaigns/{id}/snapshot` | Снимок кампании целиком: чтение и запись с `expectedVersion` (мобильное приложение, §11) | `SyncEngine` |
+| `POST /campaigns/import` | Кампания из приложения — на сервер (§11) | `SyncEngine` |
 | `PATCH /campaigns/{id}/hunters/{hunterId}` | Имя игрока | — |
 | `POST /campaigns/{id}/hunters/{hunterId}/skills` | Открыть ступень навыка | `onUnlockSkill` |
 | `DELETE /campaigns/{id}/hunters/{hunterId}/skills/{branch}/{tier}` | Снять ступень (исправление ошибки) | — |
@@ -321,6 +324,35 @@ GET /catalog/lab
 В главах условие с «иначе» формулируется как «открыть задание N, иначе добавить задание M» (как в app),
 вложенное условие — после двоеточия: «Если есть достижение «Горящий уголёк»: если текущая глава 8, то
 добавить задание 34, иначе добавить задание 27».
+
+---
+
+### 4.1 Каталог для мобильного приложения
+
+```http
+GET /catalog/bundle                        // без входа; Cache-Control: no-cache + ETag (как у остальных справочников)
+→ 200
+{
+  "version": "f58ad100…",                  // контрольная сумма каталога с правками администратора
+  "bosses": [ …как GET /catalog/bosses… ],
+  "achievements": [ { "code": "GOLOS_VOLTYARA", "name": "Голос Волтьяра" }, … ],
+  "quests": [
+    { "number": 1, "name": "Память пустыни", "bossCode": "TORAMAT", "expansion": null,
+      "victory": [ { "resources": { "BONES": 2, … } },
+                   { "if": { "chapterIn": [1, 2] }, "then": [ { "openQuest": 4 } ], "else": [ { "openQuest": 6 } ] } ],
+      "expired": [ { "openQuest": 6 } ] }, …
+  ],
+  "chapters": [ { "chapter": 7, "effects": [ … ], "decisions": [ { "code": "TRAIN_WITH_VOLTYAR", "question": "…",
+                  "options": [ { "code": "YES", "label": "Да", "effects": [ { "grantAchievement": "GOLOS_VOLTYARA" } ] }, … ] } ] }, … ],
+  "forge": [ …как GET /catalog/forge… ],
+  "lab": [ …как GET /catalog/lab… ]
+}
+```
+
+Мобильное приложение (`app/`) считает награды, условные правила и переходы глав само, в том числе без сети, поэтому
+ему нужны эффекты в исходном виде языка эффектов (`data-model.md` §4.3) — тот же формат, что в `quests.yaml`,
+`chapters.yaml` и в правке администратора (§9.4). Правки администратора входят в ответ сразу (ETag меняется).
+Ответ без правок — файл каталога по умолчанию приложения (`app/androidApp/src/main/assets/catalog-bundle.json`).
 
 ---
 
@@ -1113,3 +1145,63 @@ stateDiagram-v2
     CHAPTER_TRANSITION --> ACTIVE: ACCEPT (глава + 1) / REJECT (глава прежняя)
     ACTIVE --> COMPLETED: победа в финальном бою (глава 11)
 ```
+
+---
+
+## 11. Мобильное приложение: снимок кампании
+
+Приложение (`app/doc/sync.md`) работает и без сети: правила кампании выполняет само, а с сервером обменивается
+**снимком** — всем состоянием листа одним документом. Права те же, что у листа кампании (§9): владелец или участник
+по ссылке.
+
+```http
+GET /campaigns/12/snapshot                 // ETag "v41"; If-None-Match: "v41" → 304
+→ 200
+{
+  "id": 12, "version": 41, "access": "OWNER", "ownerName": "Алиса",
+  "ownerExpansions": ["FEATHER", "ICE", "NIGHTMARE", "POISON"],   // для условия «есть дополнение»
+  "createdAt": "…", "updatedAt": "…",
+  "state": {
+    "name": "Кампания Алисы", "chapter": 2, "status": "ACTIVE", "forgeLevel": 1, "labLevel": 1,
+    "finalBossCode": null, "progressSeq": 3, "notes": "…",
+    "hunters": [ { "id": 31, "class": "DAREON", "playerName": "Алиса", "position": 1,
+                   "skills": [ { "branch": "A", "tier": 1 } ],
+                   "resources": { "BONES": 3, "FIRE": 2 },
+                   "items": [ { "id": 501, "kind": "EQUIPMENT", "name": "Язык пламени", "level": 1, "element": "FIRE", "source": "FIRE_01" } ] } ],
+    "quests": [ { "number": 1, "status": "COMPLETED", "openedInChapter": 1, "closedInChapter": 2 } ],
+    "achievements": [ { "id": 5, "code": "ZATISHE", "name": "Затишье", "source": "QUEST", "grantedInChapter": 2 } ],
+    "trophies": [ { "bossCode": "VIRAXEN", "chapter": 0, "battleId": "0b8f…" } ],
+    "battles": [ { "id": "0b8f…", "purpose": "PROLOGUE", "questNumber": null, "bossCode": "VIRAXEN", "difficulty": 0,
+                   "chapter": 0, "progressSeq": 0, "status": "APPLIED", "result": "VICTORY", "defeatReason": null,
+                   "roundsPlayed": 4, "startedBy": { "kind": "USER", "name": "Алиса" }, "startedAt": "…",
+                   "submittedBy": { "kind": "USER", "name": "Алиса" }, "submittedAt": "…", "finishedAt": "…" } ]
+  }
+}
+
+PUT /campaigns/12/snapshot
+{ "expectedVersion": 41, "state": { …как в ответе… } }
+→ 200 снимок (версия 42)                   // устаревшая версия — 409 VERSION_CONFLICT
+
+POST /campaigns/import
+{ "state": { … } }
+→ 201 снимок, Location: /api/v1/campaigns/13
+```
+
+- **Запись целиком.** `PUT` заменяет состояние: название, заметки, главу, статус, уровни, финального босса,
+  `progressSeq` (не уменьшается), задания, достижения, трофеи; у охотников — имя, навыки, ресурсы, инвентарь.
+  Охотники сопоставляются по классу, состав отряда снимок не меняет. Карта инвентаря с прежним `id` и видом правится на
+  месте (её id видят другие участники), остальные создаются заново; `id: null` — новая карта.
+- **Версия.** `expectedVersion` — версия снимка, на котором основано состояние приложения; другая — `409
+  VERSION_CONFLICT`, приложение берёт свежий снимок, повторяет свои действия поверх него и отправляет снова. Версия
+  растёт на 1, участники получают `campaign.updated` (§9.3).
+- **Бои** дописываются к истории (`campaign_battle`): новые создаются от имени устройства запроса (кто начал и кто
+  отправил итог — устройство запроса), у идущих сохраняется итог из приложения, сохранённые итоги не меняются; бои,
+  которых нет в снимке, не трогаются. Трофей ссылается на бой, только если такой бой есть в кампании.
+- **Проверки**: формат и ссылки на каталог — глава 0–11, уровни 1–3, задания, боссы, ресурсы, коды достижений,
+  ступени навыков (ступень 2 — только со ступенью 1), не больше 20 000 символов заметок; нарушение — `400
+  VALIDATION_FAILED` с полем, ничего не меняется. Достижение без кода сопоставляется с каталогом по названию (42.1),
+  повтор в другом написании отбрасывается. Правила наград сервер не пересчитывает: игра кооперативная, а правила
+  приложения те же.
+- **Импорт** — как создание кампании (§5.1): только пользователь с аккаунтом (`403 ACCOUNT_REQUIRED`), 2–5
+  охотников разных классов, не больше 10 своих кампаний (`422 CAMPAIGN_LIMIT_REACHED`); отряд — в порядке
+  `position`.

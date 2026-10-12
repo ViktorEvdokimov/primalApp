@@ -503,240 +503,118 @@ class BattleViewModel(
 
 ---
 
-## 4. CampaignViewModel (Campaign Management)
+## 4. ViewModel экранов (`shared/.../viewmodel/`)
 
-### 4.1 AppScreen
+### 4.1 AppViewModel и навигация
 
-**Файл:** `shared/src/commonMain/kotlin/com/primalapp/viewmodel/CampaignViewModel.kt:27`
+`AppViewModel(core: AppCore)` — корневая ViewModel (живёт в `PrimalApplication`): стек экранов, связь с сервером,
+текущий бой, ссылки на сайт.
 
-```kotlin
-sealed class AppScreen {
-    data object MainMenu : AppScreen()
-    data object CampaignSetup : AppScreen()
-    data object CampaignList : AppScreen()
-    data class CampaignSheet(val campaignId: Long) : AppScreen()
-    data class CampaignBattle(val campaignId: Long) : AppScreen()
-    data object QuickBattle : AppScreen()
-}
-```
-
-### 4.2 CampaignUiState
-
-**Файл:** `CampaignViewModel.kt:36`
-
-```kotlin
-data class CampaignUiState(
-    val screen: AppScreen = AppScreen.MainMenu,
-    val campaigns: List<Campaign> = emptyList(),
-    val campaignName: String = "",
-    val selectedClasses: List<HunterClass> = emptyList(),
-    val hunterPlayerNames: Map<HunterClass, String> = emptyMap(),
-    val currentCampaign: Campaign? = null,
-    val hunters: List<CampaignHunter> = emptyList(),
-    val selectedHunterIndex: Int = 0,
-    val skills: List<SkillNode> = emptyList(),
-    val materials: Map<Material, Int> = emptyMap(),
-    val plants: Map<Plant, Int> = emptyMap(),
-    val elements: Map<Element, Int> = emptyMap(),
-    val victoryMaterials: Map<Material, Int> = emptyMap(),
-    val victoryPlants: Map<Plant, Int> = emptyMap(),
-    val notes: String = "",
-    val availableSkillBranches: List<SkillBranch> = emptyList(),
-    val showPostVictory: Boolean = false,
-    val bossName: String = "",
-    val bossElement: Element? = null,
-    val completedQuestId: String = "",
-    val availableQuestsForNext: List<Quest> = emptyList(),
-    val selectedNextQuestId: String? = null,
-    val showQuestSelectDialog: Boolean = false,
-    val activeQuestId: String? = null,
-    val selectedQuestNumbers: Set<Int> = emptySet(),
-    val selectedDefeatQuestNumbers: Set<Int> = emptySet(),
-    val isSaving: Boolean = false,
-    val saveMessage: String = "",
-    val error: String? = null,
-    val lastActiveBattle: AppScreen? = null,
-    val fatalError: String? = null,
-    val preBattleHunters: List<Hunter> = emptyList(),
-    val isPrologue: Boolean = false,
-    val defeatedBosses: List<String> = emptyList(),
-    val campaignQuests: List<Quest> = emptyList(),
-    val taskInfoByQuestNumber: Map<Int, TaskInfo> = emptyMap(),
-    val showQuestRewards: Boolean = false,
-    val questRewardsMode: QuestRewardsMode? = null,
-    val activeQuestNumber: Int? = null,
-    val editDefeatMode: Boolean = false,
-    val showQuestEditDialog: Boolean = false,
-    val editedQuestNumbers: Set<Int> = emptySet(),
-    val showChapterRewards: Boolean = false,
-    val chapterInfoByNumber: Map<Int, ChapterInfo> = emptyMap(),
-    val chapterRewardsMessage: String = "",
-    val questConditionOutcomes: List<ConditionOutcome> = emptyList(),   // условия окна наград задания
-    val chapterConditionOutcomes: List<ConditionOutcome> = emptyList(), // условия окна наград главы
-    val pendingChapterDecision: ChapterDecision? = null,                // окно решения главы до наград главы
-    val campaignTrophies: List<Trophy> = emptyList(),
-    val campaignAchievements: List<Achievement> = emptyList(),
-    val showAchievementEditor: Boolean = false,
-    val newAchievementName: String = "",
-    val availableBosses: List<Boss> = emptyList(),
-    val selectedPreBattleBoss: Boss? = null,
-    val selectedPreBattleBossName: String? = null,
-    val preBattleDifficulty: Int = 0,
-    val preBattleDamageForWound: String = "4",
-    val preBattleHealthForStance: String = "7",
-    val preBattleHunterCountText: String = "4",       // поле «Количество охотников» экспедиции (D-12)
-    val campaignCompletedQuests: List<Quest> = emptyList(), // список «Выполненные:» (D-5)
-    val bossHasNoElement: Boolean = false
-)
-```
-
-### 4.2a Условные правила (`domain/ConditionOutcomes.kt`)
-
-```kotlin
-enum class ConditionOutcomeType { QUEST, ACHIEVEMENT, REWARD }
-data class ConditionOutcome(
-    val type: ConditionOutcomeType,
-    val description: String,       // формулировка правила, как в taskInfo.md / compainInfo.md
-    val result: String,            // «Добавлено задание 4.», «Достижения нет.» и т. п.
-    val openQuest: Int? = null,    // задание, открываемое при «Принять»
-    val grantAchievement: String? = null
-)
-```
-
-| Функция | Назначение |
-|---------|-----------|
-| `evaluateTaskConditions(conditions, achievements, bookChapter, availableQuestNumbers)` | Условия задания по порядку; открывается задание первого выполненного условия, условные достижения — отдельно |
-| `evaluateChapterConditionalQuests(conditions, achievements)` | Условные задания главы, каждое независимо (`requireAll`, `negated`) |
-| `evaluateChapterConditionalRewards(chapterInfo, achievements)` | Условное улучшение набора охотника и условные сообщения главы |
-
-Окна наград (`QuestRewardsDialog`, `ChapterRewardsDialog` → `ConditionOutcomesSection`) и применение наград (`applyQuestOpenConditions`, `applyChapterRewards`) используют один расчёт — показанный результат совпадает с тем, что выполнит «Принять».
-
-### 4.3 CampaignViewModel
-
-**Файл:** `CampaignViewModel.kt:65`
-
-```kotlin
-class CampaignViewModel(
-    private val repository: CampaignRepository,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-)
-```
-
-| Метод | Описание |
-|-------|----------|
-| `onQuickBattleSelected()` | Переход в режим быстрого боя |
-| `onCampaignModeSelected()` | Загрузка списка кампаний или создание первой |
-| `onNewCampaignRequested()` | Переход к созданию кампании |
-| `onCampaignNameChanged(name)` | Ввод названия кампании |
-| `onClassToggled(cls)` | Выбор/снятие класса охотника |
-| `onStartCampaign()` | Создание кампании + охотников |
-| `onCampaignSelected(id)` | Открытие листа кампании |
-| `onDeleteCampaign(id)` | Удаление кампании |
-| `onHunterSelected(index)` | Переключение между охотниками |
-| `onUnlockSkill(branch, tier)` | Разблокировка навыка |
-| `onNotesChanged(notes)` | Ввод заметок |
-| `onSaveNotes()` | Сохранение заметок |
-| `onOpenAchievementEditor()` | Показать диалог редактирования достижений |
-| `onCloseAchievementEditor()` | Закрыть диалог редактирования достижений |
-| `onNewAchievementNameChanged(name)` | Ввод названия нового достижения |
-| `onAddAchievement()` | Добавить достижение (свободный ввод), сохраняется с `unlocked = true` |
-| `onDeleteAchievement(achievementId)` | Удалить достижение кампании |
-| `onUpdateChapter(chapter)` | Ручное изменение главы, `coerceIn(1, MAX_CHAPTER = 12)` (D-11) |
-| `onPreBattleHunterCountChanged(text)` / `onConfirmQuickBattleStart()` | Число охотников экспедиции хранится текстом; старт — при целом > 0, без верхней границы (D-12) |
-| `onVictoryExitToMenu()` | «Выход в меню» на экране победы в кампании: применяет награды задания (пролог — трофей и стихии) и главы, затем главное меню (D-13) |
-| `onToggleEditedQuest(number)` / `onSaveQuestEdits()` | Редактор открытых заданий; выполненные задания игнорируются (D-5) |
-| `bookChapter(appChapter)` | (companion) Глава книги = глава приложения − 1; используется в условиях `CHAPTER_IN`, `ACHIEVEMENT_OWNED_IN_CHAPTER` (R-1) |
-| `onStartCampaignBattle()` | Запуск боя в рамках кампании. Если предыдущая глава объявила финал (`ChapterInfo.finalBossName`, гл. 11), бой с этим боссом начинается без выбора задания (R-6) |
-| `getBattleViewModel()` | Получение BattleViewModel для UI |
-| `onBattleFinished()` | Завершение боя, возврат к листу |
-| `onVictory()` | Открытие окна наград: не-пролог — `QuestRewardsDialog`; пролог (первый бой) — окно «Задание выполнено!» НЕ показывается, победные эффекты применяются молча (`applyPrologueVictory`), сразу открывается окно наград главы (36.1) |
-| `onDefeat()` | Открытие окна наград за поражение (`QuestRewardsDialog`, mode=DEFEAT) |
-| `onVictoryBossNameChanged(name)` | Ввод имени босса |
-| `onVictoryBossElementChanged(element)` | Выбор стихии босса |
-| `onVictoryQuestToggled(number)` | Выбор открытых заданий в PostVictoryDialog |
-| `onVictoryResourceChanged(type, name, delta)` | Изменение количества ресурсов в PostVictoryDialog |
-| `onDefeatQuestToggled(number)` | Выбор номера задания в форме поражения |
-| `onConfirmVictory()` | Сохранение победы (трофей + задания + ресурсы + 2 стихии) → окно наград главы. Для пролога не используется — применяется `applyPrologueVictory` |
-| `applyPrologueVictory(campaignId)` | (приватный, задача 36.1) Молча сохраняет трофей босса пролога, начисляет по 2 стихии каждому охотнику, сбрасывает `isPrologue = false` и открывает окно наград главы |
-| `onQuestRewardsAccept()` | «Принять» награды задания из каталога `TaskInfo` → окно наград главы. Бой без задания (42.4): трофей и 2 стихии босса `selectedPreBattleBoss`; без выбранного босса — `error = "Босс не выбран — укажите его через «Редактировать»"` |
-| `onUncompleteQuest(questId)` | Кнопка «Отмена» у выполненного задания: `uncompleteQuest` и перезагрузка листа; зависимые задания и награды не меняются (qa 119) |
-| `onCompleteQuest(questId)` | Кнопка «Выполнено» (42.3): `completeQuest` + открытие зависимых заданий (`openDependentQuests`); выполненное задание пропадает из `campaignQuests`. Заменил `onToggleQuestCompleted` (режим переключателя убран) |
-| `onDefeatRewardsAccept()` | «Принять» награды поражения (открыть задания) → лист кампании |
-| `onQuestRewardsEdit()` | «Редактировать»: победа — предзаполнить PostVictoryDialog открытыми и **невыполненными** заданиями + открываемыми заданием (42.3); поражение — форма чекбоксов |
-| `onQuestRewardsDismiss()` | «Выход» из окна наград задания |
-| `onChapterRewardsAccept()` | «Принять» награды главы: ресурсы, задания (условные — с `negated`/`requireAll`), истечение (в т.ч. всех заданий — `expireAllQuests`), кузня/лаб, глава += 1 (не выше 12) |
-| `onChapterRewardsReject()` | «Отклонить» награды главы: эффекты не применяются, достижение решения главы отзывается (D-10) |
-| `onChapterDecisionAnswered(option)` | Ответ в окне решения главы (`pendingChapterDecision`): при варианте `optionForAchievement` выдаёт достижение (отзывается при «Отклонить» наград главы, D-10), затем открывает следующее решение или окно наград главы |
-| `onBackToMenu()` | Возврат в главное меню |
-| `onErrorDismissed()` | Сброс сообщения об ошибке |
-
----
-
-## 5. Слой данных (Room KMP)
-
-### 5.1 Entity (10 таблиц)
-
-| Entity | Таблица | Поля |
-|--------|---------|------|
-| `CampaignEntity` | `campaigns` | id, name, currentChapter, forgeLevel, labLevel, notes, createdAt, updatedAt |
-| `HunterEntity` | `hunters` | id, campaignId (FK→campaigns), playerName, className |
-| `SkillEntity` | `skills` | id, hunterId (FK→hunters), branch, tier, unlocked |
-| `ResourceEntity` | `resources` | id, hunterId (FK→hunters), resourceType, resourceName, quantity |
-| `AchievementEntity` | `achievements` | id, campaignId (FK→campaigns), achievementId, name, description, unlocked. **Уникальный индекс** `(campaign_id, achievement_id)` (миграция 15→16, D-9) |
-| `TrophyEntity` | `trophies` | id, campaignId (FK→campaigns), bossName, element, chapter, acquiredAt |
-| `QuestEntity` | `quests` | id, campaignId (FK→campaigns), questId, name, chapter, element, questNumber, isCompleted, isAvailable. **Уникальный индекс** `(campaign_id, quest_id)` (миграция 8→9) |
-| `BossEntity` | `bosses` | id, name, element (nullable), difficulty, stance1–5 dfw (nullable)/hsc (nullable). `stance4_dfw`/`stance5_dfw` — `@ColumnInfo(defaultValue = "0")` (совпадает с `CREATE_BOSSES_TABLE`; фикс 30.1) |
-| `TaskInfoEntity` | `task_info` | questNumber (PK), name, bossName, bossElement, victoryMaterials, victoryPlants, victoryOpenQuests, victoryOpenQuestConditions, victoryAchievements, victoryRewardCards, victorySpecial, defeatOpenQuests, defeatOpenQuestConditions (мапы/списки — текстом `NAME:qty`, через `;`/`,`; условия — `kind|achievement|chapterSet|quest|else|rewardAchievement`, через `;`; виды: `CHAPTER_IN`, `ACHIEVEMENT_OWNED`, `ACHIEVEMENT_NOT_OWNED`, `ACHIEVEMENT_OWNED_IN_CHAPTER`, `QUEST_NOT_AVAILABLE`), **defeatAchievements** (колонка, миграция 12→13). Карты наград `victoryRewardCards` пишутся через `,` (как в seed); при чтении принимаются `,` и `;` |
-| `ChapterInfoEntity` | `chapter_info` | chapter (PK), rewards, rewardPlants, openQuests, conditionalOpenQuests, expireQuests, forgeUpgrade, labUpgrade, hunterKitUpgrade, decisions, messages, conditionalMessages, **hunterKitUpgradeAchievement** (улучшение набора только при достижении, гл. 8 и 10), **expireAllQuests** (гл. 11), **finalBoss** («Пробуждённый», гл. 11) — последние три колонки добавлены миграцией 14→15 |
-
-### 5.2 DAO (10 интерфейсов)
-
-| DAO | Основные методы |
-|-----|-----------------|
-| `CampaignDao` | getAllCampaigns (Flow), getCampaign, insert/update/delete, getCount |
-| `HunterDao` | getHunters (Flow), getHunter, insert/update/delete, insertReturningId |
-| `SkillDao` | getSkills (Flow), insert, setUnlocked, deleteByHunter |
-| `ResourceDao` | getResources (Flow), getByType, getResource, updateQuantity (запросы союзников для обмена ресурсами удалены — D-17) |
-| `AchievementDao` | getAchievements (Flow), insert (`OnConflictStrategy.IGNORE` — уже выданное достижение не дублируется, D-9), setUnlocked, deleteByCampaign, **deleteAchievement (campaign_id + achievement_id)** |
-| `TrophyDao` | getTrophies (Flow), insert, deleteByCampaign |
-| `QuestDao` | getQuests (Flow), getAvailable (`is_available = 1 AND is_completed = 0`), getCompleted, **upsertQuest** (`@Transaction`: `insertQuestIfAbsent` — `INSERT OR IGNORE`, затем `updateQuestFields`; признак `is_completed` не снимается — D-5; без `ON CONFLICT DO UPDATE`, недоступного в SQLite Android 8–10), completeQuest, **uncompleteQuest** (кнопка «Отмена» у выполненного задания: `is_completed = 0, is_available = 1`), makeQuestAvailable, **setQuestUnavailable** |
-| `BossDao` | getAllBosses, getBossesByDifficulty, getBossByNameDifficulty, insertBoss |
-| `TaskInfoDao` | getAllTaskInfo, getTaskInfo(questNumber), insertTaskInfo, insertAllTaskInfo |
-| `ChapterInfoDao` | getAllChapterInfo, getChapterInfo(chapter), insertChapterInfo, insertAllChapterInfo |
-
-### 5.3 Миграции и версия БД
-
-**Версия БД:** 17 (`@Database(version = 17)`, `exportSchema = true`, схемы в `shared/schemas/...`; схемы 13–17 скопированы в тестовые assets `shared/src/androidUnitTest/assets/...` для `MigrationTest`)
-
-Seed-функции `seedTaskInfo`/`seedChapterInfo` вставляют только колонки, существующие в схеме на момент вызова (`SeedSql.kt`: `columnsOf` через `PRAGMA table_info`, `insertExistingColumns`): ранние миграции 10→11 и 12→13 вызывают актуальный seed при старой схеме.
-
-| Миграция | Действия |
-|----------|----------|
-| `MIGRATION_1_2` | `ALTER TABLE quests ADD COLUMN quest_number` |
-| `MIGRATION_2_3` | Создание таблицы `bosses` + seed (Вираксен, Иекорос) |
-| `MIGRATION_3_4` | Пересоздание `bosses` (element NOT NULL, hsc nullable) |
-| `MIGRATION_4_5` | `bosses` — element nullable; `trophies` — element nullable; босс «Пробуждённый» |
-| `MIGRATION_5_6` | `recreateAndSeedBosses` (dfw nullable) |
-| `MIGRATION_6_7` | `recreateAndSeedBosses` |
-| `MIGRATION_7_8` | `recreateAndSeedBosses` + 19 боссов |
-| `MIGRATION_8_9` | Уникальный индекс `quests(campaign_id, quest_id)` + чистка дубликатов |
-| `MIGRATION_9_10` | Создание таблицы `task_info` (каталог заданий) |
-| `MIGRATION_10_11` | `task_info` — колонки условий; создание `chapter_info` (каталог глав) + seed |
-| `MIGRATION_11_12` | Пере-сид `task_info` с расширенной моделью условий (`ACHIEVEMENT_OWNED_IN_CHAPTER`, `rewardAchievement` — зад. 25, 29/40); схема не менялась |
-| `MIGRATION_12_13` | `task_info` — колонка `defeat_achievements`; пересев `task_info` (задания 41-49), `chapter_info` (условия 42-49) и `bosses` (4 босса: Гидар, Рейкал — Яд; Сиркаадж, Мумараак — Лёд). Версия БД 13. |
-| `MIGRATION_16_17` | Пере-сид `chapter_info`: решение главы 7 — «Хотите ли вы тренироваться в лагере у Волтьяра». Схема не меняется. Версия БД 17. |
-| `MIGRATION_15_16` | defects.md D-9: удаление точных дублей достижений (остаётся запись с наименьшим `id`) и уникальный индекс `index_achievements_campaign_id_achievement_id` на `achievements(campaign_id, achievement_id)`. Версия БД 16. |
-| `MIGRATION_14_15` | Решения defects.md: `chapter_info` — колонки `hunter_kit_upgrade_achievement`, `expire_all_quests`, `final_boss`; пере-сид `chapter_info` (C-8, C-9, R-6) и `task_info` (C-5, C-6, C-7). Версия БД 15. |
-| `MIGRATION_13_14` | Задача 42.1, схема не меняется: пере-сид `task_info` (канонические названия достижений «Народ Золотых гор», «Яд Пазиса», «Копьё драконоборца»); `UPDATE achievements` прежних написаний на канонические (`achievement_id` и `name`); удаление точных дублей достижений (`MIN(id)` по `campaign_id, achievement_id`). Версия БД 14. |
-
-### 5.4 Platform (expect/actual)
-
-| Файл | Назначение |
+| Член | Назначение |
 |------|-----------|
-| `Platform.kt` (commonMain) | `expect class PlatformContext`, `expect fun currentTimeMillis()`, `expect fun createPrimalDatabase()` |
-| `Platform.android.kt` (androidMain) | `actual typealias PlatformContext = Context`, `Room.databaseBuilder(context, ...)` |
-| `Platform.ios.kt` (iosMain) | `actual class PlatformContext`, `NSFileManager` путь + `Room.databaseBuilder(name = ...)` |
+| `stack: StateFlow<List<Screen>>`, `navigate`, `replace`, `back`, `backTo`, `toMainMenu` | Навигация. `Screen`: `MainMenu`, `ExpeditionSetup`, `Battle`, `CampaignList`, `CampaignCreate`, `CampaignSheet(localId)`, `Forge`, `Lab`, `QuestSelect`, `CampaignBattleSetup(localId, questNumber)`, `Outcome`, `Transition`, `Info(section, entryId)`, `Settings`, `Join(token)` |
+| `connection: StateFlow<ConnectionState>` | Режим, сервер, имя аккаунта, `SyncStatus`; `label` — «Онлайн · Алиса», «Нет связи с сервером», «Офлайн-режим» |
+| `messages: SharedFlow<String>` | Уведомления (snackbar): ошибки правил, итоги синхронизации |
+| `battleViewModel: BattleViewModel` | Единственный бой приложения |
+| `campaignBattle: StateFlow<CampaignBattleContext?>` | Бой кампании: `localId`, `battleId` (UUID), цель, босс, сложность, снимок главы и `progressSeq`, время старта |
+| `startExpedition(...)` | Экспедиция: бой без кампании |
+| `startCampaignBattle(context, hunters, dfw, hsc, boss)` | Отметка о начале (`CampaignOp.StartBattle`) и бой |
+| `finishCampaignBattle()`, `abandonCampaignBattle()` | Итог принят / бой брошен (`CampaignOp.AbandonBattle`) |
+| `openLink(url)` | App Links: `/s/<токен>` → `Join`, `/campaigns/<id>` → лист копии кампании, `/info` → «Инфо» |
+
+### 4.2 Экраны
+
+| ViewModel | Экран | Основное |
+|-----------|-------|----------|
+| `BattleSetupViewModel(app, localId?, questNumber?)` | Подготовка к бою | `BattleSetupState`: боссы каталога, префилл стойки I, сложность по главе, предупреждения «Уже идёт бой» и о замене боя; `onStart`, `onConfirmActiveWarning`, `onConfirmReplace` |
+| `CampaignListViewModel` | Кампании | Список кампаний устройства и аккаунта; `onUpload`, `onDeleteConfirmed` (`LOCAL` — сразу, `OWNER` — `pendingDelete`) |
+| `CampaignCreateViewModel` | Новая кампания | Отряд 2–5, `onCreate` → `CampaignRules.create` + `CampaignStore.create(upload = вошёл)` |
+| `CampaignSheetViewModel` | Лист кампании | Вкладки, навыки, ресурсы, инвентарь, имя игрока, задания («Выполнено», «Отмена», редактор), достижения, заметки (0,8 с), глава, история, «Поделиться» (`ShareState`), поток событий сервера (SSE) |
+| `ForgeViewModel`, `LabViewModel`, `ExchangeViewModel` | Кузница, лаборатория, «Обменять ресурсы» | Цены и нехватка, выбор растений, обмен/преобразование/продажа |
+| `QuestSelectViewModel` | Выбор задания | Открытые задания с боссами |
+| `OutcomeViewModel` | Итог боя | `BattleReport` из боя, обновление кампании с сервера, `previewResult`, «Принять» / «Редактировать» (`OverridesForm`) / «Отклонить», держатели карт наград |
+| `TransitionViewModel` | Переход главы | Решения главы, `previewTransition`, «Принять» / «Отклонить» |
+| `InfoViewModel` | Инфо | Разделы, поиск, фильтр, раскрытие, ссылки «См. также», картинки |
+| `SettingsViewModel` | Настройки | Режим, сервер, вход/регистрация, имя, дополнения, выход |
+| `JoinViewModel` | Приглашение | `GET /share/{token}`, «Присоединиться» |
+
+Экраны одной кампании наследуют `CampaignScopedViewModel`: наблюдают документ кампании (`CampaignStore.observe`) и
+выполняют действия `perform(op)` с сообщением об ошибке правил.
 
 ---
 
-## 6. Компоненты UI (Android)
+## 5. Домен (`shared/.../catalog/`, `campaign/`, `info/`)
+
+### 5.1 Каталог
+
+| Тип | Назначение |
+|-----|-----------|
+| `Catalog` | Боссы (`BossDef`, стойки `StanceDef` по уровням враждебности, `StanceChangeMode`), достижения, задания (`QuestDef`: `victory`, `expired`), главы (`ChapterDef`: `effects`, `decisions`), кузня (`ForgeItemDef`, `ForgeSlot`), лаборатория (`LabPotionDef`, `LabUnit`); `difficultyForChapter` |
+| `CatalogJson.parse(text)` | Разбор ответа `GET /catalog/bundle` и файла `catalog-bundle.json` |
+| `Effect`, `Condition`, `Decision` | Язык эффектов (`web/doc/data-model.md` §4.3) |
+| `EffectPlanner.plan(effects, facts, context)` | `Plan(actions, explanations)`: условия — по снимку `CampaignFacts` (достижения, глава книги, добавленные задания, дополнения владельца); `RuleExplanation(kind, description, result)` |
+| `EffectDescriber` | Формулировки правил «Если …» (задание — «добавить задание», глава с «иначе» — «открыть задание») |
+| `BossDef.toBattleBoss(difficulty)` | Босс для движка боя (`Boss`/`BossStance`: `0` — последняя стойка, `null` — по запросу) |
+
+### 5.2 Кампания
+
+| Тип | Назначение |
+|-----|-----------|
+| `CampaignState` | Документ кампании: глава 0–11, статус, кузня, лаборатория, финальный босс, `progressSeq`, заметки, `HunterState` (навыки `SkillStep`, ресурсы `ResourceCode`, `InventoryItem`), `QuestState`, `AchievementState`, `TrophyState`, `BattleRecord` |
+| `CampaignRules(catalog)` | Все правила: `create`, `rename`, `setNotes`, `changeChapter`, `renameHunter`, `unlockSkill`/`lockSkill`, `adjustResources`, `openForges`/`forgeCost`/`craft`, `brew`, `addItem`/`editItem`/`removeItem`, `exchange`, `convert`, `sell`, `completeQuest`, `reopenQuest`, `setOpenQuests`, `addAchievement`/`deleteAchievement`, `battleTarget`, `startBattle`, `abandonBattle`, `activeBattles`, `previewResult`, `submitResult`, `requireConsistent`, `previewTransition`, `acceptTransition`, `rejectTransition`, `applyPlan` |
+| `CampaignOp` | Действие игрока (сериализуемое): `apply(rules, state, ctx)`; журнал для синхронизации |
+| `RuleContext` | Дополнения владельца, время, автор (`Actor`), генератор ключей |
+| `BattleReport`, `ResultOverrides`, `ResultPreview`, `TransitionPreview`, `CompletedQuest` | Итог боя, правки наград, превью для окон |
+| `CampaignRuleException`, `CampaignChangedException(reasons)` | Недопустимое действие; итог боя расходится с кампанией |
+
+### 5.3 Инфо
+
+`InfoData` (разделы `InfoSectionCode`, статьи `InfoEntry` с ключом картинки), `InfoJson.parseServer` /
+`parseDefault`, `InfoText`: `paragraphs`, `segments` (`InfoSegment.Plain/Bold/Link`), `resolver`, `matches`, `label`.
+
+---
+
+## 6. Слой данных (Room KMP, версия 18)
+
+| Entity | DAO | Назначение |
+|--------|-----|-----------|
+| `CampaignStoreEntity` (`campaign_store`) | `CampaignStoreDao` | Документ кампании и синхронизация |
+| `KeyValueEntity` (`kv_store`) | `KeyValueDao` | Настройки |
+| `CacheBlobEntity` (`cache_blob`) | `CacheBlobDao` | Каталог, «Инфо», картинки с ETag |
+
+- `ALL_MIGRATIONS` — 1→2 … 17→18; `MIGRATION_17_18` (`database/Migration18.kt`) переносит кампании старой схемы
+  (`doc/sync.md` §3). Старые сиды (`TaskInfoSeed`, `ChapterInfoSeed`, `seedBosses`) нужны только миграциям 9–17.
+- Platform (expect/actual): `PlatformContext`, `currentTimeMillis()`, `createPrimalDatabase(context)`,
+  `readBundledText(context, name)` — файл приложения (Android — assets).
+
+---
+
+## 7. Сеть и синхронизация (`shared/.../net/`, `sync/`)
+
+| Тип | Назначение |
+|-----|-----------|
+| `PrimalApi(engine, serverUrl, cookies)` | Клиент API: вход, «кто я», имя, дополнения, `catalogBundle(etag)`, `info(etag)`, `infoImage`, `campaigns`, `snapshot(id, version)`, `putSnapshot`, `importCampaign`, `deleteCampaign`, `shareLink`/`createShareLink`/`revokeShareLink`, `shareInfo`, `join`, `events(id)` (SSE). Ошибки — `ApiException(status, code, detail)`, нет связи — `OfflineException` |
+| `CookieJar` | Cookie устройства и CSRF: домен, путь, срок, `Secure` |
+| `createHttpEngine()` | expect/actual: OkHttp (Android), Darwin (iOS) |
+| `SettingsStore` | `AppSettings`: режим (`ConnectionMode`), сервер, `AccountInfo`, дополнения, время синхронизации |
+| `CatalogRepository`, `InfoRepository` | Справочники: кэш → файл приложения; `refresh(api)` по ETag |
+| `CampaignStore` | `observeAll`, `observe`, `create`, `perform(localId, op)`, `requestUpload`, `markDeleted`, `replay(base, ops)` |
+| `SnapshotMapper` | Снимок сервера ↔ `CampaignState` |
+| `SyncEngine` | `sync(references)`, `syncCampaign(localId)`, `requestPush()`; `status: StateFlow<SyncStatus>`, `messages` |
+| `AppCore` | Корень: БД, настройки, справочники, хранилище, API, синхронизация (раз в минуту), `login`, `register`, `logout`, `setServer`, `setMode`, `setExpansions`, `join` |
+
+---
+
+## 8. Компоненты UI (Android, `androidApp/.../ui/`)
+
+| Файл | Содержимое |
+|------|-----------|
+| `MainActivity.kt` | `PrimalApp`: экран по `AppViewModel.stack`, snackbar, «Назад»; приём ссылок (`ACTION_VIEW`) |
+| `PrimalApplication.kt` | `AppCore` и `AppViewModel` процесса |
+| `MainMenuScreen.kt`, `BattleSetupScreen.kt`, `BattleHost.kt`, `BattleScreen.kt` | Меню, подготовка, бой и итоги |
+| `CampaignListScreen.kt`, `CampaignCreateScreen.kt`, `CampaignSheetScreen.kt` | Кампании, лист, «Поделиться» (QR — ZXing) |
+| `WorkshopScreens.kt` | Кузница, лаборатория, «Обменять ресурсы» |
+| `ProgressionScreens.kt` | Выбор задания, итог боя, переход главы |
+| `InfoScreen.kt`, `SettingsScreen.kt` (с `JoinScreen`) | Инфо, настройки, приглашение |
+| `Common.kt` | `ScreenScaffold`, `Dropdown`, `ConfirmDialog`, `Banner`, `ResourceIcon`, `ResourceLine`, `RulesSection`, `ExpansionBadge` |
+| `ReactionDeckHint.kt` | Колода карт реакций |

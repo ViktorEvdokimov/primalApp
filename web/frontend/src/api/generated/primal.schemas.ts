@@ -4,6 +4,232 @@
  * Primal API
  * OpenAPI spec version: v1
  */
+export type ActorKind = typeof ActorKind[keyof typeof ActorKind];
+
+
+export const ActorKind = {
+  USER: 'USER',
+  GUEST: 'GUEST',
+} as const;
+
+export interface Actor {
+  kind: ActorKind;
+  name: string;
+}
+
+export type SnapshotAchievementSource = typeof SnapshotAchievementSource[keyof typeof SnapshotAchievementSource];
+
+
+export const SnapshotAchievementSource = {
+  QUEST: 'QUEST',
+  CHAPTER: 'CHAPTER',
+  DECISION: 'DECISION',
+  MANUAL: 'MANUAL',
+} as const;
+
+export interface SnapshotAchievement {
+  /** @nullable */
+  id: number | null;
+  /** @nullable */
+  code: string | null;
+  name: string;
+  source: SnapshotAchievementSource;
+  grantedInChapter: number;
+}
+
+export interface SnapshotBattle {
+  id: string;
+  purpose: string;
+  /** @nullable */
+  questNumber: number | null;
+  /** @nullable */
+  bossCode: string | null;
+  difficulty: number;
+  chapter: number;
+  progressSeq: number;
+  status: string;
+  /** @nullable */
+  result: string | null;
+  /** @nullable */
+  defeatReason: string | null;
+  /** @nullable */
+  roundsPlayed: number | null;
+  startedBy: Actor | null;
+  startedAt: string;
+  submittedBy: Actor | null;
+  /** @nullable */
+  submittedAt: string | null;
+  /** @nullable */
+  finishedAt: string | null;
+}
+
+export type SnapshotHunterClass = typeof SnapshotHunterClass[keyof typeof SnapshotHunterClass];
+
+
+export const SnapshotHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export type SnapshotHunterResources = {[key: string]: number};
+
+export type SnapshotSkillBranch = typeof SnapshotSkillBranch[keyof typeof SnapshotSkillBranch];
+
+
+export const SnapshotSkillBranch = {
+  A: 'A',
+  B: 'B',
+  V: 'V',
+  G: 'G',
+  D: 'D',
+} as const;
+
+export interface SnapshotSkill {
+  branch: SnapshotSkillBranch;
+  tier: number;
+}
+
+export type SnapshotItemKind = typeof SnapshotItemKind[keyof typeof SnapshotItemKind];
+
+
+export const SnapshotItemKind = {
+  EQUIPMENT: 'EQUIPMENT',
+  POTION: 'POTION',
+  REWARD: 'REWARD',
+} as const;
+
+/**
+ * @nullable
+ */
+export type SnapshotItemElement = typeof SnapshotItemElement[keyof typeof SnapshotItemElement] | null;
+
+
+export const SnapshotItemElement = {
+  FIRE: 'FIRE',
+  HORN: 'HORN',
+  CORAL: 'CORAL',
+  CRYSTAL: 'CRYSTAL',
+  LIGHTNING: 'LIGHTNING',
+  METAL: 'METAL',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface SnapshotItem {
+  /** @nullable */
+  id: number | null;
+  kind: SnapshotItemKind;
+  name: string;
+  /** @nullable */
+  level: number | null;
+  /** @nullable */
+  element: SnapshotItemElement;
+  /** @nullable */
+  source: string | null;
+}
+
+export interface SnapshotHunter {
+  /** @nullable */
+  id: number | null;
+  class: SnapshotHunterClass;
+  playerName: string;
+  position: number;
+  skills: SnapshotSkill[];
+  resources: SnapshotHunterResources;
+  items: SnapshotItem[];
+}
+
+export type SnapshotQuestStatus = typeof SnapshotQuestStatus[keyof typeof SnapshotQuestStatus];
+
+
+export const SnapshotQuestStatus = {
+  OPEN: 'OPEN',
+  COMPLETED: 'COMPLETED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export interface SnapshotQuest {
+  number: number;
+  status: SnapshotQuestStatus;
+  openedInChapter: number;
+  /** @nullable */
+  closedInChapter: number | null;
+}
+
+export type SnapshotStateStatus = typeof SnapshotStateStatus[keyof typeof SnapshotStateStatus];
+
+
+export const SnapshotStateStatus = {
+  ACTIVE: 'ACTIVE',
+  CHAPTER_TRANSITION: 'CHAPTER_TRANSITION',
+  COMPLETED: 'COMPLETED',
+} as const;
+
+export interface SnapshotTrophy {
+  bossCode: string;
+  chapter: number;
+  /** @nullable */
+  battleId: string | null;
+}
+
+export interface SnapshotState {
+  name: string;
+  chapter: number;
+  status: SnapshotStateStatus;
+  forgeLevel: number;
+  labLevel: number;
+  /** @nullable */
+  finalBossCode: string | null;
+  progressSeq: number;
+  notes: string;
+  hunters: SnapshotHunter[];
+  quests: SnapshotQuest[];
+  achievements: SnapshotAchievement[];
+  trophies: SnapshotTrophy[];
+  battles: SnapshotBattle[];
+}
+
+export interface SnapshotUpdate {
+  expectedVersion: number;
+  state: SnapshotState;
+}
+
+export type CampaignSnapshotAccess = typeof CampaignSnapshotAccess[keyof typeof CampaignSnapshotAccess];
+
+
+export const CampaignSnapshotAccess = {
+  OWNER: 'OWNER',
+  LINK: 'LINK',
+} as const;
+
+export type CampaignSnapshotOwnerExpansionsItem = typeof CampaignSnapshotOwnerExpansionsItem[keyof typeof CampaignSnapshotOwnerExpansionsItem];
+
+
+export const CampaignSnapshotOwnerExpansionsItem = {
+  NIGHTMARE: 'NIGHTMARE',
+  FEATHER: 'FEATHER',
+  POISON: 'POISON',
+  ICE: 'ICE',
+} as const;
+
+export interface CampaignSnapshot {
+  id: number;
+  version: number;
+  access: CampaignSnapshotAccess;
+  ownerName: string;
+  ownerExpansions: CampaignSnapshotOwnerExpansionsItem[];
+  createdAt: string;
+  updatedAt: string;
+  state: SnapshotState;
+}
+
 export interface OpenQuestsRequest {
   numbers: number[];
 }
@@ -424,19 +650,6 @@ export interface AchievementItem {
   name: string;
   source: AchievementItemSource;
   grantedInChapter: number;
-}
-
-export type ActorKind = typeof ActorKind[keyof typeof ActorKind];
-
-
-export const ActorKind = {
-  USER: 'USER',
-  GUEST: 'GUEST',
-} as const;
-
-export interface Actor {
-  kind: ActorKind;
-  name: string;
 }
 
 export interface ActiveBattle {
@@ -1113,6 +1326,10 @@ export interface AchievementView {
   matchedCatalog: boolean;
 }
 
+export interface SnapshotImport {
+  state: SnapshotState;
+}
+
 export interface RegisterRequest {
   /**
      * @minLength 3
@@ -1396,6 +1613,11 @@ export interface Chapter {
   decisions: DecisionView[];
 }
 
+export interface Achievement {
+  code: string;
+  name: string;
+}
+
 export type BossDifficulties = {[key: string]: Stance[]};
 
 export interface Boss {
@@ -1409,9 +1631,38 @@ export interface Boss {
   difficulties: BossDifficulties;
 }
 
-export interface Achievement {
-  code: string;
+export type BundleChapterEffectsItem = {[key: string]: unknown};
+
+export type BundleChapterDecisionsItem = {[key: string]: unknown};
+
+export interface BundleChapter {
+  chapter: number;
+  effects: BundleChapterEffectsItem[];
+  decisions: BundleChapterDecisionsItem[];
+}
+
+export type BundleQuestVictoryItem = {[key: string]: unknown};
+
+export type BundleQuestExpiredItem = {[key: string]: unknown};
+
+export interface BundleQuest {
+  number: number;
   name: string;
+  bossCode: string;
+  /** @nullable */
+  expansion: string | null;
+  victory: BundleQuestVictoryItem[];
+  expired: BundleQuestExpiredItem[];
+}
+
+export interface CatalogBundle {
+  version: string;
+  bosses: Boss[];
+  achievements: Achievement[];
+  quests: BundleQuest[];
+  chapters: BundleChapter[];
+  forge: ForgeBoard[];
+  lab: LabPotion[];
 }
 
 export type CampaignSummaryStatus = typeof CampaignSummaryStatus[keyof typeof CampaignSummaryStatus];

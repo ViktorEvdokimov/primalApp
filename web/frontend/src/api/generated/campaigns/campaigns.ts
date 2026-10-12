@@ -30,6 +30,7 @@ import type {
   BrewRequest,
   BrewResponse,
   CampaignSheet,
+  CampaignSnapshot,
   CampaignSummary,
   CompleteQuestResponse,
   ConvertRequest,
@@ -47,6 +48,8 @@ import type {
   ResourcesResponse,
   SellRequest,
   SkillRequest,
+  SnapshotImport,
+  SnapshotUpdate,
   UpdateCampaignRequest
 } from '../primal.schemas';
 
@@ -72,7 +75,183 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getSetOpenQuestsUrl = (campaignId: number,) => {
+export const getGetCampaignSnapshotUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${id}/snapshot`
+}
+
+export const getCampaignSnapshot = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<CampaignSnapshot> => {
+
+  return apiFetch<CampaignSnapshot>(getGetCampaignSnapshotUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCampaignSnapshotQueryKey = (id: number,) => {
+    return [
+    `/api/v1/campaigns/${id}/snapshot`
+    ] as const;
+    }
+
+
+export const getGetCampaignSnapshotQueryOptions = <TData = Awaited<ReturnType<typeof getCampaignSnapshot>>, TError = unknown>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCampaignSnapshotQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCampaignSnapshot>>> = ({ signal }) => getCampaignSnapshot(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCampaignSnapshotQueryResult = NonNullable<Awaited<ReturnType<typeof getCampaignSnapshot>>>
+export type GetCampaignSnapshotQueryError = unknown
+
+
+export function useGetCampaignSnapshot<TData = Awaited<ReturnType<typeof getCampaignSnapshot>>, TError = unknown>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCampaignSnapshot>>,
+          TError,
+          Awaited<ReturnType<typeof getCampaignSnapshot>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCampaignSnapshot<TData = Awaited<ReturnType<typeof getCampaignSnapshot>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCampaignSnapshot>>,
+          TError,
+          Awaited<ReturnType<typeof getCampaignSnapshot>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetCampaignSnapshot<TData = Awaited<ReturnType<typeof getCampaignSnapshot>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetCampaignSnapshot<TData = Awaited<ReturnType<typeof getCampaignSnapshot>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getCampaignSnapshot>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetCampaignSnapshotQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getPutCampaignSnapshotUrl = (id: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${id}/snapshot`
+}
+
+export const putCampaignSnapshot = async (id: number,
+    snapshotUpdate: SnapshotUpdate, options?: Parameters<typeof apiFetch>[1]): Promise<CampaignSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<CampaignSnapshot>(getPutCampaignSnapshotUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(snapshotUpdate)
+  }
+);}
+
+
+
+
+
+export const getPutCampaignSnapshotMutationKey = () => ['putCampaignSnapshot'] as const;
+
+export const getPutCampaignSnapshotMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putCampaignSnapshot>>, TError,PutCampaignSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof putCampaignSnapshot>>, TError,PutCampaignSnapshotMutationVariables, TContext> => {
+
+const mutationKey = getPutCampaignSnapshotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof putCampaignSnapshot>>, PutCampaignSnapshotMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  putCampaignSnapshot(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PutCampaignSnapshotMutationResult = NonNullable<Awaited<ReturnType<typeof putCampaignSnapshot>>>
+    export type PutCampaignSnapshotMutationBody = SnapshotUpdate
+    export type PutCampaignSnapshotMutationError = unknown
+    export type PutCampaignSnapshotMutationVariables = {id: number;data: SnapshotUpdate}
+
+    export const usePutCampaignSnapshot = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof putCampaignSnapshot>>, TError,PutCampaignSnapshotMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof putCampaignSnapshot>>,
+        TError,
+        PutCampaignSnapshotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPutCampaignSnapshotMutationOptions(options), queryClient);
+    }
+    export const getSetOpenQuestsUrl = (campaignId: number,) => {
 
 
 
@@ -1220,6 +1399,87 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getAddAchievementMutationOptions(options), queryClient);
+    }
+    export const getImportCampaignUrl = () => {
+
+
+
+
+  return `/api/v1/campaigns/import`
+}
+
+export const importCampaign = async (snapshotImport: SnapshotImport, options?: Parameters<typeof apiFetch>[1]): Promise<CampaignSnapshot> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<CampaignSnapshot>(getImportCampaignUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(snapshotImport)
+  }
+);}
+
+
+
+
+
+export const getImportCampaignMutationKey = () => ['importCampaign'] as const;
+
+export const getImportCampaignMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCampaign>>, TError,ImportCampaignMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importCampaign>>, TError,ImportCampaignMutationVariables, TContext> => {
+
+const mutationKey = getImportCampaignMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importCampaign>>, ImportCampaignMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importCampaign(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportCampaignMutationResult = NonNullable<Awaited<ReturnType<typeof importCampaign>>>
+    export type ImportCampaignMutationBody = SnapshotImport
+    export type ImportCampaignMutationError = unknown
+    export type ImportCampaignMutationVariables = {data: SnapshotImport}
+
+    export const useImportCampaign = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importCampaign>>, TError,ImportCampaignMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importCampaign>>,
+        TError,
+        ImportCampaignMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportCampaignMutationOptions(options), queryClient);
     }
     export const getGetCampaignUrl = (id: number,) => {
 

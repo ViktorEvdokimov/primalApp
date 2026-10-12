@@ -1,516 +1,107 @@
 package com.primalapp.android
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.primalapp.database.CampaignRepositoryImpl
-import com.primalapp.database.PlatformContext
-import com.primalapp.viewmodel.CampaignUiState
-import com.primalapp.database.createPrimalDatabase
-import com.primalapp.android.ui.BattleScreen
+import com.primalapp.android.ui.BattleHost
+import com.primalapp.android.ui.BattleSetupScreen
+import com.primalapp.android.ui.CampaignCreateScreen
 import com.primalapp.android.ui.CampaignListScreen
-import com.primalapp.android.ui.CampaignSetupScreen
 import com.primalapp.android.ui.CampaignSheetScreen
-import com.primalapp.android.ui.ChapterRewardsDialog
-import com.primalapp.android.ui.ChapterDecisionDialog
-import com.primalapp.android.ui.ReactionDeckHint
-import com.primalapp.android.ui.DefeatScreen
-import com.primalapp.android.ui.defeatReason
+import com.primalapp.android.ui.ForgeScreen
+import com.primalapp.android.ui.InfoScreen
+import com.primalapp.android.ui.JoinScreen
+import com.primalapp.android.ui.LabScreen
 import com.primalapp.android.ui.MainMenuScreen
-import com.primalapp.android.ui.PhaseChangeDialog
-import com.primalapp.android.ui.PostVictoryDialog
-import com.primalapp.android.ui.QuestRewardsDialog
-import com.primalapp.android.ui.RageSurgeDialog
-import com.primalapp.android.ui.VictoryScreen
-import com.primalapp.viewmodel.AppScreen
-import com.primalapp.viewmodel.BattleViewModel
-import com.primalapp.viewmodel.CampaignViewModel
-import com.primalapp.viewmodel.FightPhase
+import com.primalapp.android.ui.OutcomeScreen
+import com.primalapp.android.ui.QuestSelectScreen
+import com.primalapp.android.ui.SettingsScreen
+import com.primalapp.android.ui.TransitionScreen
+import com.primalapp.viewmodel.AppViewModel
+import com.primalapp.viewmodel.Screen
 
 class MainActivity : ComponentActivity() {
+
+    private val app: AppViewModel get() = (application as PrimalApplication).appViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) handleLink(intent)
         setContent {
             MaterialTheme {
-                PrimalApp()
+                PrimalApp(app)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleLink(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        app.onResume()
+    }
+
+    /** Ссылка на сайт (App Links): приглашение, лист кампании. */
+    private fun handleLink(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_VIEW) intent.dataString?.let { app.openLink(it) }
     }
 }
 
 @Composable
-fun PrimalApp() {
-    val context = LocalContext.current
-    val db = remember {
-        createPrimalDatabase(PlatformContext(context))
-    }
-    val repository = remember { CampaignRepositoryImpl(db) }
-    val campaignViewModel = remember { CampaignViewModel(repository) }
-    val campaignState by campaignViewModel.state.collectAsState()
+fun PrimalApp(app: AppViewModel) {
+    val stack by app.stack.collectAsState()
+    val ready by app.core.ready.collectAsState()
+    val snackbar = remember { SnackbarHostState() }
 
-    when (campaignState.screen) {
-        AppScreen.MainMenu -> MainMenuScreen(campaignState, campaignViewModel)
-        AppScreen.CampaignSetup -> CampaignSetupScreen(campaignState, campaignViewModel)
-        AppScreen.CampaignList -> CampaignListScreen(campaignState, campaignViewModel)
-        is AppScreen.CampaignSheet -> CampaignSheetScreen(campaignState, campaignViewModel)
-        is AppScreen.CampaignBattle -> {
-            val battleVm = campaignViewModel.getBattleViewModel()
-            if (battleVm != null) {
-                val battleState by battleVm.state.collectAsState()
-                CampaignBattleHost(battleState, battleVm, campaignViewModel, campaignState)
+    LaunchedEffect(app) {
+        app.messages.collect { message -> snackbar.showSnackbar(message) }
+    }
+
+    BackHandler(enabled = stack.size > 1) { app.back() }
+
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (!ready) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                return@Box
             }
-        }
-        AppScreen.QuickBattle -> {
-            val battleVm = campaignViewModel.getBattleViewModel()
-            if (battleVm != null) {
-                val quickState by battleVm.state.collectAsState()
-            QuickBattleHost(
-                quickState,
-                battleVm,
-                campaignState,
-                campaignViewModel,
-                    onPauseBattle = { campaignViewModel.onPauseBattle() },
-                    onBackToMenu = {
-                        battleVm.resetBattle()
-                        campaignViewModel.onBackToMenu()
-                    }
-                )
+            when (val screen = stack.last()) {
+                Screen.MainMenu -> MainMenuScreen(app)
+                Screen.ExpeditionSetup -> BattleSetupScreen(app, null, null)
+                Screen.Battle -> BattleHost(app)
+                Screen.CampaignList -> CampaignListScreen(app)
+                Screen.CampaignCreate -> CampaignCreateScreen(app)
+                is Screen.CampaignSheet -> CampaignSheetScreen(app, screen.localId)
+                is Screen.Forge -> ForgeScreen(app, screen.localId)
+                is Screen.Lab -> LabScreen(app, screen.localId)
+                is Screen.QuestSelect -> QuestSelectScreen(app, screen.localId)
+                is Screen.CampaignBattleSetup -> BattleSetupScreen(app, screen.localId, screen.questNumber)
+                is Screen.Outcome -> OutcomeScreen(app, screen.localId)
+                is Screen.Transition -> TransitionScreen(app, screen.localId)
+                is Screen.Info -> InfoScreen(app, screen.section, screen.entryId)
+                Screen.Settings -> SettingsScreen(app)
+                is Screen.Join -> JoinScreen(app, screen.token)
             }
         }
     }
-
-    if (campaignState.showPostVictory) {
-        PostVictoryDialog(campaignState, campaignViewModel)
-    }
-    if (campaignState.showQuestRewards) {
-        QuestRewardsDialog(campaignState, campaignViewModel)
-    }
-    if (campaignState.pendingChapterDecision != null) {
-        ChapterDecisionDialog(campaignState, campaignViewModel)
-    }
-    if (campaignState.showChapterRewards) {
-        ChapterRewardsDialog(campaignState, campaignViewModel)
-    }
-    if (campaignState.fatalError != null) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = { Text("Ошибка") },
-            text = { Text(campaignState.fatalError ?: "") },
-            confirmButton = {
-                TextButton(onClick = { campaignViewModel.onBackToMenu() }) {
-                    Text("Закрыть")
-                }
-            }
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable
-fun CampaignBattleHost(
-    battleState: com.primalapp.viewmodel.BattleScreenState,
-    battleViewModel: BattleViewModel,
-    campaignViewModel: CampaignViewModel,
-    campaignState: CampaignUiState
-) {
-    when (battleState.phase) {
-        FightPhase.PRE_BATTLE, FightPhase.SETUP -> {
-            var bossDropdownExpanded by remember { mutableStateOf(false) }
-            var difficultyDropdownExpanded by remember { mutableStateOf(false) }
-            val selectedBossName = campaignState.selectedPreBattleBossName?.let { name ->
-                campaignState.availableBosses.firstOrNull { it.name == name }
-                    ?.let { b -> b.element?.let { "${it.displayName} - ${b.name}" } ?: b.name } ?: name
-            } ?: "Ввести данные вручную"
-            val selectedDifficulty = campaignState.preBattleDifficulty
-
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("Подготовка к бою", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                Text("Охотники готовы к сражению.")
-                Spacer(Modifier.height(16.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = bossDropdownExpanded,
-                    onExpandedChange = { bossDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedBossName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Выберите босса") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bossDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = bossDropdownExpanded,
-                        onDismissRequest = { bossDropdownExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Ввести данные вручную") },
-                            onClick = {
-                                campaignViewModel.onPreBattleBossSelected(null)
-                                bossDropdownExpanded = false
-                            }
-                        )
-                        campaignState.availableBosses.distinctBy { it.name }.forEach { boss ->
-                            DropdownMenuItem(
-                                text = { Text(boss.element?.let { "${it.displayName} - ${boss.name}" } ?: boss.name) },
-                                onClick = {
-                                    campaignViewModel.onPreBattleBossSelected(boss.name)
-                                    bossDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = difficultyDropdownExpanded,
-                    onExpandedChange = { difficultyDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = "Сложность: $selectedDifficulty",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Сложность") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = difficultyDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = difficultyDropdownExpanded,
-                        onDismissRequest = { difficultyDropdownExpanded = false }
-                    ) {
-                        (0..3).forEach { diff ->
-                            DropdownMenuItem(
-                                text = { Text("$diff") },
-                                onClick = {
-                                    campaignViewModel.onPreBattleDifficultySelected(diff)
-                                    difficultyDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                ReactionDeckHint(selectedDifficulty)
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = campaignState.preBattleDamageForWound,
-                    onValueChange = { campaignViewModel.onPreBattleDfwChanged(it) },
-                    label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = campaignState.preBattleHealthForStance,
-                    onValueChange = { campaignViewModel.onPreBattleHscChanged(it) },
-                    label = { Text("Здоровье для смены стойки (пусто = по запросу)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        val wound = campaignState.preBattleDamageForWound.toIntOrNull()
-                        val stance = campaignState.preBattleHealthForStance.toIntOrNull()
-                        campaignViewModel.onConfirmCampaignBattleStart(wound, stance)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Начать бой", fontSize = 18.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { campaignViewModel.onPauseBattle() }) {
-                    Text("Выход в меню")
-                }
-            }
-        }
-        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
-        FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
-        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> {
-            BattleScreen(battleState, battleViewModel, onBackToMenu = { campaignViewModel.onPauseBattle() })
-        }
-        FightPhase.VICTORY -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("ПОБЕДА!", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                Text("Монстр повержен!")
-                Spacer(Modifier.height(32.dp))
-                Button(onClick = { campaignViewModel.onVictory() }) {
-                    Text("Продолжить")
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = { campaignViewModel.onVictoryExitToMenu() }) {
-                    Text("Выход в меню")
-                }
-            }
-        }
-        FightPhase.DEFEAT -> {
-            if (campaignState.editDefeatMode) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(16.dp))
-                    Text(defeatReason(battleState.surrendered))
-                    Spacer(Modifier.height(16.dp))
-                    Text("Открывшееся задание:", fontWeight = FontWeight.Bold)
-                    FlowRow(modifier = Modifier.fillMaxWidth()) {
-                        (1..49).forEach { number ->
-                            val checked = campaignState.selectedDefeatQuestNumbers.contains(number)
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.width(52.dp)) {
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = { campaignViewModel.onDefeatQuestToggled(number) }
-                                )
-                                Text("$number", fontSize = 12.sp)
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(16.dp))
-                    Button(onClick = { campaignViewModel.onBattleFinished() }) {
-                        Text("К листу кампании")
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { campaignViewModel.onQuestRewardsDismiss() }) {
-                        Text("Отмена")
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
-                        Text("Выход в меню")
-                    }
-                }
-            } else {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("ПОРАЖЕНИЕ", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(16.dp))
-                    Text(defeatReason(battleState.surrendered))
-                    Spacer(Modifier.height(32.dp))
-                    Button(onClick = { campaignViewModel.onDefeat() }) {
-                        Text("Продолжить")
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { campaignViewModel.onBackToMenu() }) {
-                        Text("Выход в меню")
-                    }
-                }
-            }
-        }
-    }
-
-    if (battleState.showPhaseChangeDialog) {
-        PhaseChangeDialog(battleState, battleViewModel) { battleViewModel.dismissPhaseChangeDialog() }
-    }
-    if (battleState.showRageSurgeDialog) {
-        RageSurgeDialog(battleViewModel)
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun QuickBattleHost(
-    state: com.primalapp.viewmodel.BattleScreenState,
-    viewModel: BattleViewModel,
-    campaignState: CampaignUiState,
-    campaignViewModel: CampaignViewModel,
-    onPauseBattle: () -> Unit = {},
-    onBackToMenu: () -> Unit = {}
-) {
-    when (state.phase) {
-        FightPhase.PRE_BATTLE, FightPhase.SETUP -> {
-            var bossDropdownExpanded by remember { mutableStateOf(false) }
-            var difficultyDropdownExpanded by remember { mutableStateOf(false) }
-            // Локальная копия текста — поле отвечает на ввод без задержки StateFlow; значение для старта боя
-            // хранит ViewModel (onPreBattleHunterCountChanged / onConfirmQuickBattleStart, D-12)
-            var hunterCountText by remember { mutableStateOf(campaignState.preBattleHunterCountText) }
-            val selectedBossName = campaignState.selectedPreBattleBossName?.let { name ->
-                campaignState.availableBosses.firstOrNull { it.name == name }
-                    ?.let { b -> b.element?.let { "${it.displayName} - ${b.name}" } ?: b.name } ?: name
-            } ?: "Ввести данные вручную"
-            val selectedDifficulty = campaignState.preBattleDifficulty
-
-            Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("Подготовка к бою", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(16.dp))
-                Text("Охотники готовы к сражению.")
-                Spacer(Modifier.height(16.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = bossDropdownExpanded,
-                    onExpandedChange = { bossDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = selectedBossName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Выберите босса") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bossDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = bossDropdownExpanded,
-                        onDismissRequest = { bossDropdownExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Ввести данные вручную") },
-                            onClick = {
-                                campaignViewModel.onPreBattleBossSelected(null)
-                                bossDropdownExpanded = false
-                            }
-                        )
-                        campaignState.availableBosses.distinctBy { it.name }.forEach { boss ->
-                            DropdownMenuItem(
-                                text = { Text(boss.element?.let { "${it.displayName} - ${boss.name}" } ?: boss.name) },
-                                onClick = {
-                                    campaignViewModel.onPreBattleBossSelected(boss.name)
-                                    bossDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded = difficultyDropdownExpanded,
-                    onExpandedChange = { difficultyDropdownExpanded = it },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = "Сложность: $selectedDifficulty",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Сложность") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = difficultyDropdownExpanded) },
-                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = true)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = difficultyDropdownExpanded,
-                        onDismissRequest = { difficultyDropdownExpanded = false }
-                    ) {
-                        (0..3).forEach { diff ->
-                            DropdownMenuItem(
-                                text = { Text("$diff") },
-                                onClick = {
-                                    campaignViewModel.onPreBattleDifficultySelected(diff)
-                                    difficultyDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-                ReactionDeckHint(selectedDifficulty)
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = hunterCountText,
-                    onValueChange = {
-                        hunterCountText = it
-                        campaignViewModel.onPreBattleHunterCountChanged(it)
-                    },
-                    label = { Text("Количество охотников") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = campaignState.preBattleDamageForWound,
-                    onValueChange = { campaignViewModel.onPreBattleDfwChanged(it) },
-                    label = { Text("Урон для нанесения раны на игрока (пусто = нет порога раны)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = campaignState.preBattleHealthForStance,
-                    onValueChange = { campaignViewModel.onPreBattleHscChanged(it) },
-                    label = { Text("Здоровье для смены стойки (пусто = по запросу)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(
-                    onClick = { campaignViewModel.onConfirmQuickBattleStart() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Начать бой", fontSize = 18.sp)
-                }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onPauseBattle) {
-                    Text("Выход в меню")
-                }
-            }
-        }
-        FightPhase.PHASE_I, FightPhase.PHASE_II, FightPhase.PHASE_III,
-        FightPhase.PHASE_IV, FightPhase.PHASE_V, FightPhase.PHASE_VI,
-        FightPhase.PHASE_VII, FightPhase.PHASE_VIII, FightPhase.PHASE_IX -> BattleScreen(state, viewModel, onPauseBattle)
-        FightPhase.VICTORY -> VictoryScreen(viewModel, onBackToMenu)
-        FightPhase.DEFEAT -> DefeatScreen(viewModel, onBackToMenu)
-    }
-    if (state.showPhaseChangeDialog) PhaseChangeDialog(state, viewModel) { viewModel.dismissPhaseChangeDialog() }
-    if (state.showRageSurgeDialog) RageSurgeDialog(viewModel)
 }

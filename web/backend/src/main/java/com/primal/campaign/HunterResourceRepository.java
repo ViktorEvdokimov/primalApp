@@ -36,4 +36,9 @@ interface HunterResourceRepository extends JpaRepository<HunterResource, HunterR
     @Query(nativeQuery = true, value = """
             update hunter_resource set quantity = quantity - :amount where hunter_id = :hunterId and resource = :resource""")
     int subtract(long hunterId, String resource, int amount);
+
+    /** Все ресурсы охотника — перед записью снимка мобильного приложения. */
+    @Modifying(flushAutomatically = true)
+    @Query(nativeQuery = true, value = "delete from hunter_resource where hunter_id = :hunterId")
+    void deleteByHunter(long hunterId);
 }

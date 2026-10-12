@@ -5,6 +5,7 @@ import { Outlet, useNavigate } from 'react-router';
 import { setUnauthorizedHandler } from '../api/http';
 import { ME_QUERY_KEY } from '../features/auth/useMe';
 import { OfflineBanner } from '../shared/ui/OfflineBanner';
+import { OpenInAppBanner } from '../shared/ui/OpenInAppBanner';
 
 /** Общий каркас страниц: интерфейс рассчитан в первую очередь на телефон у игрового стола. */
 export function Layout() {
@@ -24,6 +25,7 @@ export function Layout() {
       <AppShell.Main>
         <Container size="sm" px={0}>
           <OfflineBanner />
+          <OpenInAppBanner />
           <Outlet />
         </Container>
       </AppShell.Main>

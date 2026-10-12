@@ -5,26 +5,12 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
-import com.primalapp.database.dao.AchievementDao
-import com.primalapp.database.dao.BossDao
-import com.primalapp.database.dao.CampaignDao
-import com.primalapp.database.dao.ChapterInfoDao
-import com.primalapp.database.dao.HunterDao
-import com.primalapp.database.dao.QuestDao
-import com.primalapp.database.dao.ResourceDao
-import com.primalapp.database.dao.SkillDao
-import com.primalapp.database.dao.TaskInfoDao
-import com.primalapp.database.dao.TrophyDao
-import com.primalapp.database.entity.AchievementEntity
-import com.primalapp.database.entity.BossEntity
-import com.primalapp.database.entity.CampaignEntity
-import com.primalapp.database.entity.ChapterInfoEntity
-import com.primalapp.database.entity.HunterEntity
-import com.primalapp.database.entity.QuestEntity
-import com.primalapp.database.entity.ResourceEntity
-import com.primalapp.database.entity.SkillEntity
-import com.primalapp.database.entity.TaskInfoEntity
-import com.primalapp.database.entity.TrophyEntity
+import com.primalapp.database.dao.CacheBlobDao
+import com.primalapp.database.dao.CampaignStoreDao
+import com.primalapp.database.dao.KeyValueDao
+import com.primalapp.database.entity.CacheBlobEntity
+import com.primalapp.database.entity.CampaignStoreEntity
+import com.primalapp.database.entity.KeyValueEntity
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SQLiteConnection) {
@@ -517,31 +503,29 @@ fun seedBosses(db: SQLiteConnection) {
     insert3("Мумараак", "ICE", 3, 20, 7, 25, 4, 30, 0)
 }
 
+/** Все миграции по порядку — для построителя БД на Android и iOS. */
+val ALL_MIGRATIONS = arrayOf(
+    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
+    MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
+    MIGRATION_16_17, MIGRATION_17_18
+)
+
+/**
+ * БД приложения. С версии 18 кампании хранятся документами ([CampaignStoreEntity]), настройки — в [KeyValueEntity],
+ * справочники с сервера — в [CacheBlobEntity]; каталог по умолчанию — в файле приложения. Миграции 1–17 сохранены
+ * для обновления со старых версий: они готовят старые таблицы, а 17→18 переносит из них кампании.
+ */
 @Database(
     entities = [
-        CampaignEntity::class,
-        HunterEntity::class,
-        SkillEntity::class,
-        ResourceEntity::class,
-        AchievementEntity::class,
-        TrophyEntity::class,
-        QuestEntity::class,
-        BossEntity::class,
-        TaskInfoEntity::class,
-        ChapterInfoEntity::class
+        CampaignStoreEntity::class,
+        KeyValueEntity::class,
+        CacheBlobEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {
-    abstract fun campaignDao(): CampaignDao
-    abstract fun hunterDao(): HunterDao
-    abstract fun skillDao(): SkillDao
-    abstract fun resourceDao(): ResourceDao
-    abstract fun achievementDao(): AchievementDao
-    abstract fun trophyDao(): TrophyDao
-    abstract fun questDao(): QuestDao
-    abstract fun bossDao(): BossDao
-    abstract fun taskInfoDao(): TaskInfoDao
-    abstract fun chapterInfoDao(): ChapterInfoDao
+    abstract fun campaignStoreDao(): CampaignStoreDao
+    abstract fun keyValueDao(): KeyValueDao
+    abstract fun cacheBlobDao(): CacheBlobDao
 }

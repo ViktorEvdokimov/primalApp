@@ -2,6 +2,9 @@ package com.primal.catalog;
 
 import com.primal.catalog.CatalogDtos.Achievement;
 import com.primal.catalog.CatalogDtos.Boss;
+import com.primal.catalog.CatalogDtos.BundleChapter;
+import com.primal.catalog.CatalogDtos.BundleQuest;
+import com.primal.catalog.CatalogDtos.CatalogBundle;
 import com.primal.catalog.CatalogDtos.DifficultyRange;
 import com.primal.catalog.CatalogDtos.Dictionaries;
 import com.primal.catalog.CatalogDtos.ForgeBoard;
@@ -18,12 +21,15 @@ import com.primal.rules.model.SkillBranch;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Справочники игры — без входа (их использует экспедиция). ETag — контрольная сумма каталога: повторный
@@ -39,6 +45,8 @@ public class CatalogController {
      * лаборатории) должны доходить до игроков сразу, а не через час.
      */
     private static final CacheControl CACHE = CacheControl.noCache().cachePublic();
+
+    private static final JsonMapper JSON = new JsonMapper();
 
     private static final List<DifficultyRange> DIFFICULTY_BY_CHAPTER = List.of(
             new DifficultyRange(List.of(0), 0),
@@ -107,6 +115,38 @@ public class CatalogController {
     @GetMapping("/lab")
     public ResponseEntity<List<LabPotion>> lab() {
         return cached(catalog.lab().stream().map(LabPotion::of).toList());
+    }
+
+    /**
+     * Весь каталог одним ответом для мобильного приложения ({@code doc/api.md} §4.1): эффекты заданий и глав — в
+     * исходном виде, чтобы приложение считало награды и переходы глав само, в том числе без сети. С правками
+     * администратора, ETag — как у остальных справочников.
+     */
+    @GetMapping("/bundle")
+    public ResponseEntity<CatalogBundle> bundle() {
+        CatalogBundle bundle = new CatalogBundle(
+                catalog.checksum(),
+                catalog.bosses().stream().map(Boss::of).toList(),
+                catalog.achievements().stream().map(Achievement::of).toList(),
+                catalog.quests().stream()
+                        .map(quest -> new BundleQuest(quest.number(), quest.name(), quest.bossCode(),
+                                quest.expansion() == null ? null : quest.expansion().name(),
+                                json(quest.victoryJson()), json(quest.expiredJson())))
+                        .toList(),
+                catalog.chapters().stream()
+                        .map(chapter -> new BundleChapter(chapter.chapter(), json(chapter.effectsJson()),
+                                json(chapter.decisionsJson())))
+                        .toList(),
+                Arrays.stream(Element.values())
+                        .map(element -> new ForgeBoard(element, catalog.forge(element).stream().map(ForgeItem::of).toList()))
+                        .toList(),
+                catalog.lab().stream().map(LabPotion::of).toList());
+        return cached(bundle);
+    }
+
+    private static List<Map<String, Object>> json(String json) {
+        return JSON.readValue(json == null || json.isBlank() ? "[]" : json, new TypeReference<>() {
+        });
     }
 
     private <T> ResponseEntity<T> cached(T body) {
