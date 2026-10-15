@@ -533,7 +533,9 @@ npm run dev                                           # сайт на http://loc
 - `frontend/public/.well-known/assetlinks.json` подтверждает связь сайта с приложением `com.primalapp.android`
   (App Links и «Открыть в приложении»). В нём — SHA-256 сертификата подписи выпуска приложения
   (`app/keystore.properties`; `keytool -list -v -keystore <файл> -alias <alias>`). Если приложение публикуется в
-  Google Play с подписью Google, добавьте в список отпечаток ключа подписи из консоли Play. Проверка:
+  Google Play с подписью Google, добавьте в список отпечаток ключа подписи из консоли Play. Приложение публикуется в
+  RuStore (`https://www.rustore.ru/catalog/app/com.primalapp.android`): обновления подписывайте тем же ключом, что и
+  опубликованную версию, — иначе они не встанут поверх установленной, а сайт не подтвердит связь. Проверка:
   `curl https://<домен>/.well-known/assetlinks.json` — `200`, `Content-Type: application/json`.
 - Фильтр App Links в приложении указан для домена `primalhelper.ru`; для другого домена поправьте `android:host` в
   `app/androidApp/src/main/AndroidManifest.xml` и `asset_statements` в `res/values/strings.xml`.

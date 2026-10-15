@@ -30,12 +30,12 @@ export default defineConfig({
         theme_color: '#1a1b1e',
         // Приложение для Android: сайт узнаёт, что оно установлено (navigator.getInstalledRelatedApps), и предлагает
         // открыть страницу в нём (OpenInAppBanner). Связь подтверждают /.well-known/assetlinks.json и asset_statements
-        // в манифесте приложения.
+        // в манифесте приложения. Платформа `play` — любое приложение Android, в том числе установленное из RuStore.
         related_applications: [
           {
             platform: 'play',
             id: 'com.primalapp.android',
-            url: 'https://play.google.com/store/apps/details?id=com.primalapp.android',
+            url: 'https://www.rustore.ru/catalog/app/com.primalapp.android',
           },
         ],
         prefer_related_applications: false,

@@ -174,15 +174,22 @@ sequenceDiagram
 - **App Links**: `AndroidManifest.xml` — фильтр с `autoVerify` для `https://primalhelper.ru/s/…` и
   `/campaigns…`; сайт подтверждает связь файлом `/.well-known/assetlinks.json` (пакет `com.primalapp.android` и
   SHA-256 сертификата подписи выпуска). Ссылки на эти страницы из мессенджеров открываются сразу в приложении.
-- Второй фильтр (без проверки) принимает любую страницу сайта — для кнопки сайта «Открыть в приложении»; страница
-  без своего экрана открывает главное меню.
+- Второй фильтр (без проверки) принимает любую страницу сайта — для кнопки сайта «Продолжить в приложении»;
+  страница без своего экрана открывает главное меню.
+- **Публикация**: RuStore, «Companion PA» (`https://www.rustore.ru/catalog/app/com.primalapp.android`). Обновление
+  подписывается тем же ключом, что и опубликованная версия (отпечаток — в `assetlinks.json`), и с большим
+  `versionCode`. Версии 1.0–1.2 (`versionCode` 1–3) не объявляют связь с сайтом и не принимают ссылки: сайт их не
+  видит и открыть не может — только через обновление до 1.3.
 - **Предложение на сайте** (`web/frontend/src/shared/ui/OpenInAppBanner.tsx`): на Android, в браузере (не в
-  установленном PWA), в режиме онлайн, если приложение установлено, сайт показывает «На этом телефоне установлено
-  приложение Primal — откройте страницу в нём» с кнопками «Открыть в приложении» и «Остаться на сайте». Установку
-  проверяет `navigator.getInstalledRelatedApps()` (Chrome на Android): у сайта в манифесте PWA —
-  `related_applications` (Play, `com.primalapp.android`), у приложения — `asset_statements` со ссылкой на
-  `assetlinks.json`. Кнопка — адрес `intent://…#Intent;scheme=https;package=com.primalapp.android;
-  S.browser_fallback_url=…;end`: без приложения браузер остаётся на странице. Отказ запоминается до конца сеанса.
+  установленном PWA), в режиме онлайн. Установку проверяет `navigator.getInstalledRelatedApps()` (Chrome на Android):
+  у сайта в манифесте PWA — `related_applications` (платформа `play` — любое приложение Android, в том числе из
+  RuStore; `com.primalapp.android`), у приложения — `asset_statements` со ссылкой на `assetlinks.json`.
+  - Найдено — «На этом телефоне установлено приложение «Companion PA» — продолжите в нём.», кнопка «Продолжить в
+    приложении» — `intent://…#Intent;scheme=https;package=com.primalapp.android;S.browser_fallback_url=<страница>;end`.
+    Отказ («Остаться на сайте») — до конца сеанса браузера.
+  - Не найдено (нет приложения, версия до 1.3, браузер без проверки) — пояснение про RuStore и та же кнопка, но
+    `browser_fallback_url` — страница RuStore: 1.3+ откроется, иначе игрок попадёт в RuStore (установить или
+    обновить). Отказ — на 30 дней.
 
 ---
 
