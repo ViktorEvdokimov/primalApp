@@ -96,6 +96,41 @@ class LabIT extends IntegrationTest {
     }
 
     @Test
+    @DisplayName("зелье каждого вида одно: повтор списывает растения и повышает уровень до уровня лаборатории")
+    void samePotionLevelsUp() throws Exception {
+        // подготовка: у охотника стартовый «Алемор» 1-го уровня, лаборатория 3-го уровня
+        give("{\"SELICORNIA\": 4}");
+        jdbc.update("update campaign set lab_level = 3 where id = ?", campaignId);
+
+        // вызов и проверка: первая варка — уровень 1 → 3, вторая — уровень не меняется, растения списаны
+        brew("LAB_01", "[\"SELICORNIA\", \"SELICORNIA\"]")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.level").value(3))
+                .andExpect(jsonPath("$.previousLevel").value(1))
+                .andExpect(jsonPath("$.hunter.resources.SELICORNIA").value(2))
+                .andExpect(jsonPath("$.hunter.items[?(@.name == 'Алемор')].level").value(3));
+        brew("LAB_01", "[\"SELICORNIA\", \"SELICORNIA\"]")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.level").value(3))
+                .andExpect(jsonPath("$.previousLevel").value(3))
+                .andExpect(jsonPath("$.hunter.resources.SELICORNIA").doesNotExist());
+        Integer potions = jdbc.queryForObject(
+                "select count(*) from hunter_item where hunter_id = ? and kind = 'POTION' and name = 'Алемор'", Integer.class, hunterId);
+        org.assertj.core.api.Assertions.assertThat(potions).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("второе зелье того же вида вручную не добавляется — 400 с полем name")
+    void duplicatePotionByHand() throws Exception {
+        // вызов и проверка
+        mockMvc.perform(post("/api/v1/campaigns/" + campaignId + "/hunters/" + hunterId + "/items")
+                        .with(xsrf()).cookie(alice).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\": \"POTION\", \"name\": \"алемор\", \"level\": 2}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("name"));
+    }
+
+    @Test
     @DisplayName("растение не с планшета или не на своём месте — 400 с ошибкой поля plants, ничего не списано")
     void wrongPlant() throws Exception {
         // подготовка

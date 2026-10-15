@@ -108,6 +108,7 @@ describe('Лаборатория', () => {
             potion: 'LAB_05',
             name: 'Эвок',
             level: 1,
+            previousLevel: null,
             hunter: hunterFixture({
               resources: { ANTHEMON: 1 },
               items: [{ id: 502, kind: 'POTION', name: 'Эвок', level: 1, element: null, source: 'LAB_05' }],
@@ -189,5 +190,50 @@ describe('Лаборатория', () => {
     expect(
       within(await screen.findByTestId('lab-confirm')).getByText('«Имперум» 3-го уровня для охотника Боец.'),
     ).toBeInTheDocument();
+  });
+
+  it('зелье уже есть: в подтверждении — повышение уровня, после — «уровень зелья повышен»', async () => {
+    // подготовка: у охотника «Имперум» 1-го уровня, лаборатория 3-го
+    server.use(
+      http.post('*/api/v1/campaigns/12/hunters/31/lab', () =>
+        HttpResponse.json(
+          {
+            potion: 'LAB_02',
+            name: 'Имперум',
+            level: 3,
+            previousLevel: 1,
+            hunter: hunterFixture({
+              items: [{ id: 503, kind: 'POTION', name: 'Имперум', level: 3, element: null, source: 'LAB_02' }],
+            }),
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+    const { user } = await openLab(
+      labSheet(
+        {},
+        {
+          labLevel: 3,
+          hunters: [
+            hunterFixture({
+              resources: { ANTHEMON: 1, NILLEA: 1 },
+              items: [{ id: 503, kind: 'POTION', name: 'Имперум', level: 1, element: null, source: 'LAB_02' }],
+            }),
+          ],
+        },
+      ),
+    );
+    await user.click(potion('Имперум').getByTestId('lab-potion-brew'));
+    const dialog = within(await screen.findByTestId('lab-confirm'));
+    expect(dialog.getByTestId('lab-confirm-existing')).toHaveTextContent(
+      'У охотника уже есть «Имперум» 1-го уровня: растения спишутся, зелье станет 3-го уровня.',
+    );
+
+    // вызов
+    await user.click(dialog.getByTestId('lab-confirm-ok'));
+
+    // проверка
+    expect(await screen.findByText('«Имперум»: уровень зелья повышен до 3-го — замените карту.')).toBeInTheDocument();
   });
 });

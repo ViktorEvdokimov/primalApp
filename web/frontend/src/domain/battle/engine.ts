@@ -82,6 +82,7 @@ function check(state: BattleState, command: BattleCommand): Rejection | null {
   if (state.status !== 'IN_PROGRESS') return reject('BATTLE_OVER');
   switch (command.type) {
     case 'SURRENDER':
+    case 'FINISH_VICTORY':
       return null;
     case 'SET_STATUS':
       return command.hardened === undefined && command.resilient === undefined ? invalidValue(invalid.status) : null;
@@ -195,6 +196,11 @@ function execute(state: BattleState, command: BattleCommand, stances: readonly S
       finish(state, 'DEFEAT', 'SURRENDER');
       events.push({ type: 'DEFEAT', reason: 'SURRENDER' });
       return msg.surrendered;
+
+    case 'FINISH_VICTORY':
+      finish(state, 'VICTORY', null);
+      events.push({ type: 'VICTORY' });
+      return msg.finishedVictory;
   }
 }
 

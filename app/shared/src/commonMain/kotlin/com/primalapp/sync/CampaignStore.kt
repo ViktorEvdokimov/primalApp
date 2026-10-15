@@ -124,6 +124,14 @@ class CampaignStore(
 
     suspend fun delete(localId: Long) = mutex.withLock { dao.delete(localId) }
 
+    /** Копии одного входа — другому (гость вошёл в аккаунт: его доступы переходят к аккаунту). */
+    suspend fun reassign(fromAccount: String, toAccount: String) = mutex.withLock {
+        dao.all().filter { it.account == fromAccount }.forEach { entity ->
+            val clash = entity.serverId?.let { dao.byServerId(toAccount, it) }
+            if (clash == null) dao.update(entity.copy(account = toAccount)) else dao.delete(entity.localId)
+        }
+    }
+
     suspend fun markDeleted(localId: Long) = mutex.withLock {
         dao.get(localId)?.let { dao.update(it.copy(pendingDelete = true)) }
     }.also { onLocalChange(localId) }

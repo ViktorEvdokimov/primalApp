@@ -70,6 +70,16 @@ data class BattleRow(
     val inProgress: Boolean
 )
 
+/** Окно-подсказка листа: войти в аккаунт или загрузить кампанию на сервер, чтобы поделиться. */
+sealed interface SheetPrompt {
+    val text: String
+
+    data class Login(override val text: String) : SheetPrompt
+
+    /** [thenShare] — после загрузки открыть «Поделиться», иначе — отправить ссылку на сайт. */
+    data class Upload(override val text: String, val thenShare: Boolean) : SheetPrompt
+}
+
 data class ShareState(
     val loading: Boolean = false,
     val link: ShareLinkDto? = null,
@@ -120,10 +130,15 @@ data class CampaignSheetState(
     val itemEditor: ItemEditorState? = null,
     /** Окно «Имя игрока» выбранного охотника; `null` — закрыто. */
     val hunterNameInput: String? = null,
-    val share: ShareState? = null
+    val share: ShareState? = null,
+    /** Копия с сервера, а вход не выполнен (или выполнен другой): изменения уйдут после входа в её аккаунт. */
+    val detached: Boolean = false,
+    val prompt: SheetPrompt? = null,
+    /** Ссылка на сайт для системного окна «Поделиться» — экран отправляет её и сообщает [CampaignSheetViewModel.onShareTextHandled]. */
+    val shareText: String? = null
 ) {
     val hunter: HunterState? get() = hunters.firstOrNull { it.hunterClass == selectedHunter } ?: hunters.firstOrNull()
-    val canShare: Boolean get() = onServer && access == CampaignAccess.OWNER
+    val canShare: Boolean get() = onServer && access == CampaignAccess.OWNER && !detached
     val canDelete: Boolean get() = access != CampaignAccess.LINK
     val pendingTransition: Boolean get() = status == CampaignStatus.CHAPTER_TRANSITION
     val completed: Boolean get() = status == CampaignStatus.COMPLETED
@@ -177,6 +192,7 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
                 status = state.status,
                 finalBossName = state.finalBossCode?.let { catalog.bossName(it) },
                 access = campaign.access,
+                detached = campaign.onServer && campaign.account != core.settings.current.activeAccount?.key,
                 ownerName = campaign.ownerName,
                 onServer = campaign.onServer,
                 unsynced = campaign.hasUnsynced,
@@ -208,7 +224,8 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
     /** Онлайн-кампания с сервера: события кампании (SSE) — при новой версии лист обновляется сам. */
     private fun watchEvents(campaign: StoredCampaign) {
         val serverId = campaign.serverId
-        if (serverId == null || !core.settings.current.online) {
+        val ownAccount = campaign.account != null && campaign.account == core.settings.current.activeAccount?.key
+        if (serverId == null || !core.settings.current.online || !ownAccount) {
             eventsJob?.cancel()
             eventsJob = null
             return
@@ -482,13 +499,28 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
 
     // region Совместная игра
 
-    /** «Поделиться»: ссылка-приглашение на кампанию (только владельцу, онлайн). */
+    /**
+     * «Поделиться» — кнопка есть всегда. Без входа — предложение войти (и в офлайн-режиме: экран входа предложит включить
+     * онлайн); кампания только на устройстве — загрузить её на сервер; ссылкой-приглашением управляет владелец.
+     */
     fun onShareOpened() {
-        if (!core.settings.current.online) {
-            app.showMessage("Поделиться можно в онлайн-режиме.")
-            return
+        val stored = campaign.value ?: return
+        val account = core.settings.current.activeAccount
+        when {
+            account == null || !account.isUser ->
+                _state.update { it.copy(prompt = SheetPrompt.Login("Чтобы поделиться кампанией, войдите в аккаунт.")) }
+            !core.settings.current.online -> app.showMessage("Поделиться можно в онлайн-режиме — включите его в настройках.")
+            stored.access == CampaignAccess.LOCAL -> _state.update {
+                it.copy(prompt = SheetPrompt.Upload("Кампания только на устройстве. Загрузить её на сервер, чтобы поделиться?", thenShare = true))
+            }
+            stored.account != account.key -> app.showMessage("Кампания из другого аккаунта: войдите в него, чтобы поделиться.")
+            stored.access == CampaignAccess.LINK ->
+                app.showMessage("Ссылкой-приглашением управляет владелец кампании. Участникам можно отправить ссылку на сайт.")
+            else -> loadShareLink(stored.serverId ?: return)
         }
-        val serverId = campaign.value?.serverId ?: return
+    }
+
+    private fun loadShareLink(serverId: Long) {
         _state.update { it.copy(share = ShareState(loading = true)) }
         scope.launch {
             try {
@@ -496,6 +528,59 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
                 _state.update { it.copy(share = ShareState(link = link)) }
             } catch (error: Exception) {
                 _state.update { it.copy(share = ShareState(error = message(error))) }
+            }
+        }
+    }
+
+    /**
+     * «Ссылка на сайт» — кнопка есть всегда: у кампании на сервере — адрес листа на сайте (вход не нужен), у кампании
+     * только на устройстве — предложение войти и загрузить её на сервер.
+     */
+    fun onSiteLink() {
+        val stored = campaign.value ?: return
+        val serverId = stored.serverId
+        if (serverId != null) {
+            _state.update { it.copy(shareText = app.campaignUrl(serverId, stored.account?.substringBefore('|'))) }
+            return
+        }
+        val account = core.settings.current.activeAccount
+        _state.update {
+            it.copy(prompt = if (account == null || !account.isUser) {
+                SheetPrompt.Login("Ссылка на сайт появится, когда кампания будет на сервере: войдите в аккаунт и загрузите её.")
+            } else {
+                SheetPrompt.Upload("Кампания только на устройстве. Загрузить её на сервер, чтобы получить ссылку на сайт?", thenShare = false)
+            })
+        }
+    }
+
+    fun onShareTextHandled() = _state.update { it.copy(shareText = null) }
+
+    fun onPromptDismissed() = _state.update { it.copy(prompt = null) }
+
+    /** «Войти» в подсказке — экран входа; после входа можно нажать «Поделиться» снова. */
+    fun onLoginRequested() {
+        _state.update { it.copy(prompt = null) }
+        app.navigate(Screen.Login)
+    }
+
+    /** «Загрузить» в подсказке: кампания уходит на сервер, затем — «Поделиться» или ссылка на сайт. */
+    fun onUploadConfirmed() {
+        val prompt = _state.value.prompt as? SheetPrompt.Upload ?: return
+        val account = core.settings.current.activeAccount ?: return
+        _state.update { it.copy(prompt = null) }
+        scope.launch {
+            core.store.requestUpload(localId, account.key)
+            if (!core.settings.current.online) {
+                app.showMessage("Кампания будет загружена, когда приложение будет в онлайн-режиме.")
+                return@launch
+            }
+            core.sync.sync(references = false)
+            val stored = core.store.get(localId)
+            val serverId = stored?.serverId
+            when {
+                serverId == null -> app.showMessage(stored?.syncMessage ?: "Кампанию не удалось загрузить на сервер — попробуйте позже.")
+                prompt.thenShare -> loadShareLink(serverId)
+                else -> _state.update { it.copy(shareText = app.campaignUrl(serverId, null)) }
             }
         }
     }
@@ -535,8 +620,6 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
 
     fun onShareClosed() = _state.update { it.copy(share = null) }
 
-    /** Ссылка на кампанию на сайте — участнику, у которого уже есть доступ. */
-    fun campaignUrl(): String? = campaign.value?.serverId?.let { app.campaignUrl(it) }
 
     // endregion
 

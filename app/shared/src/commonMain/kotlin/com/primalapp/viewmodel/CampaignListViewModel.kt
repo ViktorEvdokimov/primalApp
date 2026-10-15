@@ -26,14 +26,20 @@ data class CampaignListItem(
     val completed: Boolean,
     val unsynced: Boolean,
     val uploadRequested: Boolean,
-    val syncMessage: String?
+    val syncMessage: String?,
+    /** Копия с сервера другого входа (или после выхода): синхронизируется после входа в тот аккаунт. */
+    val detached: Boolean = false
 ) {
-    val canDelete: Boolean get() = access != CampaignAccess.LINK
+    /** Кампанию по ссылке удалить нельзя — только копию другого входа с устройства. */
+    val canDelete: Boolean get() = access != CampaignAccess.LINK || detached
     val accessLabel: String
-        get() = when (access) {
-            CampaignAccess.LOCAL -> if (uploadRequested) "Только на устройстве · будет загружена на сервер" else "Только на устройстве"
-            CampaignAccess.OWNER -> "На сервере"
-            CampaignAccess.LINK -> "По ссылке · владелец ${ownerName.orEmpty()}"
+        get() = when {
+            access == CampaignAccess.LOCAL ->
+                if (uploadRequested) "Только на устройстве · будет загружена на сервер" else "Только на устройстве"
+            detached -> (if (access == CampaignAccess.LINK) "По ссылке" else "На сервере") +
+                " · синхронизируется после входа в аккаунт"
+            access == CampaignAccess.OWNER -> "На сервере"
+            else -> "По ссылке · владелец ${ownerName.orEmpty()}"
         }
 }
 
@@ -53,15 +59,15 @@ class CampaignListViewModel(private val app: AppViewModel, private val scope: Co
     init {
         scope.launch {
             combine(core.store.observeAll(), core.settings.settings) { campaigns, settings ->
+                // Все кампании устройства: копии других входов остаются после выхода из аккаунта
                 val key = settings.activeAccount?.key
-                val visible = campaigns.filter { it.access == CampaignAccess.LOCAL || it.account == key }
-                visible.map { item(it) } to (settings.activeAccount?.isUser == true)
+                campaigns.map { item(it, key) } to (settings.activeAccount?.isUser == true)
             }.collect { (items, canUpload) -> _state.update { it.copy(items = items, canUpload = canUpload) } }
         }
         if (core.settings.current.online) core.sync.requestSync()
     }
 
-    private fun item(campaign: StoredCampaign) = CampaignListItem(
+    private fun item(campaign: StoredCampaign, accountKey: String?) = CampaignListItem(
         localId = campaign.localId,
         name = campaign.state.name,
         chapterTitle = CampaignRules.chapterTitle(campaign.state.chapter),
@@ -72,7 +78,8 @@ class CampaignListViewModel(private val app: AppViewModel, private val scope: Co
         completed = campaign.state.status == CampaignStatus.COMPLETED,
         unsynced = campaign.onServer && campaign.hasUnsynced,
         uploadRequested = campaign.upload,
-        syncMessage = campaign.syncMessage
+        syncMessage = campaign.syncMessage,
+        detached = campaign.access != CampaignAccess.LOCAL && campaign.account != accountKey
     )
 
     fun onOpen(localId: Long) = app.navigate(Screen.CampaignSheet(localId))
@@ -91,10 +98,10 @@ class CampaignListViewModel(private val app: AppViewModel, private val scope: Co
         val item = _state.value.confirmDelete ?: return
         _state.update { it.copy(confirmDelete = null) }
         scope.launch {
-            when (item.access) {
-                CampaignAccess.LOCAL -> core.store.delete(item.localId)
-                CampaignAccess.OWNER -> core.store.markDeleted(item.localId)
-                CampaignAccess.LINK -> app.showMessage("Кампанию по ссылке может удалить только владелец.")
+            when {
+                item.access == CampaignAccess.LOCAL || item.detached -> core.store.delete(item.localId)
+                item.access == CampaignAccess.OWNER -> core.store.markDeleted(item.localId)
+                else -> app.showMessage("Кампанию по ссылке может удалить только владелец.")
             }
         }
     }

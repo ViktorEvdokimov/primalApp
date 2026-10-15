@@ -114,8 +114,14 @@ export const ru = {
     choice: 'Растение на выбор',
     choiceAny: (number: number) => `Растение ${number} (любое)`,
     notEnoughChoice: 'На выбранные растения запаса не хватает — выберите другие.',
-    uniqueReminder: 'У охотника не может быть двух зелий с одним названием — проверьте свою колоду зелий.',
+    uniqueRule: 'Зелье каждого вида у охотника одно: повторное приготовление повышает его уровень до уровня лаборатории.',
+    existingUpgrade: (name: string, from: number, to: number) =>
+      `У охотника уже есть «${name}» ${from}-го уровня: растения спишутся, зелье станет ${to}-го уровня.`,
+    existingSame: (name: string, level: number) =>
+      `У охотника уже есть «${name}» ${level}-го уровня: растения спишутся, уровень зелья не изменится.`,
     brewed: (name: string, level: number) => `«${name}» приготовлено — возьмите из коробки карту ${level}-го уровня.`,
+    upgraded: (name: string, level: number) => `«${name}»: уровень зелья повышен до ${level}-го — замените карту.`,
+    rebrewed: (name: string, level: number) => `«${name}» приготовлено снова — уровень зелья остаётся ${level}-м.`,
   },
   admin: {
     menu: 'Администрирование',
@@ -647,8 +653,10 @@ export const ru = {
     changeStance: 'Сменить стойку',
     endRound: 'Закончить раунд',
     surrender: 'Сдаться',
-    surrenderTitle: 'Сдаться?',
-    surrenderText: 'Вы уверены, что хотите сдаться? Бой будет засчитан как поражение.',
+    finish: 'Завершить бой',
+    finishTitle: 'Завершить бой',
+    finishText: 'Как закончился бой? «Завершить победой» — монстр повержен; «Сдаться» — бой засчитывается как поражение.',
+    finishVictory: 'Завершить победой',
     toMenu: 'Выход в меню',
     stanceDialogTitle: 'Смена стойки!',
     stanceDialogStance: (stance: number) => `Монстр перешёл на стойку ${stance}.`,

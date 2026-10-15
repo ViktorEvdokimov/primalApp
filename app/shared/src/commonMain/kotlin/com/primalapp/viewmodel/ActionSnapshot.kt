@@ -9,4 +9,5 @@ data class ActionSnapshot(
     val round: Int = 1
 )
 
-enum class ActionType { DAMAGE, RAGE, PHASE_CHANGE, ROUND_END, HEAL }
+/** FINISH — «Завершить бой»: победой или «Сдаться»; итог можно отменить. */
+enum class ActionType { DAMAGE, RAGE, PHASE_CHANGE, ROUND_END, HEAL, FINISH }

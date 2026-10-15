@@ -43,6 +43,8 @@ sealed interface Screen {
     data class Transition(val localId: Long) : Screen
     data class Info(val section: InfoSectionCode? = null, val entryId: Long? = null) : Screen
     data object Settings : Screen
+    /** Вход и регистрация; после входа — назад, откуда пришли. */
+    data object Login : Screen
     data class Join(val token: String) : Screen
 }
 
@@ -289,8 +291,9 @@ class AppViewModel(
         }
     }
 
-    /** Ссылка на кампанию на сайте (для «Поделиться»). */
-    fun campaignUrl(serverId: Long): String = PrimalApi.normalizeServerUrl(core.settings.current.serverUrl) + "/campaigns/$serverId"
+    /** Ссылка на кампанию на сайте; [server] — сервер копии кампании (по умолчанию — текущий). */
+    fun campaignUrl(serverId: Long, server: String? = null): String =
+        PrimalApi.normalizeServerUrl(server ?: core.settings.current.serverUrl) + "/campaigns/$serverId"
 
     // endregion
 }

@@ -480,7 +480,8 @@ class BattleViewModel(
                 currentRound = snapshot.round,
                 message = "Отменено: ${snapshot.description}",
                 canUndo = actionHistory.isNotEmpty(),
-                phase = newPhase
+                phase = newPhase,
+                surrendered = if (snapshot.actionType == ActionType.FINISH) false else it.surrendered
             )
         }
         highlightChanged(before)
@@ -789,8 +790,12 @@ class BattleViewModel(
         }
     }
 
+    /**
+     * «Завершить бой» → «Сдаться»: поражение с причиной «Вы сдались.» (D-14). Итог можно отменить, пока он не принят.
+     */
     fun onSurrender() {
         timerJob?.cancel()
+        saveSnapshot(ActionType.FINISH, "сдача")
         _state.update {
             it.copy(
                 phase = FightPhase.DEFEAT,
@@ -800,10 +805,39 @@ class BattleViewModel(
                 pendingDamage = 0,
                 damageInputText = "",
                 surrendered = true,
+                canUndo = actionHistory.isNotEmpty(),
                 message = "Поражение! Вы сдались."
             )
         }
         emitVibration(BattleVibrationEvent.SHORT)
+    }
+
+    /**
+     * «Завершить бой» → «Завершить победой»: монстр повержен по правилам стола (например, особым эффектом), хотя
+     * приложение не довело его здоровье до 0. Итог можно отменить, пока он не принят.
+     */
+    fun finishWithVictory() {
+        if (_state.value.phase == FightPhase.VICTORY || _state.value.phase == FightPhase.DEFEAT) return
+        timerJob?.cancel()
+        saveSnapshot(ActionType.FINISH, "завершение боя победой")
+        val monster = _state.value.monster
+        monster.isDefeated = true
+        _state.update {
+            it.copy(
+                phase = FightPhase.VICTORY,
+                monster = monster,
+                showPhaseChangeDialog = false,
+                showRageSurgeDialog = false,
+                isTimerRunning = false,
+                pendingDamage = 0,
+                damageInputText = "",
+                inputMode = InputMode.NONE,
+                surrendered = false,
+                canUndo = actionHistory.isNotEmpty(),
+                message = "Победа! Бой завершён."
+            )
+        }
+        emitVibration(BattleVibrationEvent.DOUBLE)
     }
 
     fun resetBattle() {

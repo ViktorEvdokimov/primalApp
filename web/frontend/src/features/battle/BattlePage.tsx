@@ -48,7 +48,7 @@ function BattleView({ battle }: { battle: LocalBattle }) {
   const vibrate = useVibration();
   const { highlighted, highlight } = useHighlights();
   const [message, setMessage] = useState('');
-  const [surrenderOpened, setSurrenderOpened] = useState(false);
+  const [finishOpened, setFinishOpened] = useState(false);
   const state = battle.state;
   useWakeLock(state.status === 'IN_PROGRESS');
 
@@ -175,11 +175,11 @@ function BattleView({ battle }: { battle: LocalBattle }) {
         color="red"
         onClick={() => {
           vibrate('SHORT');
-          setSurrenderOpened(true);
+          setFinishOpened(true);
         }}
-        data-testid="battle-surrender"
+        data-testid="battle-finish"
       >
-        {ru.battle.surrender}
+        {ru.battle.finish}
       </Button>
       <Group grow>
         <Button variant="light" component={Link} to="/info" data-testid="battle-info">
@@ -195,24 +195,33 @@ function BattleView({ battle }: { battle: LocalBattle }) {
         opened={state.rageSurgePending && state.pendingStance === null}
         onConfirm={() => run({ type: 'ACK_RAGE_SURGE' })}
       />
-      <Modal opened={surrenderOpened} onClose={() => setSurrenderOpened(false)} title={ru.battle.surrenderTitle} centered>
+      <Modal opened={finishOpened} onClose={() => setFinishOpened(false)} title={ru.battle.finishTitle} centered>
         <Stack gap="md">
-          <Text>{ru.battle.surrenderText}</Text>
-          <Group justify="flex-end">
-            <Button variant="default" onClick={() => setSurrenderOpened(false)} data-testid="battle-surrender-cancel">
-              {ru.battle.cancel}
-            </Button>
-            <Button
-              color="red"
-              onClick={() => {
-                setSurrenderOpened(false);
-                run({ type: 'SURRENDER' });
-              }}
-              data-testid="battle-surrender-confirm"
-            >
-              {ru.battle.surrender}
-            </Button>
-          </Group>
+          <Text>{ru.battle.finishText}</Text>
+          <Button
+            color="teal"
+            onClick={() => {
+              setFinishOpened(false);
+              run({ type: 'FINISH_VICTORY' });
+            }}
+            data-testid="battle-finish-victory"
+          >
+            {ru.battle.finishVictory}
+          </Button>
+          <Button
+            color="red"
+            variant="outline"
+            onClick={() => {
+              setFinishOpened(false);
+              run({ type: 'SURRENDER' });
+            }}
+            data-testid="battle-surrender-confirm"
+          >
+            {ru.battle.surrender}
+          </Button>
+          <Button variant="default" onClick={() => setFinishOpened(false)} data-testid="battle-finish-cancel">
+            {ru.battle.cancel}
+          </Button>
         </Stack>
       </Modal>
     </Stack>

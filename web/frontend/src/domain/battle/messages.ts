@@ -26,6 +26,7 @@ export const battleMessages = {
   roundStarted: (round: number, rage: number) => `Раунд ${round}. Ярость: ${rage}`,
   defeatByRounds: (maxRounds: number) => `Поражение! Прошло ${maxRounds} раундов.`,
   surrendered: 'Поражение! Вы сдались.',
+  finishedVictory: 'Победа! Бой завершён.',
   undone: (description: string) => `Отменено: ${description}`,
 } as const;
 
@@ -58,6 +59,8 @@ export function describeCommand(state: BattleState, command: BattleCommand): str
       return `завершение раунда ${state.round}`;
     case 'SURRENDER':
       return 'сдача';
+    case 'FINISH_VICTORY':
+      return 'завершение боя победой';
   }
 }
 

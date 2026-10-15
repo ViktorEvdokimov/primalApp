@@ -920,6 +920,8 @@ export interface BrewResponse {
   potion: string;
   name: string;
   level: number;
+  /** @nullable */
+  previousLevel: number | null;
   hunter: HunterSheet;
 }
 

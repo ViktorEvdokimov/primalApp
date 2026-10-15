@@ -67,7 +67,8 @@ export type BattleCommand =
   | { type: 'CONFIRM_STANCE'; toughnessPerHunter: number | null; stanceChange: StanceChange; health?: number }
   | { type: 'ACK_RAGE_SURGE' }
   | { type: 'END_ROUND'; damage?: number }
-  | { type: 'SURRENDER' };
+  | { type: 'SURRENDER' }
+  | { type: 'FINISH_VICTORY' }; // «Завершить бой» → «Завершить победой»: монстр повержен по правилам стола
 
 export type BattleEvent =
   | { type: 'DAMAGE_ACCUMULATED'; amount: number }

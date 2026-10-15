@@ -303,6 +303,8 @@ create table hunter_item (                               -- инвентарь (
     created_at  timestamptz  not null default now()
 );
 create index ix_hunter_item_hunter on hunter_item (hunter_id, id);
+-- V13: зелье каждого вида у охотника одно (повторное приготовление повышает уровень имеющегося)
+create unique index ux_hunter_item_potion on hunter_item (hunter_id, lower(name)) where kind = 'POTION';
 -- Стартовые предметы — при создании кампании; кампании, созданные до V6, строк не получают.
 
 create table campaign_quest (

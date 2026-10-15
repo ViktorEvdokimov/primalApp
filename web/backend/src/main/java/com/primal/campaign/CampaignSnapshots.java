@@ -251,6 +251,8 @@ public class CampaignSnapshots {
                 .map(SnapshotItem::id)
                 .collect(Collectors.toSet());
         existingItems.values().stream().filter(item -> !kept.contains(item.getId())).forEach(items::delete);
+        // Удаления — до новых карт: зелье каждого вида одно (уникальный индекс), а Hibernate вставляет раньше удаления
+        items.flush();
         Set<Long> edited = new HashSet<>();
         for (SnapshotItem item : snapshot.items()) {
             HunterItem existing = item.id() == null || !kept.contains(item.id()) ? null : existingItems.get(item.id());
@@ -382,6 +384,7 @@ public class CampaignSnapshots {
                 }
             });
             List<SnapshotItem> inventory = new ArrayList<>();
+            Map<String, Integer> potionIndex = new HashMap<>();
             for (SnapshotItem item : list(hunter.items())) {
                 require(item.kind() != null, "items", "Нет вида предмета.");
                 String itemName = item.name() == null ? "" : item.name().strip();
@@ -389,6 +392,19 @@ public class CampaignSnapshots {
                 Integer level = item.kind() == HunterItem.Kind.REWARD ? null : (item.level() == null ? 1 : item.level());
                 require(level == null || (level >= 1 && level <= 3), "items", "Уровень предмета — от 1 до 3.");
                 require(item.source() == null || item.source().length() <= 16, "items", "Слишком длинный код предмета.");
+                if (item.kind() == HunterItem.Kind.POTION) {
+                    // Зелье каждого вида одно: повтор сводится к первому с наибольшим уровнем
+                    String key = itemName.toLowerCase(java.util.Locale.ROOT);
+                    Integer index = potionIndex.get(key);
+                    if (index != null) {
+                        SnapshotItem first = inventory.get(index);
+                        int merged = Math.max(first.level() == null ? 1 : first.level(), level == null ? 1 : level);
+                        inventory.set(index, new SnapshotItem(first.id(), first.kind(), first.name(), merged, first.element(),
+                                first.source()));
+                        continue;
+                    }
+                    potionIndex.put(key, inventory.size());
+                }
                 inventory.add(new SnapshotItem(item.id(), item.kind(), itemName, level, item.element(), item.source()));
             }
             hunterViews.add(new SnapshotHunter(hunter.id(), hunter.hunterClass(), hunter.playerName(), hunter.position(),

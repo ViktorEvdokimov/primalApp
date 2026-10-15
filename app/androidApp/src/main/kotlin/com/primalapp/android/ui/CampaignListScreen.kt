@@ -68,8 +68,11 @@ fun CampaignListScreen(app: AppViewModel) {
         ConfirmDialog(
             title = "Удалить кампанию?",
             lines = listOf(
-                if (item.access == CampaignAccess.OWNER) "Кампания «${item.name}» будет удалена на сервере и у всех участников."
-                else "Кампания «${item.name}» будет удалена с устройства."
+                when {
+                    item.detached -> "Копия кампании «${item.name}» будет удалена с устройства; на сервере кампания останется."
+                    item.access == CampaignAccess.OWNER -> "Кампания «${item.name}» будет удалена на сервере и у всех участников."
+                    else -> "Кампания «${item.name}» будет удалена с устройства."
+                }
             ),
             confirm = "Удалить",
             onConfirm = { viewModel.onDeleteConfirmed() },

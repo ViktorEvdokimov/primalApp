@@ -66,7 +66,7 @@ fun BattleScreen(
     onInfo: (() -> Unit)? = null
 ) {
     val monster = state.monster
-    var showSurrenderDialog by remember { mutableStateOf(false) }
+    var showFinishDialog by remember { mutableStateOf(false) }
     val vibrate = rememberBattleVibrator()
     LaunchedEffect(viewModel) {
         viewModel.vibrationEvents.collect { vibrate(it) }
@@ -204,11 +204,11 @@ fun BattleScreen(
         OutlinedButton(
             onClick = {
                 vibrate(BattleVibrationEvent.SHORT)
-                showSurrenderDialog = true
+                showFinishDialog = true
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Сдаться")
+            Text("Завершить бой")
         }
         Spacer(Modifier.height(8.dp))
 
@@ -239,21 +239,29 @@ fun BattleScreen(
         )
     }
 
-    if (showSurrenderDialog) {
+    if (showFinishDialog) {
         AlertDialog(
-            onDismissRequest = { showSurrenderDialog = false },
-            title = { Text("Сдаться?") },
-            text = { Text("Вы уверены, что хотите сдаться? Бой будет засчитан как поражение.") },
+            onDismissRequest = { showFinishDialog = false },
+            title = { Text("Завершить бой") },
+            text = {
+                Column {
+                    Text("Как закончился бой? «Завершить победой» — монстр повержен; «Сдаться» — бой засчитывается как поражение.")
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = {
+                        showFinishDialog = false
+                        viewModel.finishWithVictory()
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Завершить победой") }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = {
+                        showFinishDialog = false
+                        viewModel.onSurrender()
+                    }, modifier = Modifier.fillMaxWidth()) { Text("Сдаться") }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
-                    showSurrenderDialog = false
-                    viewModel.onSurrender()
-                }) { Text("Сдаться") }
-            },
-            dismissButton = {
-                TextButton(onClick = {
                     vibrate(BattleVibrationEvent.SHORT)
-                    showSurrenderDialog = false
+                    showFinishDialog = false
                 }) { Text("Отмена") }
             }
         )

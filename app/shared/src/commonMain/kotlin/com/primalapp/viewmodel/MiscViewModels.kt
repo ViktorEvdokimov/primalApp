@@ -189,10 +189,7 @@ data class SettingsState(
     val password2: String = "",
     val newDisplayName: String = "",
     val busy: Boolean = false,
-    val error: String? = null,
-    /** Выход или смена сервера при неотправленных изменениях — подтверждение. */
-    val confirmLogout: List<String>? = null,
-    val confirmServer: String? = null
+    val error: String? = null
 )
 
 /**
@@ -241,27 +238,19 @@ class SettingsViewModel(private val app: AppViewModel, private val scope: Corout
 
     fun onServerInput(text: String) = _state.update { it.copy(serverInput = text, error = null) }
 
-    /** «Сохранить адрес»: вход на прежнем сервере не действует, копии его кампаний убираются с устройства. */
+    /** «Сохранить адрес»: вход на прежнем сервере не действует; кампании остаются на устройстве. */
     fun onSaveServer() {
         val input = _state.value.serverInput.trim()
         if (input.isEmpty()) {
             _state.update { it.copy(error = "Укажите адрес сервера.") }
             return
         }
-        scope.launch {
-            val unsynced = core.unsyncedCampaigns()
-            if (unsynced.isNotEmpty() && _state.value.confirmServer == null) {
-                _state.update { it.copy(confirmServer = input, confirmLogout = unsynced.map { c -> c.state.name }) }
-                return@launch
-            }
-            applyServer(input)
-        }
+        scope.launch { applyServer(input) }
     }
 
     fun onDefaultServer() = _state.update { it.copy(serverInput = PrimalApi.DEFAULT_SERVER) }
 
     private suspend fun applyServer(input: String) {
-        _state.update { it.copy(confirmServer = null, confirmLogout = null) }
         core.setServer(input)
         _state.update { it.copy(serverInput = core.settings.current.serverUrl) }
         app.showMessage("Сервер: ${core.settings.current.serverUrl}")
@@ -321,29 +310,16 @@ class SettingsViewModel(private val app: AppViewModel, private val scope: Corout
         }
     }
 
-    /** «Выйти»: неотправленные изменения кампаний будут потеряны — подтверждение. */
+    /** «Выйти»: кампании остаются на устройстве, изменения уйдут на сервер после входа в этот же аккаунт. */
     fun onLogout() {
         scope.launch {
-            val unsynced = core.unsyncedCampaigns()
-            if (unsynced.isNotEmpty()) {
-                _state.update { it.copy(confirmLogout = unsynced.map { c -> c.state.name }) }
-            } else {
-                doLogout()
-            }
+            val unsynced = core.unsyncedCampaigns().isNotEmpty()
+            core.logout()
+            app.showMessage(
+                if (unsynced) "Вы вышли из аккаунта. Кампании сохранены; изменения уйдут на сервер после входа в этот аккаунт."
+                else "Вы вышли из аккаунта. Кампании сохранены на устройстве."
+            )
         }
-    }
-
-    fun onConfirmDangerous() {
-        val server = _state.value.confirmServer
-        scope.launch { if (server != null) applyServer(server) else doLogout() }
-    }
-
-    fun onCancelDangerous() = _state.update { it.copy(confirmLogout = null, confirmServer = null) }
-
-    private suspend fun doLogout() {
-        _state.update { it.copy(confirmLogout = null) }
-        core.logout()
-        app.showMessage("Вы вышли из аккаунта.")
     }
 
     // endregion

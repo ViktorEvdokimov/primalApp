@@ -1592,4 +1592,61 @@ class BattleViewModelTest {
     }
 
     //endregion
+
+    //region «Завершить бой»: «Завершить победой» и «Сдаться»
+
+    @Test
+    fun `«Завершить победой» — победа без причины поражения, итог можно отменить`() {
+        // Подготовка
+        val viewModel = createViewModel()
+        viewModel.onQuickButtonPress(2)
+        viewModel.commitDamage()
+        val health = viewModel.state.value.monster.currentHealth
+
+        // Вызов проверяемого кода
+        viewModel.finishWithVictory()
+        val finished = viewModel.state.value
+        viewModel.onUndoPress()
+
+        // Проверка
+        assertEquals(FightPhase.VICTORY, finished.phase)
+        assertFalse(finished.surrendered)
+        assertEquals("Победа! Бой завершён.", finished.message)
+        assertTrue(finished.canUndo, "Итог можно отменить")
+        assertEquals(FightPhase.PHASE_I, viewModel.state.value.phase, "После отмены бой продолжается")
+        assertEquals(health, viewModel.state.value.monster.currentHealth)
+        assertFalse(viewModel.state.value.monster.isDefeated)
+    }
+
+    @Test
+    fun `«Сдаться» можно отменить — бой продолжается, признак сдачи снят`() {
+        // Подготовка
+        val viewModel = createViewModel()
+
+        // Вызов проверяемого кода
+        viewModel.onSurrender()
+        val surrendered = viewModel.state.value
+        viewModel.onUndoPress()
+
+        // Проверка
+        assertEquals(FightPhase.DEFEAT, surrendered.phase)
+        assertTrue(surrendered.surrendered)
+        assertEquals(FightPhase.PHASE_I, viewModel.state.value.phase)
+        assertFalse(viewModel.state.value.surrendered)
+    }
+
+    @Test
+    fun `«Завершить победой» после конца боя ничего не меняет`() {
+        // Подготовка
+        val viewModel = createViewModel()
+        viewModel.onSurrender()
+
+        // Вызов проверяемого кода
+        viewModel.finishWithVictory()
+
+        // Проверка
+        assertEquals(FightPhase.DEFEAT, viewModel.state.value.phase)
+    }
+
+    //endregion
 }

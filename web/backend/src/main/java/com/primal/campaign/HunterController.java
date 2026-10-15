@@ -2,6 +2,7 @@ package com.primal.campaign;
 
 import com.primal.campaign.CampaignSheetDto.HunterSheet;
 import com.primal.common.api.ApiOptional;
+import com.primal.common.api.ApiNullable;
 import com.primal.identity.PrimalPrincipal;
 import com.primal.rules.model.Plant;
 import com.primal.rules.model.ResourceCode;
@@ -68,7 +69,8 @@ class HunterController {
     }
 
     /** Приготовленное зелье — карту {@code level}-го уровня игрок берёт из коробки; охотник после списания. */
-    record BrewResponse(String potion, String name, int level, HunterSheet hunter) {
+    /** {@code level} — уровень зелья после приготовления; {@code previousLevel} — было у охотника, {@code null} — новое. */
+    record BrewResponse(String potion, String name, int level, @ApiNullable Integer previousLevel, HunterSheet hunter) {
     }
 
     private final HunterService hunters;
@@ -121,7 +123,7 @@ class HunterController {
                                       @PathVariable long hunterId, @Valid @RequestBody BrewRequest body) {
         LabService.Brewed brewed = lab.brew(principal, campaignId, hunterId, body.potion(), body.plants());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new BrewResponse(brewed.code(), brewed.name(), brewed.level(), brewed.hunter()));
+                .body(new BrewResponse(brewed.code(), brewed.name(), brewed.level(), brewed.previousLevel(), brewed.hunter()));
     }
 
     @Operation(operationId = "adjustResources")

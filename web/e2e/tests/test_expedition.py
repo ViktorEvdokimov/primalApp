@@ -157,7 +157,7 @@ class TestBattle:
             assert battle.get_stance_change_value() == expected_stance
         for test_id in ("battle-quick-1", "battle-quick-5", "battle-quick-10", "battle-quick-50", BattlePage.DAMAGE_INPUT,
                         BattlePage.RAGE_MINUS_1, BattlePage.RAGE_PLUS_1, BattlePage.RAGE_PER_HUNTER,
-                        BattlePage.END_ROUND, BattlePage.SURRENDER, BattlePage.EXIT_TO_MENU):
+                        BattlePage.END_ROUND, BattlePage.FINISH, BattlePage.EXIT_TO_MENU):
             with check(f"Элемент {test_id} виден"):
                 assert battle.is_visible(test_id)
 
@@ -405,7 +405,7 @@ class TestBattle:
         with check("Не ниже 0, здоровье не изменилось"):
             assert battle.get_accumulated_damage_value() == 0 and battle.get_health_value() == INITIAL_HEALTH
 
-    @allure.title("Выход в меню не сбрасывает бой, «Сдаться» с подтверждением — поражение")
+    @allure.title("Выход в меню не сбрасывает бой, «Завершить бой» → «Сдаться» — поражение")
     def test_exit_resume_and_surrender(self, page: Page):
         # подготовка
         battle = start_battle(page, difficulty="3")
@@ -423,6 +423,21 @@ class TestBattle:
         result = battle.surrender().confirm()
         with check("Поражение с причиной «Вы сдались.» (D-14)"):
             assert result.result() == "DEFEAT" and result.reason() == "Вы сдались."
+
+    @allure.title("«Завершить бой» → «Завершить победой» — победа, итог можно отменить")
+    def test_finish_with_victory(self, page: Page):
+        # подготовка
+        battle = start_battle(page)
+
+        # вызов
+        result = battle.finish().victory()
+
+        # проверка
+        with check("Победа"):
+            assert result.result() == "VICTORY"
+        battle = result.undo()
+        with check("После отмены бой продолжается"):
+            assert battle.get_health_value() == INITIAL_HEALTH
 
 
 @allure.feature("Экспедиция — смена стойки")

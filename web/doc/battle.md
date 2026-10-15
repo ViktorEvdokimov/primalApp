@@ -96,7 +96,8 @@ type BattleCommand =
   | { type: 'CONFIRM_STANCE'; toughnessPerHunter: number | null; stanceChange: StanceChange; health?: number }
   | { type: 'ACK_RAGE_SURGE' }
   | { type: 'END_ROUND'; damage?: number }
-  | { type: 'SURRENDER' };
+  | { type: 'SURRENDER' }
+  | { type: 'FINISH_VICTORY' };
 
 type CommandResult =
   | { ok: true; state: BattleState; events: BattleEvent[]; message: string }
@@ -122,7 +123,8 @@ function canApply(state: BattleState, command: BattleCommand): boolean;   // д�
 | `CONFIRM_STANCE` | есть `pendingStance` | Параметры новой стойки (§4.2) |
 | `ACK_RAGE_SURGE` | `rageSurgePending` | `rage = hunterCount`: каждый охотник получил урон, равный силе монстра (вне приложения) |
 | `END_ROUND` | бой идёт, нет ожиданий | §4.3 |
-| `SURRENDER` | бой идёт | `DEFEAT`, причина `SURRENDER` (D-14) |
+| `SURRENDER` | бой идёт | `DEFEAT`, причина `SURRENDER` (D-14) — «Завершить бой» → «Сдаться» |
+| `FINISH_VICTORY` | бой идёт | `VICTORY` без ран — «Завершить бой» → «Завершить победой» (монстр повержен по правилам стола); окна стойки и выплеска закрываются |
 
 «Нет ожиданий» — `pendingStance = null` и `rageSurgePending = false`: окна модальные. Недопустимую
 команду движок отклоняет, состояние не меняется. «Отмена» в окне смены стойки — это отмена действия (§6).
@@ -354,7 +356,8 @@ stateDiagram-v2
     [*] --> IN_PROGRESS: «Начать бой» (запись в localStorage)
     IN_PROGRESS --> IN_PROGRESS: команды
     IN_PROGRESS --> VICTORY: здоровье 0
-    IN_PROGRESS --> DEFEAT: конец 10-го раунда / «Сдаться»
+    IN_PROGRESS --> VICTORY: «Завершить бой» → «Завершить победой»
+    IN_PROGRESS --> DEFEAT: конец 10-го раунда / «Завершить бой» → «Сдаться»
     VICTORY --> IN_PROGRESS: отмена, пока результат не отправлен
     DEFEAT --> IN_PROGRESS: отмена, пока результат не отправлен
     VICTORY --> [*]: экспедиция — «Новый бой»; кампания — результат отправлен

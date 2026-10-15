@@ -61,6 +61,7 @@ import com.primalapp.viewmodel.ItemEditorState
 import com.primalapp.viewmodel.QuestRow
 import com.primalapp.viewmodel.Screen
 import com.primalapp.viewmodel.SheetTab
+import com.primalapp.viewmodel.SheetPrompt
 
 /** Лист кампании: шапка, бой, кузница, лаборатория, вкладки. */
 @Composable
@@ -120,6 +121,7 @@ private fun Header(state: CampaignSheetState, viewModel: CampaignSheetViewModel)
     state.finalBossName?.let { Text("Следующий бой — финальный: $it", fontSize = 14.sp) }
     when {
         state.access.name == "LINK" -> Hint("Кампания по ссылке · владелец ${state.ownerName.orEmpty()}")
+        state.detached -> Hint("Кампания на сервере · вход не выполнен: изменения уйдут на сервер после входа в её аккаунт")
         state.onServer -> Hint("Кампания на сервере" + if (state.unsynced) " · есть неотправленные изменения" else "")
         else -> Hint("Кампания только на устройстве")
     }
@@ -150,14 +152,15 @@ private fun BattleBlock(app: AppViewModel, localId: Long, state: CampaignSheetSt
             Text("Инфо", maxLines = 1)
         }
     }
-    if (state.onServer) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            if (state.canShare) {
-                OutlinedButton(onClick = { viewModel.onShareOpened() }, modifier = Modifier.weight(1f)) { Text("Поделиться") }
-            }
-            OutlinedButton(onClick = {
-                viewModel.campaignUrl()?.let { shareText(context, "Кампания «${state.name}» на сайте", it) }
-            }, modifier = Modifier.weight(1f)) { Text("Ссылка на сайт") }
+    // «Поделиться» и «Ссылка на сайт» — всегда: без входа или без сервера экран предложит войти или загрузить кампанию
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { viewModel.onShareOpened() }, modifier = Modifier.weight(1f)) { Text("Поделиться") }
+        OutlinedButton(onClick = { viewModel.onSiteLink() }, modifier = Modifier.weight(1f)) { Text("Ссылка на сайт") }
+    }
+    androidx.compose.runtime.LaunchedEffect(state.shareText) {
+        state.shareText?.let { link ->
+            shareText(context, "Кампания «${state.name}» на сайте", link)
+            viewModel.onShareTextHandled()
         }
     }
 }
@@ -387,6 +390,20 @@ private fun SheetDialogs(state: CampaignSheetState, viewModel: CampaignSheetView
         )
     }
     state.share?.let { ShareDialog(state, viewModel) }
+    state.prompt?.let { prompt ->
+        AlertDialog(
+            onDismissRequest = { viewModel.onPromptDismissed() },
+            title = { Text(if (prompt is SheetPrompt.Login) "Вход в аккаунт" else "Загрузить на сервер") },
+            text = { Text(prompt.text) },
+            confirmButton = {
+                when (prompt) {
+                    is SheetPrompt.Login -> TextButton(onClick = { viewModel.onLoginRequested() }) { Text("Войти") }
+                    is SheetPrompt.Upload -> TextButton(onClick = { viewModel.onUploadConfirmed() }) { Text("Загрузить") }
+                }
+            },
+            dismissButton = { TextButton(onClick = { viewModel.onPromptDismissed() }) { Text("Отмена") } }
+        )
+    }
 }
 
 @Composable

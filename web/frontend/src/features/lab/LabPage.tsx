@@ -235,6 +235,13 @@ function BrewDialog({ campaignId, potion, level, hunter, names, actions, onClose
     () => defaultPlants(potion.units, hunter.resources) ?? potion.units.map((unit) => unit.options[0] ?? 'NILLEA'),
   );
   const enough = affordable(plants, hunter.resources);
+  // Зелье каждого вида у охотника одно: повторное приготовление повышает уровень имеющегося
+  const existing = hunter.items.find(
+    (item) =>
+      item.kind === 'POTION' &&
+      (item.source === potion.code || item.name.trim().toLowerCase() === potion.name.trim().toLowerCase()),
+  );
+  const existingLevel = existing?.level ?? null;
   const label = (code: string) => `${names.get(code) ?? code} (${hunter.resources[code] ?? 0})`;
 
   const confirm = () => {
@@ -244,7 +251,13 @@ function BrewDialog({ campaignId, potion, level, hunter, names, actions, onClose
         actions.applied((sheet) =>
           withHunter(sheet, hunter.id, () => result.hunter),
         );
-        notifications.show({ color: 'teal', message: ru.lab.brewed(result.name, result.level) });
+        const message =
+          result.previousLevel === null
+            ? ru.lab.brewed(result.name, result.level)
+            : result.level > result.previousLevel
+              ? ru.lab.upgraded(result.name, result.level)
+              : ru.lab.rebrewed(result.name, result.level);
+        notifications.show({ color: 'teal', message });
       },
       (error: unknown) => {
         onClose();
@@ -281,9 +294,17 @@ function BrewDialog({ campaignId, potion, level, hunter, names, actions, onClose
             )
           : ru.lab.notEnoughChoice}
       </Text>
-      <Text size="xs" c="dimmed">
-        {ru.lab.uniqueReminder}
-      </Text>
+      {existing !== undefined && existingLevel !== null ? (
+        <Text size="sm" data-testid="lab-confirm-existing">
+          {level > existingLevel
+            ? ru.lab.existingUpgrade(potion.name, existingLevel, level)
+            : ru.lab.existingSame(potion.name, existingLevel)}
+        </Text>
+      ) : (
+        <Text size="xs" c="dimmed">
+          {ru.lab.uniqueRule}
+        </Text>
+      )}
       <Group justify="flex-end">
         <Button variant="default" onClick={onClose} data-testid="lab-confirm-cancel">
           {ru.forge.cancel}

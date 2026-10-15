@@ -399,7 +399,7 @@ class BattleViewModel(
 #### `onUndoPress()`
 **Строка:** `138`
 
-Отмена последнего действия (стек до 10 `ActionSnapshot`, типы `DAMAGE`, `RAGE`, `PHASE_CHANGE`, `ROUND_END`, `HEAL`). Восстанавливает монстра (здоровье, накопленный урон, фазу, флаг поражения, ярость, прочность, порог), `FightPhase` и номер раунда `ActionSnapshot.round` (D-4).
+Отмена последнего действия (стек до 10 `ActionSnapshot`, типы `DAMAGE`, `RAGE`, `PHASE_CHANGE`, `ROUND_END`, `HEAL`, `FINISH`). Восстанавливает монстра (здоровье, накопленный урон, фазу, флаг поражения, ярость, прочность, порог), `FightPhase` и номер раунда `ActionSnapshot.round` (D-4).
 
 ---
 
@@ -413,6 +413,15 @@ class BattleViewModel(
 #### `healWound()`
 
 «Заживить рану (+1 здоровья)» (R-4): снимок `ActionType.HEAL`, `monster.healWound()`. Если здоровье уже максимальное — сообщение «Здоровье уже максимальное.».
+
+---
+
+#### `finishWithVictory()`, `onSurrender()`
+
+Окно «Завершить бой» (кнопка «Завершить бой» вместо «Сдаться»): «Завершить победой» — `phase = VICTORY` (монстр
+повержен по правилам игры, урон до конца не вносили), «Сдаться» — `phase = DEFEAT`, `surrendered = true` (D-14). Оба
+сохраняют снимок `ActionType.FINISH` — «Отменить итог» возвращает бой (и снимает `surrendered`). После окончания боя
+не действуют.
 
 ---
 
@@ -512,7 +521,7 @@ class BattleViewModel(
 
 | Член | Назначение |
 |------|-----------|
-| `stack: StateFlow<List<Screen>>`, `navigate`, `replace`, `back`, `backTo`, `toMainMenu` | Навигация. `Screen`: `MainMenu`, `ExpeditionSetup`, `Battle`, `CampaignList`, `CampaignCreate`, `CampaignSheet(localId)`, `Forge`, `Lab`, `QuestSelect`, `CampaignBattleSetup(localId, questNumber)`, `Outcome`, `Transition`, `Info(section, entryId)`, `Settings`, `Join(token)` |
+| `stack: StateFlow<List<Screen>>`, `navigate`, `replace`, `back`, `backTo`, `toMainMenu` | Навигация. `Screen`: `MainMenu`, `ExpeditionSetup`, `Battle`, `CampaignList`, `CampaignCreate`, `CampaignSheet(localId)`, `Forge`, `Lab`, `QuestSelect`, `CampaignBattleSetup(localId, questNumber)`, `Outcome`, `Transition`, `Info(section, entryId)`, `Settings`, `Login` (вход из окон листа кампании; после входа — назад), `Join(token)` |
 | `connection: StateFlow<ConnectionState>` | Режим, сервер, имя аккаунта, `SyncStatus`; `label` — «Онлайн · Алиса», «Нет связи с сервером», «Офлайн-режим» |
 | `messages: SharedFlow<String>` | Уведомления (snackbar): ошибки правил, итоги синхронизации |
 | `battleViewModel: BattleViewModel` | Единственный бой приложения |
@@ -521,21 +530,22 @@ class BattleViewModel(
 | `startCampaignBattle(context, hunters, dfw, hsc, boss)` | Отметка о начале (`CampaignOp.StartBattle`) и бой |
 | `finishCampaignBattle()`, `abandonCampaignBattle()` | Итог принят / бой брошен (`CampaignOp.AbandonBattle`) |
 | `openLink(url)` | App Links: `/s/<токен>` → `Join`, `/campaigns/<id>` → лист копии кампании, `/info` → «Инфо» |
+| `campaignUrl(serverId, server?)` | Адрес листа на сайте; `server` — сервер копии кампании (по умолчанию — текущий) |
 
 ### 4.2 Экраны
 
 | ViewModel | Экран | Основное |
 |-----------|-------|----------|
 | `BattleSetupViewModel(app, localId?, questNumber?)` | Подготовка к бою | `BattleSetupState`: боссы каталога, префилл стойки I, сложность по главе, предупреждения «Уже идёт бой» и о замене боя; `onStart`, `onConfirmActiveWarning`, `onConfirmReplace` |
-| `CampaignListViewModel` | Кампании | Список кампаний устройства и аккаунта; `onUpload`, `onDeleteConfirmed` (`LOCAL` — сразу, `OWNER` — `pendingDelete`) |
+| `CampaignListViewModel` | Кампании | Все кампании устройства; `CampaignListItem.detached` — копия, оставшаяся после выхода или от другого аккаунта («· синхронизируется после входа в аккаунт»); `onUpload`, `onDeleteConfirmed` (`LOCAL` и `detached` — с устройства, `OWNER` — `pendingDelete`) |
 | `CampaignCreateViewModel` | Новая кампания | Отряд 2–5, `onCreate` → `CampaignRules.create` + `CampaignStore.create(upload = вошёл)` |
-| `CampaignSheetViewModel` | Лист кампании | Вкладки, навыки, ресурсы, инвентарь, имя игрока, задания («Выполнено», «Отмена», редактор), достижения, заметки (0,8 с), глава, история, «Поделиться» (`ShareState`), поток событий сервера (SSE) |
+| `CampaignSheetViewModel` | Лист кампании | Вкладки, навыки, ресурсы, инвентарь, имя игрока, задания («Выполнено», «Отмена», редактор), достижения, заметки (0,8 с), глава, история, «Поделиться» (`ShareState`) и «Ссылка на сайт» — у любой кампании: `onShareOpened`, `onSiteLink`, окна `SheetPrompt.Login` (без входа — «Войти» → `onLoginRequested` → `Screen.Login`) и `SheetPrompt.Upload` (кампания только на устройстве — `onUploadConfirmed`), `shareText` → системное окно «Поделиться»; `detached`; поток событий сервера (SSE) — только у кампаний текущего аккаунта |
 | `ForgeViewModel`, `LabViewModel`, `ExchangeViewModel` | Кузница, лаборатория, «Обменять ресурсы» | Цены и нехватка, выбор растений, обмен/преобразование/продажа |
 | `QuestSelectViewModel` | Выбор задания | Открытые задания с боссами |
 | `OutcomeViewModel` | Итог боя | `BattleReport` из боя, обновление кампании с сервера, `previewResult`, «Принять» / «Редактировать» (`OverridesForm`) / «Отклонить», держатели карт наград |
 | `TransitionViewModel` | Переход главы | Решения главы, `previewTransition`, «Принять» / «Отклонить» |
 | `InfoViewModel` | Инфо | Разделы, поиск, фильтр, раскрытие, ссылки «См. также», картинки |
-| `SettingsViewModel` | Настройки | Режим, сервер, вход/регистрация, имя, дополнения, выход |
+| `SettingsViewModel` | Настройки, экран входа | Режим, сервер, вход/регистрация, имя, дополнения, выход (кампании остаются, без подтверждения) |
 | `JoinViewModel` | Приглашение | `GET /share/{token}`, «Присоединиться» |
 
 Экраны одной кампании наследуют `CampaignScopedViewModel`: наблюдают документ кампании (`CampaignStore.observe`) и
@@ -561,7 +571,7 @@ class BattleViewModel(
 | Тип | Назначение |
 |-----|-----------|
 | `CampaignState` | Документ кампании: глава 0–11, статус, кузня, лаборатория, финальный босс, `progressSeq`, заметки, `HunterState` (навыки `SkillStep`, ресурсы `ResourceCode`, `InventoryItem`), `QuestState`, `AchievementState`, `TrophyState`, `BattleRecord` |
-| `CampaignRules(catalog)` | Все правила: `create`, `rename`, `setNotes`, `changeChapter`, `renameHunter`, `unlockSkill`/`lockSkill`, `adjustResources`, `openForges`/`forgeCost`/`craft`, `brew`, `addItem`/`editItem`/`removeItem`, `exchange`, `convert`, `sell`, `completeQuest`, `reopenQuest`, `setOpenQuests`, `addAchievement`/`deleteAchievement`, `battleTarget`, `startBattle`, `abandonBattle`, `activeBattles`, `previewResult`, `submitResult`, `requireConsistent`, `previewTransition`, `acceptTransition`, `rejectTransition`, `applyPlan` |
+| `CampaignRules(catalog)` | Все правила: `create`, `rename`, `setNotes`, `changeChapter`, `renameHunter`, `unlockSkill`/`lockSkill`, `adjustResources`, `openForges`/`forgeCost`/`craft`, `brew` (зелье вида одно: повтор поднимает уровень до уровня лаборатории), `existingPotion`, `addItem`/`editItem`/`removeItem`, `exchange`, `convert`, `sell`, `completeQuest`, `reopenQuest`, `setOpenQuests`, `addAchievement`/`deleteAchievement`, `battleTarget`, `startBattle`, `abandonBattle`, `activeBattles`, `previewResult`, `submitResult`, `requireConsistent`, `previewTransition`, `acceptTransition`, `rejectTransition`, `applyPlan` |
 | `CampaignOp` | Действие игрока (сериализуемое): `apply(rules, state, ctx)`; журнал для синхронизации |
 | `RuleContext` | Дополнения владельца, время, автор (`Actor`), генератор ключей |
 | `BattleReport`, `ResultOverrides`, `ResultPreview`, `TransitionPreview`, `CompletedQuest` | Итог боя, правки наград, превью для окон |
@@ -598,10 +608,10 @@ class BattleViewModel(
 | `createHttpEngine()` | expect/actual: OkHttp (Android), Darwin (iOS) |
 | `SettingsStore` | `AppSettings`: режим (`ConnectionMode`), сервер, `AccountInfo`, дополнения, время синхронизации |
 | `CatalogRepository`, `InfoRepository` | Справочники: кэш → файл приложения; `refresh(api)` по ETag |
-| `CampaignStore` | `observeAll`, `observe`, `create`, `perform(localId, op)`, `requestUpload`, `markDeleted`, `replay(base, ops)` |
+| `CampaignStore` | `observeAll`, `observe`, `create`, `perform(localId, op)`, `requestUpload`, `markDeleted`, `reassign(from, to)` (копии гостя → аккаунту), `replay(base, ops)` |
 | `SnapshotMapper` | Снимок сервера ↔ `CampaignState` |
 | `SyncEngine` | `sync(references)`, `syncCampaign(localId)`, `requestPush()`; `status: StateFlow<SyncStatus>`, `messages` |
-| `AppCore` | Корень: БД, настройки, справочники, хранилище, API, синхронизация (раз в минуту), `login`, `register`, `logout`, `setServer`, `setMode`, `setExpansions`, `join` |
+| `AppCore` | Корень: БД, настройки, справочники, хранилище, API, синхронизация (раз в минуту), `login`, `register`, `logout` (кампании остаются на устройстве), `forgetAccount`, `setServer`, `setMode`, `setExpansions`, `join` |
 
 ---
 
@@ -615,6 +625,6 @@ class BattleViewModel(
 | `CampaignListScreen.kt`, `CampaignCreateScreen.kt`, `CampaignSheetScreen.kt` | Кампании, лист, «Поделиться» (QR — ZXing) |
 | `WorkshopScreens.kt` | Кузница, лаборатория, «Обменять ресурсы» |
 | `ProgressionScreens.kt` | Выбор задания, итог боя, переход главы |
-| `InfoScreen.kt`, `SettingsScreen.kt` (с `JoinScreen`) | Инфо, настройки, приглашение |
+| `InfoScreen.kt`, `SettingsScreen.kt` (с `LoginScreen`, `JoinScreen`) | Инфо, настройки, вход, приглашение |
 | `Common.kt` | `ScreenScaffold`, `Dropdown`, `ConfirmDialog`, `Banner`, `ResourceIcon`, `ResourceLine`, `RulesSection`, `ExpansionBadge` |
 | `ReactionDeckHint.kt` | Колода карт реакций |

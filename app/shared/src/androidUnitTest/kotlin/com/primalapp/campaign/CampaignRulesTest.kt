@@ -113,6 +113,34 @@ class CampaignRulesTest {
     }
 
     @Test
+    fun `зелье каждого вида одно — повтор списывает растения и повышает уровень до уровня лаборатории`() {
+        // Подготовка: стартовый «Алемор» 1-го уровня, лаборатория 3-го уровня
+        val state = rules.adjustResources(newCampaign().copy(labLevel = 3), HunterClass.MIRA, mapOf(ResourceCode.MELLIS to 4))
+
+        // Вызов проверяемого кода
+        val upgraded = rules.brew(state, HunterClass.MIRA, "LAB_01", listOf(Plant.MELLIS, Plant.MELLIS), ctx)
+        val again = rules.brew(upgraded, HunterClass.MIRA, "LAB_01", listOf(Plant.MELLIS, Plant.MELLIS), ctx)
+
+        // Проверка
+        val potions = again.hunter(HunterClass.MIRA)!!.items.filter { it.kind == ItemKind.POTION }
+        assertEquals(listOf("Алемор" to 3), potions.map { it.name to it.level })
+        assertEquals(2, upgraded.hunter(HunterClass.MIRA)!!.quantity(ResourceCode.MELLIS))
+        assertEquals(0, again.hunter(HunterClass.MIRA)!!.quantity(ResourceCode.MELLIS), "Растения списаны и при повторе")
+    }
+
+    @Test
+    fun `второе зелье того же вида вручную не добавляется и переименованием не появляется`() {
+        // Подготовка
+        val withEvok = rules.addItem(newCampaign(), HunterClass.DAREON, ItemKind.POTION, "Эвок", 1, "evok")
+
+        // Вызов проверяемого кода и проверка
+        assertFailsWith<CampaignRuleException> { rules.addItem(withEvok, HunterClass.DAREON, ItemKind.POTION, "алемор", 2, "dup") }
+        assertFailsWith<CampaignRuleException> { rules.editItem(withEvok, HunterClass.DAREON, "evok", "Алемор", 1) }
+        val otherHunter = rules.addItem(withEvok, HunterClass.MIRA, ItemKind.POTION, "Эвок", 1, "evok2")
+        assertEquals(1, otherHunter.hunter(HunterClass.MIRA)!!.items.count { it.name == "Эвок" }, "У другого охотника — можно")
+    }
+
+    @Test
     fun `обмен 1 к 1 внутри типа, преобразование и продажа`() {
         // Подготовка
         var state = rules.adjustResources(newCampaign(), HunterClass.DAREON, mapOf(ResourceCode.BLOOD to 1, ResourceCode.FIRE to 1))

@@ -99,15 +99,6 @@ fun SettingsScreen(app: AppViewModel) {
         }
     }
 
-    state.confirmLogout?.let { names ->
-        ConfirmDialog(
-            title = if (state.confirmServer != null) "Сменить сервер?" else "Выйти из аккаунта?",
-            lines = listOf("Изменения этих кампаний ещё не отправлены на сервер и будут потеряны:") + names,
-            confirm = if (state.confirmServer != null) "Сменить" else "Выйти",
-            onConfirm = { viewModel.onConfirmDangerous() },
-            onDismiss = { viewModel.onCancelDangerous() }
-        )
-    }
 }
 
 @Composable
@@ -135,6 +126,29 @@ private fun AuthForm(viewModel: SettingsViewModel, state: com.primalapp.viewmode
     ErrorText(state.error)
     if (state.busy) CircularProgressIndicator() else Button(onClick = { viewModel.onSubmitAuth() }) {
         Text(if (state.authMode == AuthMode.LOGIN) "Войти" else "Зарегистрироваться")
+    }
+}
+
+/**
+ * Вход и регистрация отдельным экраном — из «Поделиться» и «Ссылка на сайт» листа кампании. После входа — назад.
+ */
+@Composable
+fun LoginScreen(app: AppViewModel) {
+    val scope = rememberCoroutineScope()
+    val viewModel = remember { SettingsViewModel(app, scope) }
+    val state by viewModel.state.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(state.isUser) {
+        if (state.isUser) app.back()
+    }
+    ScreenScaffold(title = "Вход в аккаунт", onBack = { app.back() }) {
+        Hint("Сервер: ${state.server}. Кампании аккаунта хранятся на сервере, ими можно делиться и открывать их на сайте.")
+        if (state.mode != ConnectionMode.ONLINE) {
+            Hint("Вход доступен в онлайн-режиме.")
+            Button(onClick = { viewModel.onModeChanged(true) }) { Text("Включить онлайн-режим") }
+            return@ScreenScaffold
+        }
+        AuthForm(viewModel, state)
+        TextButton(onClick = { app.replace(com.primalapp.viewmodel.Screen.Settings) }) { Text("Настройки сервера") }
     }
 }
 

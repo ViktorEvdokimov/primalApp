@@ -81,10 +81,34 @@ public class InventoryService {
         return "Карта награды №" + card;
     }
 
-    /** Предмет, добавленный вручную, — без оплаты. */
+    /**
+     * Зелье из лаборатории: зелье каждого вида у охотника одно. Нет такого — добавляется карта уровня {@code level};
+     * есть — его уровень повышается до {@code level}, если тот выше. Возвращает уровень зелья, которое уже было
+     * у охотника, или {@code null}.
+     */
+    Integer brewPotion(long hunterId, String name, String source, int level) {
+        HunterItem existing = items.findByHunterIdInOrderById(List.of(hunterId)).stream()
+                .filter(item -> item.getKind() == Kind.POTION
+                        && (source.equals(item.getSource()) || sameName(item.getName(), name)))
+                .findFirst()
+                .orElse(null);
+        if (existing == null) {
+            addCrafted(hunterId, Kind.POTION, name, level, null, source);
+            return null;
+        }
+        Integer previous = existing.getLevel();
+        if (previous == null || level > previous) {
+            existing.edit(existing.getName(), level);
+        }
+        items.flush();
+        return previous == null ? level : previous;
+    }
+
+    /** Предмет, добавленный вручную, — без оплаты. Второе зелье того же вида не добавляется. */
     @Transactional
     public HunterSheet add(PrimalPrincipal principal, long campaignId, long hunterId, Kind kind, String name, Integer level) {
         CampaignHunter hunter = hunter(principal, campaignId, hunterId);
+        requireSinglePotion(hunter.getId(), kind, name.strip(), null);
         items.save(new HunterItem(hunter.getId(), kind, name.strip(), level(kind, level), null, null, clock.instant()));
         touch(campaignId);
         return sheets.hunterSheet(hunter);
@@ -94,6 +118,7 @@ public class InventoryService {
     @Transactional
     public HunterSheet edit(PrimalPrincipal principal, long campaignId, long hunterId, long itemId, String name, Integer level) {
         HunterItem item = item(principal, campaignId, hunterId, itemId);
+        requireSinglePotion(hunterId, item.getKind(), name.strip(), itemId);
         item.edit(name.strip(), level(item.getKind(), level));
         touch(campaignId);
         return sheets.hunterSheet(hunters.getReferenceById(hunterId));
@@ -104,6 +129,25 @@ public class InventoryService {
         items.delete(item(principal, campaignId, hunterId, itemId));
         touch(campaignId);
         return sheets.hunterSheet(hunters.getReferenceById(hunterId));
+    }
+
+    /** Зелье каждого вида у охотника одно: второе с тем же названием — {@code 400} с полем {@code name}. */
+    private void requireSinglePotion(long hunterId, Kind kind, String name, Long exceptItemId) {
+        if (kind != Kind.POTION) {
+            return;
+        }
+        boolean duplicate = items.findByHunterIdInOrderById(List.of(hunterId)).stream()
+                .anyMatch(item -> item.getKind() == Kind.POTION && !item.getId().equals(exceptItemId)
+                        && sameName(item.getName(), name));
+        if (duplicate) {
+            String message = "Зелье «" + name + "» у охотника уже есть: зелье каждого вида одно — измените уровень имеющегося.";
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, message)
+                    .with("errors", List.of(Map.of("field", "name", "message", message)));
+        }
+    }
+
+    static boolean sameName(String first, String second) {
+        return first.strip().equalsIgnoreCase(second.strip());
     }
 
     /** Карта охотника кампании — для правки, удаления и продажи; чужая или удалённая — 404. */

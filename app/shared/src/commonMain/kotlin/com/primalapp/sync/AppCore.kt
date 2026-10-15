@@ -83,8 +83,8 @@ class AppCore(
     }
 
     /**
-     * Другой сервер: вход на прежнем сервере больше не действует, копии его кампаний убираются с устройства
-     * (кампании только на устройстве остаются).
+     * Другой сервер: вход на прежнем сервере больше не действует. Копии его кампаний остаются на устройстве и
+     * синхронизируются снова после входа в тот же аккаунт на том сервере.
      */
     suspend fun setServer(url: String) {
         val normalized = PrimalApi.normalizeServerUrl(url)
@@ -127,18 +127,22 @@ class AppCore(
         signedIn(previous, SyncEngine.accountInfo(settings.current.serverUrl, api.me()))
     }
 
-    /** Вошли: копии кампаний гостя или прежнего аккаунта заменяются кампаниями аккаунта (доступы гостя переходят к нему). */
+    /**
+     * Вошли. Гость по ссылке, вошедший в аккаунт, передаёт ему свои доступы (сервер переносит их на аккаунт) — копии
+     * гостя переходят к аккаунту вместе с неотправленными изменениями. Копии другого аккаунта остаются как есть.
+     */
     private suspend fun signedIn(previous: AccountInfo?, account: AccountInfo) {
-        if (previous != null && previous.key != account.key) removeCopies(previous.key)
+        if (previous != null && !previous.isUser && previous.key != account.key) store.reassign(previous.key, account.key)
         settings.setAccount(account)
         sync.sync(references = false)
     }
 
-    /** Выйти: устройство на сервере отзывается, копии кампаний аккаунта убираются с устройства. */
+    /**
+     * Выйти: устройство на сервере отзывается. Кампании остаются на устройстве и работают без входа; изменения копий
+     * с сервера уйдут на сервер после входа в тот же аккаунт.
+     */
     suspend fun logout() {
-        val account = settings.current.activeAccount
         runCatching { api.logout() }
-        if (account != null) removeCopies(account.key)
         forgetAccount()
     }
 
@@ -148,12 +152,8 @@ class AppCore(
         return store.all().filter { it.account == key && it.onServer && it.hasUnsynced }
     }
 
-    private suspend fun removeCopies(accountKey: String) {
-        store.all().filter { it.account == accountKey && it.onServer }.forEach { store.delete(it.localId) }
-    }
-
+    /** Вход больше не действует (выход, другой сервер, отзыв устройства): кампании на устройстве сохраняются. */
     private suspend fun forgetAccount() {
-        settings.current.activeAccount?.let { removeCopies(it.key) }
         settings.setAccount(null)
         cookies.clear()
     }

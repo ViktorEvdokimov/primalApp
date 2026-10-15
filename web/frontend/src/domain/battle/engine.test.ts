@@ -874,6 +874,32 @@ describe('Конец раунда', () => {
   });
 });
 
+describe('Завершить победой («Завершить бой»)', () => {
+  it('победа без причины поражения', () => {
+    // вызов
+    const result = accepted(apply(battle(), { type: 'FINISH_VICTORY' }));
+
+    // проверка
+    expect(result.state.status).toBe('VICTORY');
+    expect(result.state.defeatReason).toBeNull();
+    expect(result.message).toBe('Победа! Бой завершён.');
+    expect(result.events).toEqual([{ type: 'VICTORY' }]);
+  });
+
+  it('доступно при открытом окне смены стойки и закрывает его', () => {
+    // подготовка
+    const afterDamage = run(battle(), [{ type: 'DEAL_DAMAGE', amount: 12 }]);
+    expect(afterDamage.pendingStance).not.toBeNull();
+
+    // вызов
+    const result = accepted(apply(afterDamage, { type: 'FINISH_VICTORY' }));
+
+    // проверка
+    expect(result.state.status).toBe('VICTORY');
+    expect(result.state.pendingStance).toBeNull();
+  });
+});
+
 describe('Сдаться (D-14)', () => {
   it('поражение с причиной «Сдаться»', () => {
     // вызов

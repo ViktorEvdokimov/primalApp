@@ -155,7 +155,11 @@ class CampaignRules(private val catalog: Catalog) {
         }
     }
 
-    /** Приготовить зелье: [plants] — растения по порядку единиц цены; уровень карты — уровень лаборатории. */
+    /**
+     * Приготовить зелье: [plants] — растения по порядку единиц цены; уровень карты — уровень лаборатории. Зелье
+     * каждого вида у охотника одно: если оно уже есть, растения списываются, а уровень имеющегося повышается до
+     * уровня лаборатории (если тот выше).
+     */
     fun brew(state: CampaignState, hunterClass: HunterClass, potionCode: String, plants: List<Plant>, ctx: RuleContext): CampaignState {
         val potion = catalog.labPotion(potionCode) ?: throw CampaignRuleException("Зелья $potionCode нет в лаборатории.")
         require(plants.size == potion.units.size, "Для «${potion.name}» нужно ${potion.units.size} растения.")
@@ -166,18 +170,40 @@ class CampaignRules(private val catalog: Catalog) {
             cost[code] = (cost[code] ?: 0) - 1
         }
         return updateHunter(state, hunterClass) { hunter ->
+            val existing = existingPotion(hunter, potion.name, potion.code)
             hunter.copy(
                 resources = adjusted(hunter.resources, cost),
-                items = hunter.items + InventoryItem(ctx.newKey(), kind = ItemKind.POTION, name = potion.name,
-                    level = state.labLevel, source = potion.code)
+                items = if (existing == null) {
+                    hunter.items + InventoryItem(ctx.newKey(), kind = ItemKind.POTION, name = potion.name,
+                        level = state.labLevel, source = potion.code)
+                } else {
+                    hunter.items.map {
+                        if (it.key == existing.key) it.copy(level = maxOf(it.level ?: 1, state.labLevel)) else it
+                    }
+                }
             )
         }
     }
+
+    /** Зелье этого вида у охотника (по коду лаборатории или названию); нет — `null`. */
+    fun existingPotion(hunter: HunterState, name: String, source: String?): InventoryItem? = hunter.items.firstOrNull {
+        it.kind == ItemKind.POTION && ((source != null && it.source == source) || sameName(it.name, name))
+    }
+
+    /** Зелье каждого вида одно: второе с тем же названием — ошибка. */
+    private fun requireSinglePotion(hunter: HunterState, kind: ItemKind, name: String, exceptKey: String?) {
+        if (kind != ItemKind.POTION) return
+        require(hunter.items.none { it.kind == ItemKind.POTION && it.key != exceptKey && sameName(it.name, name) },
+            "Зелье «$name» у охотника уже есть: зелье каждого вида одно — измените уровень имеющегося.")
+    }
+
+    private fun sameName(first: String, second: String): Boolean = first.trim().equals(second.trim(), ignoreCase = true)
 
     /** Предмет вручную — без оплаты, чтобы список совпадал с картами на столе. */
     fun addItem(state: CampaignState, hunterClass: HunterClass, kind: ItemKind, name: String, level: Int?, key: String): CampaignState {
         val title = itemName(name)
         return updateHunter(state, hunterClass) { hunter ->
+            requireSinglePotion(hunter, kind, title, null)
             hunter.copy(items = hunter.items + InventoryItem(key, kind = kind, name = title, level = itemLevel(kind, level)))
         }
     }
@@ -186,6 +212,7 @@ class CampaignRules(private val catalog: Catalog) {
         val title = itemName(name)
         return updateHunter(state, hunterClass) { hunter ->
             val item = hunter.items.firstOrNull { it.key == itemKey } ?: throw CampaignRuleException("Предмет не найден.")
+            requireSinglePotion(hunter, item.kind, title, itemKey)
             hunter.copy(items = hunter.items.map { if (it.key == itemKey) it.copy(name = title, level = itemLevel(item.kind, level)) else it })
         }
     }

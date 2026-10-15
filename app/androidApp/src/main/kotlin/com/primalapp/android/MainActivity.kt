@@ -28,6 +28,7 @@ import com.primalapp.android.ui.CampaignSheetScreen
 import com.primalapp.android.ui.ForgeScreen
 import com.primalapp.android.ui.InfoScreen
 import com.primalapp.android.ui.JoinScreen
+import com.primalapp.android.ui.LoginScreen
 import com.primalapp.android.ui.LabScreen
 import com.primalapp.android.ui.MainMenuScreen
 import com.primalapp.android.ui.OutcomeScreen
@@ -100,6 +101,7 @@ fun PrimalApp(app: AppViewModel) {
                 is Screen.Transition -> TransitionScreen(app, screen.localId)
                 is Screen.Info -> InfoScreen(app, screen.section, screen.entryId)
                 Screen.Settings -> SettingsScreen(app)
+                Screen.Login -> LoginScreen(app)
                 is Screen.Join -> JoinScreen(app, screen.token)
             }
         }

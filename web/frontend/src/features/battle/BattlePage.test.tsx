@@ -339,10 +339,10 @@ describe('Экран боя', () => {
   });
 
   describe('Итог боя', () => {
-    it('«Сдаться» после подтверждения — поражение «Вы сдались.»; итог можно отменить', async () => {
+    it('«Завершить бой» → «Сдаться» — поражение «Вы сдались.»; итог можно отменить', async () => {
       // подготовка
       const { user } = await openBattle(localBattle());
-      await user.click(screen.getByTestId('battle-surrender'));
+      await user.click(screen.getByTestId('battle-finish'));
 
       // вызов
       await user.click(await screen.findByTestId('battle-surrender-confirm'));
@@ -353,6 +353,34 @@ describe('Экран боя', () => {
       expect(text('battle-result-reason')).toBe('Вы сдались.');
       await user.click(screen.getByTestId('battle-result-undo'));
       expect(await screen.findByTestId('battle-health')).toHaveTextContent('Здоровье: 10');
+    });
+
+    it('«Завершить бой» → «Завершить победой» — «ПОБЕДА!»; итог можно отменить', async () => {
+      // подготовка
+      const { user } = await openBattle(localBattle());
+      await user.click(screen.getByTestId('battle-finish'));
+
+      // вызов
+      await user.click(await screen.findByTestId('battle-finish-victory'));
+
+      // проверка
+      expect(await screen.findByTestId('battle-result')).toHaveAttribute('data-result', 'VICTORY');
+      expect(text('battle-result-title')).toBe('ПОБЕДА!');
+      await user.click(screen.getByTestId('battle-result-undo'));
+      expect(await screen.findByTestId('battle-health')).toHaveTextContent('Здоровье: 10');
+    });
+
+    it('«Завершить бой» → «Отмена» — бой продолжается', async () => {
+      // подготовка
+      const { user } = await openBattle(localBattle());
+      await user.click(screen.getByTestId('battle-finish'));
+
+      // вызов
+      await user.click(await screen.findByTestId('battle-finish-cancel'));
+
+      // проверка
+      await waitFor(() => expect(screen.queryByTestId('battle-finish-victory')).not.toBeInTheDocument());
+      expect(screen.queryByTestId('battle-result')).not.toBeInTheDocument();
     });
 
     it('после 10-го раунда — поражение «Закончились раунды...»', async () => {

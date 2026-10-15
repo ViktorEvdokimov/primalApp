@@ -18,12 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Лаборатория ({@code doc/api.md} §5.4): охотник готовит зелье и тратит 2 растения с планшета. Если на планшете
  * растение на выбор («A/B») или любое, игрок указывает, какое тратит. Уровень карты зелья — уровень лаборатории.
+ * Зелье каждого вида у охотника одно: если оно уже есть, растения списываются, а уровень имеющегося зелья
+ * повышается до уровня лаборатории (если лаборатория выше).
  */
 @Service
 public class LabService {
 
-    /** Приготовленное зелье и охотник после списания: ресурсы и инвентарь с новой картой. */
-    public record Brewed(String code, String name, int level, HunterSheet hunter) {
+    /**
+     * Приготовленное зелье и охотник после списания. {@code level} — уровень зелья после приготовления,
+     * {@code previousLevel} — уровень зелья, которое уже было у охотника; {@code null} — зелье новое.
+     */
+    public record Brewed(String code, String name, int level, Integer previousLevel, HunterSheet hunter) {
     }
 
     private final CatalogService catalog;
@@ -68,8 +73,9 @@ public class LabService {
         }
         int level = campaigns.campaign(campaignId).getLabLevel();
         hunterService.adjustResources(principal, campaignId, hunterId, cost);
-        inventory.addCrafted(hunterId, HunterItem.Kind.POTION, potion.name(), level, null, potion.code());
-        return new Brewed(potion.code(), potion.name(), level, sheets.hunterSheet(hunter));
+        Integer previousLevel = inventory.brewPotion(hunterId, potion.name(), potion.code(), level);
+        int resultLevel = previousLevel == null ? level : Math.max(previousLevel, level);
+        return new Brewed(potion.code(), potion.name(), resultLevel, previousLevel, sheets.hunterSheet(hunter));
     }
 
     private static ApiException wrongPlants(String message) {

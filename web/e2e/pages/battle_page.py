@@ -45,7 +45,7 @@ class BattlePage(BasePage):
     RESILIENT = "battle-resilient"
     CHANGE_STANCE = "battle-change-stance"
     END_ROUND = "battle-end-round"
-    SURRENDER = "battle-surrender"
+    FINISH = "battle-finish"
     EXIT_TO_MENU = "battle-menu"
 
     def text(self, test_id: str) -> str:
@@ -158,10 +158,15 @@ class BattlePage(BasePage):
     def end_round(self) -> None:
         self.click(self.END_ROUND)
 
-    @allure.step("Нажать «Сдаться»")
-    def surrender(self) -> "SurrenderDialog":
-        self.click(self.SURRENDER)
-        return SurrenderDialog(self.page)
+    @allure.step("Нажать «Завершить бой»")
+    def finish(self) -> "FinishDialog":
+        self.click(self.FINISH)
+        return FinishDialog(self.page)
+
+    @allure.step("«Завершить бой» → «Сдаться»")
+    def surrender(self) -> "FinishDialog":
+        """Окно «Завершить бой»; «Сдаться» в нём — :meth:`FinishDialog.confirm`."""
+        return self.finish()
 
     @allure.step("Нажать «Выход в меню»")
     def exit_to_menu(self):
@@ -260,14 +265,21 @@ class StatusInfoDialog(BasePage):
         expect(self.by_test_id(self.root_test_id)).to_be_hidden()
 
 
-class SurrenderDialog(BasePage):
-    """Подтверждение «Сдаться?»."""
+class FinishDialog(BasePage):
+    """Окно «Завершить бой»: «Завершить победой», «Сдаться», «Отмена»."""
 
     root_test_id = "battle-surrender-confirm"
 
-    @allure.step("Подтвердить «Сдаться»")
+    @allure.step("Выбрать «Сдаться»")
     def confirm(self) -> "ResultPage":
         self.click(self.root_test_id)
+        result = ResultPage(self.page)
+        result.should_be_open()
+        return result
+
+    @allure.step("Выбрать «Завершить победой»")
+    def victory(self) -> "ResultPage":
+        self.click("battle-finish-victory")
         result = ResultPage(self.page)
         result.should_be_open()
         return result

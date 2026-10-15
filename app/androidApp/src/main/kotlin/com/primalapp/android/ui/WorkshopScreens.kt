@@ -163,7 +163,8 @@ fun LabScreen(app: AppViewModel, localId: Long) {
                     Spacer(Modifier.height(8.dp))
                     if (state.confirmAffordable) Text("Будет списано: ${state.confirmCost}.")
                     else Text("На выбранные растения запаса не хватает — выберите другие.")
-                    Hint("Двух зелий с одним названием у охотника быть не может.")
+                    val existing = state.existingText
+                    if (existing != null) Text(existing) else Hint("Зелье каждого вида у охотника одно: повторное приготовление повышает его уровень до уровня лаборатории.")
                 }
             },
             confirmButton = { TextButton(onClick = { viewModel.onBrewConfirmed() }, enabled = state.confirmAffordable) { Text("Приготовить") } },

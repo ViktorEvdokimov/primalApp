@@ -136,7 +136,8 @@ data class LabUnitChoice(val options: List<Plant>, val any: Boolean, val selecte
 
 data class PotionRow(val code: String, val name: String, val units: List<LabUnitChoice>, val affordable: Boolean)
 
-data class LabConfirm(val potion: PotionRow, val choices: List<LabUnitChoice>) {
+/** Окно «Приготовить зелье?»; [existingLevel] — уровень такого же зелья у охотника, `null` — зелья нет. */
+data class LabConfirm(val potion: PotionRow, val choices: List<LabUnitChoice>, val existingLevel: Int? = null) {
     val plants: List<Plant>? get() = choices.map { it.selected ?: return null }
 }
 
@@ -157,6 +158,19 @@ data class LabState(
             val plants = confirm?.plants ?: return false
             val hunter = hunter ?: return false
             return plants.groupingBy { it }.eachCount().all { (plant, count) -> hunter.quantity(ResourceCode.of(plant)) >= count }
+        }
+
+    /** Зелье каждого вида одно: что будет с имеющимся. */
+    val existingText: String?
+        get() {
+            val confirm = confirm ?: return null
+            val level = confirm.existingLevel ?: return null
+            val name = confirm.potion.name
+            return if (labLevel > level) {
+                "У охотника уже есть «$name» $level-го уровня: растения спишутся, зелье станет $labLevel-го уровня."
+            } else {
+                "У охотника уже есть «$name» $level-го уровня: растения спишутся, уровень зелья не изменится."
+            }
         }
 
     val confirmCost: String
@@ -215,7 +229,8 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
         val hunter = _state.value.hunter ?: return
         val defaults = defaultChoice(row.units, hunter)
         val choices = row.units.mapIndexed { index, unit -> unit.copy(selected = defaults?.getOrNull(index) ?: unit.options.firstOrNull()) }
-        _state.update { it.copy(confirm = LabConfirm(row, choices)) }
+        val existing = rules.existingPotion(hunter, row.name, row.code)
+        _state.update { it.copy(confirm = LabConfirm(row, choices, existing?.let { item -> item.level ?: 1 })) }
     }
 
     fun onPlantChosen(unitIndex: Int, plant: Plant) = _state.update { state ->
@@ -233,8 +248,15 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
         val hunter = _state.value.selectedHunter ?: return
         val level = _state.value.labLevel
         _state.update { it.copy(confirm = null) }
+        val existingLevel = confirm.existingLevel
         perform(CampaignOp.Brew(hunter, confirm.potion.code, plants, now(), actor)) {
-            app.showMessage("«${confirm.potion.name}» приготовлено — возьмите из коробки карту $level-го уровня.")
+            app.showMessage(
+                when {
+                    existingLevel == null -> "«${confirm.potion.name}» приготовлено — возьмите из коробки карту $level-го уровня."
+                    level > existingLevel -> "«${confirm.potion.name}»: уровень зелья повышен до $level-го — замените карту."
+                    else -> "«${confirm.potion.name}» приготовлено снова — уровень зелья остаётся $existingLevel-м."
+                }
+            )
         }
     }
 
