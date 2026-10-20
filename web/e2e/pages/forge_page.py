@@ -67,6 +67,12 @@ class ForgePage(BasePage):
         self.page.locator(f'[data-testid="forge-hunter-option"][data-player="{player}"]').click()
         return self
 
+    @allure.step("Фильтр по типу предмета: {item_type}")
+    def filter_type(self, item_type: str) -> "ForgePage":
+        """ALL, WEAPON, ARMOR, HELMET, ITEM."""
+        self.page.locator(f'[data-testid="forge-type-option"][data-type="{item_type}"]').click()
+        return self
+
     @allure.step("Создать «{name}»")
     def create(self, name: str) -> None:
         self.item(name).get_by_test_id("forge-item-create").click()

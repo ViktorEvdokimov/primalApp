@@ -23,3 +23,13 @@ export function missing(cost: CostUnit[], resources: HunterSheet['resources']): 
 export function itemsFor(board: ForgeBoard, hunterClass: string): ForgeItem[] {
   return board.items.filter((item) => item.hunterClass === null || item.hunterClass === hunterClass);
 }
+
+/** Тип предмета для фильтра кузницы: оружие (вид класса охотника), доспех, шлем, предмет. */
+export type ItemType = 'WEAPON' | 'ARMOR' | 'HELMET' | 'ITEM';
+
+/** Порядок кнопок фильтра. */
+export const ITEM_TYPES: ItemType[] = ['WEAPON', 'ARMOR', 'HELMET', 'ITEM'];
+
+export function itemType(item: ForgeItem): ItemType {
+  return item.slot === 'ARMOR' || item.slot === 'HELMET' || item.slot === 'ITEM' ? item.slot : 'WEAPON';
+}

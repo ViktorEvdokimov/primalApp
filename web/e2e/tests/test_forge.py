@@ -84,3 +84,28 @@ class TestForge:
         with check("Карта шлема «Чешуйчатый шлем» 1-го уровня загружена"):
             expect(image).to_have_attribute("src", "/cards/FIRE_09-1.webp")
             assert image.evaluate("img => img.complete && img.naturalWidth") > 0
+
+    @allure.title("Фильтр по типу предмета: только шлемы, только предметы, снова все")
+    def test_type_filter(self, page: Page, campaign_id: int):  # noqa: F811
+        # подготовка: пролог открыл кузню огня
+        sheet = play_prologue(page, campaign_id)
+        sheet.select_hunter("Дареон")
+        page.get_by_test_id("sheet-open-forge").click()
+        forge = ForgePage(page)
+        forge.should_be_open()
+        items = forge.section("FIRE").get_by_test_id("forge-item")
+
+        # вызов
+        forge.filter_type("HELMET")
+
+        # проверка
+        with check("Только шлем"):
+            expect(items).to_have_count(1)
+            assert forge.item_names("FIRE") == ["Чешуйчатый шлем"]
+        forge.filter_type("ITEM")
+        with check("Только предметы"):
+            expect(items).to_have_count(2)
+            assert forge.item_names("FIRE") == ["Перчатка Волтьяра", "Лавовый щит"]
+        forge.filter_type("ALL")
+        with check("Снова весь планшет"):
+            expect(items).to_have_count(5)

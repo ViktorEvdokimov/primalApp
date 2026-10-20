@@ -117,6 +117,48 @@ describe('Кузница', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(document.getElementById('forge-coral'));
   });
 
+  it('фильтр по типу предмета — во всех кузнях; сохраняется при смене охотника; «Все» — снова весь планшет', async () => {
+    // подготовка
+    const { user } = await openForge();
+    const option = (type: string) =>
+      screen.getAllByTestId('forge-type-option').find((node) => node.dataset.type === type)!;
+    expect(screen.getAllByTestId('forge-type-option').map((node) => node.textContent)).toEqual([
+      'Все',
+      'Оружие',
+      'Доспех',
+      'Шлем',
+      'Предмет',
+    ]);
+
+    // вызов
+    await user.click(option('HELMET'));
+
+    // проверка
+    expect(names('FIRE')).toEqual(['Чешуйчатый шлем']);
+    expect(names('CORAL')).toEqual(['Рифовый шлем']);
+
+    // вызов: предметы, затем другой охотник
+    await user.click(option('ITEM'));
+    await user.click(screen.getAllByTestId('forge-hunter-option')[1]!);
+
+    // проверка
+    expect(names('FIRE')).toEqual(['Перчатка Волтьяра', 'Лавовый щит']);
+
+    // вызов: оружие Миры
+    await user.click(option('WEAPON'));
+    expect(names('FIRE')).toEqual(['Лук-испепелитель']);
+    await user.click(option('ALL'));
+
+    // проверка
+    expect(names('FIRE')).toEqual([
+      'Лук-испепелитель',
+      'Чешуйчатый шлем',
+      'Чешуйчатый доспех',
+      'Перчатка Волтьяра',
+      'Лавовый щит',
+    ]);
+  });
+
   it('оружие — только класса выбранного охотника; шлем, доспех и предметы — всем', async () => {
     // вызов
     const { user } = await openForge();

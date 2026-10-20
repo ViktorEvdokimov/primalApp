@@ -7,6 +7,7 @@ import {
   Group,
   Loader,
   Modal,
+  SegmentedControl,
   Stack,
   Text,
   Title,
@@ -32,7 +33,7 @@ import { HunterSwitch } from '../campaign/HunterSwitch';
 import { useHunterSelection } from '../campaign/hunterSelection';
 import { useCampaignSheet, withHunter, type SheetActions } from '../campaign/useCampaignSheet';
 import { ExchangeDialog } from '../exchange/ExchangeDialog';
-import { craftCost, itemsFor, missing, type CostUnit } from './forge';
+import { craftCost, ITEM_TYPES, itemsFor, itemType, missing, type CostUnit, type ItemType } from './forge';
 
 const CATALOG_STALE_MS = 60 * 60 * 1000;
 
@@ -93,6 +94,8 @@ function Forge({ sheet, boards, dictionaries, actions, back }: ForgeProps) {
     ]),
   );
   const open = boards.filter((board) => sheet.openForges.includes(board.element));
+  // Фильтр по типу предмета — для всех кузниц; при смене охотника сохраняется
+  const [type, setType] = useState<ItemType | null>(null);
 
   return (
     <Stack gap="md" data-testid="page-campaign-forge">
@@ -138,6 +141,21 @@ function Forge({ sheet, boards, dictionaries, actions, back }: ForgeProps) {
               </Button>
             ))}
           </Group>
+          <SegmentedControl
+            fullWidth
+            size="xs"
+            value={type ?? 'ALL'}
+            onChange={(next) => setType(next === 'ALL' ? null : (next as ItemType))}
+            data={['ALL', ...ITEM_TYPES].map((value) => ({
+              value,
+              label: (
+                <span data-testid="forge-type-option" data-type={value}>
+                  {ru.forge.types[value]}
+                </span>
+              ),
+            }))}
+            data-testid="forge-type-filter"
+          />
           {hunter !== undefined && (
             <ResourceStock
               resources={hunter.resources}
@@ -153,6 +171,7 @@ function Forge({ sheet, boards, dictionaries, actions, back }: ForgeProps) {
                 campaignId={sheet.id}
                 board={board}
                 level={sheet.forgeLevel}
+                type={type}
                 hunter={hunter}
                 hunters={sheet.hunters}
                 dictionaries={dictionaries}
@@ -172,6 +191,8 @@ interface BoardSectionProps {
   campaignId: number;
   board: ForgeBoard;
   level: number;
+  /** показывать только этот тип предметов; `null` — все */
+  type: ItemType | null;
   hunter: HunterSheet;
   hunters: HunterSheet[];
   dictionaries: Dictionaries;
@@ -179,11 +200,13 @@ interface BoardSectionProps {
   actions: SheetActions;
 }
 
-function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries, names, actions }: BoardSectionProps) {
+function BoardSection(props: BoardSectionProps) {
+  const { campaignId, board, level, type, hunter, hunters, dictionaries, names, actions } = props;
   const craft = useCraftEquipment();
   const [confirming, setConfirming] = useState<ForgeItem | null>(null);
   const [exchanging, setExchanging] = useState<CostUnit[] | null>(null);
   const [described, setDescribed] = useState<EquipmentCard | null>(null);
+  const items = itemsFor(board, hunter.class).filter((item) => type === null || itemType(item) === type);
   const describe = (cost: CostUnit[]) =>
     cost.map((unit) => `${names.get(unit.code) ?? unit.code} ${unit.quantity}`).join(', ');
 
@@ -209,7 +232,7 @@ function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries,
         <ResourceIcon code={board.element} size={28} />
         <Title order={3}>{ru.forge.board(board.element, level)}</Title>
       </Group>
-      {itemsFor(board, hunter.class).map((item) => {
+      {items.map((item) => {
         const cost = craftCost(board.element, item, level);
         const lacking = missing(cost, hunter.resources);
         const card = equipmentCard(item.code, level);

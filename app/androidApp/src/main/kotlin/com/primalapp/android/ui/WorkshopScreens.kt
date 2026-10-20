@@ -44,6 +44,7 @@ import com.primalapp.viewmodel.CostPart
 import com.primalapp.viewmodel.ExchangeMode
 import com.primalapp.viewmodel.ExchangeRequest
 import com.primalapp.viewmodel.ExchangeViewModel
+import com.primalapp.viewmodel.ForgeItemType
 import com.primalapp.viewmodel.ForgeViewModel
 import com.primalapp.viewmodel.LabViewModel
 import com.primalapp.viewmodel.describe
@@ -84,6 +85,12 @@ fun ForgeScreen(app: AppViewModel, localId: Long) {
             state.openForges.forEach { element ->
                 FilterChip(selected = element == state.element, onClick = { viewModel.onElementSelected(element) },
                     label = { Row(verticalAlignment = Alignment.CenterVertically) { ElementIcon(element, 16); Text(" ${element.displayName}") } })
+            }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = state.typeFilter == null, onClick = { viewModel.onTypeSelected(null) }, label = { Text("Все") })
+            ForgeItemType.entries.forEach { type ->
+                FilterChip(selected = state.typeFilter == type, onClick = { viewModel.onTypeSelected(type) }, label = { Text(type.label) })
             }
         }
         Text("Запас:", fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))

@@ -6,6 +6,7 @@ import com.primalapp.campaign.HunterState
 import com.primalapp.campaign.InventoryItem
 import com.primalapp.campaign.ItemKind
 import com.primalapp.model.campaign.Element
+import com.primalapp.model.campaign.ForgeSlot
 import com.primalapp.model.campaign.HunterClass
 import com.primalapp.model.campaign.Plant
 import com.primalapp.model.campaign.ResourceCode
@@ -24,10 +25,25 @@ fun List<CostPart>.describe(): String = joinToString(", ") { "${it.code.displayN
 
 // region Кузница
 
+/** Тип предмета — фильтр кузницы (web qa № 153); порядок — порядок кнопок. */
+enum class ForgeItemType(val label: String) {
+    WEAPON("Оружие"), ARMOR("Доспех"), HELMET("Шлем"), ITEM("Предмет");
+
+    companion object {
+        fun of(slot: ForgeSlot): ForgeItemType = when (slot) {
+            ForgeSlot.ARMOR -> ARMOR
+            ForgeSlot.HELMET -> HELMET
+            ForgeSlot.ITEM -> ITEM
+            else -> WEAPON
+        }
+    }
+}
+
 data class ForgeItemRow(
     val code: String,
     val name: String,
     val kind: String,
+    val type: ForgeItemType,
     val cost: List<CostPart>,
     val missing: List<CostPart>,
     /** карта предмета уровня кузни из файлов игры — «Описание»; нет — `null` */
@@ -44,6 +60,8 @@ data class ForgeState(
     val forgeLevel: Int = 1,
     val openForges: List<Element> = emptyList(),
     val element: Element? = null,
+    /** фильтр по типу предмета; `null` — все */
+    val typeFilter: ForgeItemType? = null,
     val items: List<ForgeItemRow> = emptyList(),
     val stock: List<CostPart> = emptyList(),
     val confirm: ForgeItemRow? = null,
@@ -90,12 +108,14 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
         val element = current.element
         val items = if (element == null) emptyList() else catalog.forge(element)
             .filter { it.slot.availableTo(hunter.hunterClass) }
+            .filter { current.typeFilter == null || ForgeItemType.of(it.slot) == current.typeFilter }
             .map { item ->
                 val cost = rules.forgeCost(state, item.code).map { CostPart(it.key, it.value) }
                 ForgeItemRow(
                     code = item.code,
                     name = item.name,
                     kind = if (item.slot.isWeapon) "Оружие · ${item.slot.displayName.lowercase()}" else item.slot.displayName,
+                    type = ForgeItemType.of(item.slot),
                     cost = cost,
                     missing = cost.mapNotNull { part ->
                         val lack = part.quantity - hunter.quantity(part.code)
@@ -116,6 +136,9 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
     }
 
     fun onElementSelected(element: Element) = _state.update { rebuild(it.copy(element = element)) }
+
+    /** Фильтр по типу предмета (`null` — все); сохраняется при смене охотника и кузни. */
+    fun onTypeSelected(type: ForgeItemType?) = _state.update { rebuild(it.copy(typeFilter = type)) }
 
     /** «Описание»: карта снаряжения — показывается всегда, даже если ресурсов не хватает (web qa № 151, 152). */
     fun onDescriptionRequested(item: ForgeItemRow) = _state.update { it.copy(card = item.card) }

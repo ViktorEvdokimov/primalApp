@@ -101,6 +101,13 @@ export const ru = {
       ARMOR: 'Доспех',
       ITEM: 'Предмет',
     } as Record<string, string>,
+    types: {
+      ALL: 'Все',
+      WEAPON: 'Оружие',
+      ARMOR: 'Доспех',
+      HELMET: 'Шлем',
+      ITEM: 'Предмет',
+    } as Record<string, string>,
     missing: (what: string) => `Не хватает: ${what}`,
     create: 'Создать',
     cancel: 'Отмена',
