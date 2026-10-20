@@ -19,6 +19,8 @@ import { useBrewPotion } from '../../api/generated/campaigns/campaigns';
 import { useDictionaries, useLab } from '../../api/generated/catalog/catalog';
 import type { CampaignSheet, Dictionaries, HunterSheet, LabPotion, LabUnit } from '../../api/generated/primal.schemas';
 import { useLiveUpdates } from '../../api/useLiveUpdates';
+import { CardDialog } from '../../shared/cards/CardDialog';
+import { equipmentCard, type EquipmentCard } from '../../shared/cards/equipmentCards';
 import { ru } from '../../shared/i18n/ru';
 import { ResourceIcon, ResourceStock } from '../../shared/ui/ResourceStock';
 import { HunterSwitch } from '../campaign/HunterSwitch';
@@ -79,6 +81,7 @@ function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
   const { hunter, select } = useHunterSelection(sheet.hunters, sheet.mainHunter);
   const [brewing, setBrewing] = useState<LabPotion | null>(null);
   const [exchanging, setExchanging] = useState<Lack[] | null>(null);
+  const [described, setDescribed] = useState<EquipmentCard | null>(null);
   const names = new Map([...dictionaries.plants, ...dictionaries.hunterClasses].map((item) => [item.code, item.name]));
 
   return (
@@ -111,6 +114,7 @@ function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
           </Text>
           {potions.map((potion) => {
             const possible = defaultPlants(potion.units, hunter.resources) !== null;
+            const card = equipmentCard(potion.code, sheet.labLevel);
             return (
               <Card
                 key={potion.code}
@@ -144,15 +148,16 @@ function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
                       </Group>
                     )}
                   </Stack>
-                  <Button
-                    size="xs"
-                    disabled={!possible}
-                    onClick={() => setBrewing(potion)}
-                    style={{ flexShrink: 0 }}
-                    data-testid="lab-potion-brew"
-                  >
-                    {ru.lab.brew}
-                  </Button>
+                  <Stack gap={6} style={{ flexShrink: 0 }}>
+                    <Button size="xs" disabled={!possible} onClick={() => setBrewing(potion)} data-testid="lab-potion-brew">
+                      {ru.lab.brew}
+                    </Button>
+                    {card !== undefined && (
+                      <Button size="xs" variant="light" onClick={() => setDescribed(card)} data-testid="lab-potion-description">
+                        {ru.cards.description}
+                      </Button>
+                    )}
+                  </Stack>
                 </Group>
               </Card>
             );
@@ -171,6 +176,7 @@ function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
               />
             )}
           </Modal>
+          <CardDialog card={described} onClose={() => setDescribed(null)} />
           {/* Растения получают только обменом: преобразование и продажа дают материи и стихии */}
           <ExchangeDialog
             opened={exchanging !== null}

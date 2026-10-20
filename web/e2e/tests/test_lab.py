@@ -43,3 +43,17 @@ class TestLab:
             lab.wait_stock("MELLIS", 0)
         with check("Без растений «Эвок» недоступен"):
             expect(lab.potion("Эвок").get_by_test_id("lab-potion-brew")).to_be_disabled()
+
+    @allure.title("«Описание» зелья показывает карту из файлов игры уровня лаборатории")
+    def test_potion_card(self, page: Page, campaign_id: int):  # noqa: F811
+        # подготовка
+        lab = LabPage(page, campaign_id).open()
+        lab.should_be_open()
+
+        # вызов
+        image = lab.open_card("Алемор")
+
+        # проверка
+        with check("Карта «Алемор» 1-го уровня загружена"):
+            expect(image).to_have_attribute("src", "/cards/LAB_01-1.webp")
+            assert image.evaluate("img => img.complete && img.naturalWidth") > 0

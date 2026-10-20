@@ -1,5 +1,6 @@
 package com.primalapp.sync
 
+import com.primalapp.catalog.EquipmentCards
 import com.primalapp.database.PlatformContext
 import com.primalapp.database.PrimalDatabase
 import com.primalapp.database.createPrimalDatabase
@@ -34,6 +35,10 @@ class AppCore(
     val settings = SettingsStore(database.keyValueDao())
     val catalog = CatalogRepository(context, database.cacheBlobDao())
     val info = InfoRepository(context, database.cacheBlobDao())
+
+    /** Карты снаряжения из файлов игры — «Описание» в кузнице и лаборатории (web qa № 151, 152). */
+    var equipmentCards: EquipmentCards = EquipmentCards.load(context)
+        internal set
     val store = CampaignStore(database.campaignStoreDao(), { catalog.current }, { settings.current.expansions })
 
     private val cookies = CookieJar(emptyList()) { saved -> scope.launch { settings.saveCookies(saved) } }

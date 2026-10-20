@@ -26,6 +26,8 @@ import type {
 import { useLiveUpdates } from '../../api/useLiveUpdates';
 import { ru } from '../../shared/i18n/ru';
 import { ResourceIcon, ResourceStock } from '../../shared/ui/ResourceStock';
+import { CardDialog } from '../../shared/cards/CardDialog';
+import { equipmentCard, type EquipmentCard } from '../../shared/cards/equipmentCards';
 import { HunterSwitch } from '../campaign/HunterSwitch';
 import { useHunterSelection } from '../campaign/hunterSelection';
 import { useCampaignSheet, withHunter, type SheetActions } from '../campaign/useCampaignSheet';
@@ -181,6 +183,7 @@ function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries,
   const craft = useCraftEquipment();
   const [confirming, setConfirming] = useState<ForgeItem | null>(null);
   const [exchanging, setExchanging] = useState<CostUnit[] | null>(null);
+  const [described, setDescribed] = useState<EquipmentCard | null>(null);
   const describe = (cost: CostUnit[]) =>
     cost.map((unit) => `${names.get(unit.code) ?? unit.code} ${unit.quantity}`).join(', ');
 
@@ -209,6 +212,7 @@ function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries,
       {itemsFor(board, hunter.class).map((item) => {
         const cost = craftCost(board.element, item, level);
         const lacking = missing(cost, hunter.resources);
+        const card = equipmentCard(item.code, level);
         return (
           <Card
             key={item.code}
@@ -252,15 +256,21 @@ function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries,
                   </Group>
                 )}
               </Stack>
-              <Button
-                size="xs"
-                disabled={lacking.length > 0}
-                onClick={() => setConfirming(item)}
-                style={{ flexShrink: 0 }}
-                data-testid="forge-item-create"
-              >
-                {ru.forge.create}
-              </Button>
+              <Stack gap={6} style={{ flexShrink: 0 }}>
+                <Button
+                  size="xs"
+                  disabled={lacking.length > 0}
+                  onClick={() => setConfirming(item)}
+                  data-testid="forge-item-create"
+                >
+                  {ru.forge.create}
+                </Button>
+                {card !== undefined && (
+                  <Button size="xs" variant="light" onClick={() => setDescribed(card)} data-testid="forge-item-description">
+                    {ru.cards.description}
+                  </Button>
+                )}
+              </Stack>
             </Group>
           </Card>
         );
@@ -284,6 +294,7 @@ function BoardSection({ campaignId, board, level, hunter, hunters, dictionaries,
           </Stack>
         )}
       </Modal>
+      <CardDialog card={described} onClose={() => setDescribed(null)} />
       <ExchangeDialog
         opened={exchanging !== null}
         onClose={() => setExchanging(null)}

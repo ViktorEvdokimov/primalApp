@@ -1,5 +1,7 @@
 package com.primalapp.android.ui
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -9,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -27,10 +28,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.primalapp.campaign.HunterState
+import com.primalapp.catalog.EquipmentCard
 import com.primalapp.model.campaign.HunterClass
 import com.primalapp.model.campaign.ResourceCode
 import com.primalapp.viewmodel.AppViewModel
@@ -90,11 +96,13 @@ fun ForgeScreen(app: AppViewModel, localId: Long) {
                     Text(item.kind, fontSize = 13.sp)
                     ResourceLine(item.cost.pairs())
                     if (!item.canCraft) Text("Не хватает: ${item.missing.describe()}", fontSize = 13.sp)
-                    Row {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.onCraftRequested(item) }, enabled = item.canCraft) { Text("Создать") }
                         if (!item.canCraft) {
-                            Spacer(Modifier.width(8.dp))
                             OutlinedButton(onClick = { viewModel.onExchangeRequested(item) }) { Text("Обменять ресурсы") }
+                        }
+                        if (item.card != null) {
+                            TextButton(onClick = { viewModel.onDescriptionRequested(item) }) { Text("Описание") }
                         }
                     }
                 }
@@ -112,9 +120,35 @@ fun ForgeScreen(app: AppViewModel, localId: Long) {
         )
     }
     state.exchange?.let { request -> ExchangeDialog(app, localId, request) { viewModel.onExchangeClosed() } }
+    state.card?.let { card -> CardDialog(card) { viewModel.onDescriptionDismissed() } }
+}
+
+/** «Описание»: карта снаряжения из файлов игры во весь экран; закрывается «Закрыть» или касанием вне окна. */
+@Composable
+private fun CardDialog(card: EquipmentCard, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val bitmap = remember(card.asset) {
+        runCatching { context.assets.open(card.asset).use { BitmapFactory.decodeStream(it) } }.getOrNull()
+    }
+    Dialog(onDismissRequest = onDismiss) {
+        Card {
+            Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(card.title, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                if (bitmap != null) {
+                    Image(bitmap.asImageBitmap(), contentDescription = card.title, contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxWidth().weight(1f, fill = false))
+                } else {
+                    Text("Карта не найдена в файлах приложения.")
+                }
+                TextButton(onClick = onDismiss) { Text("Закрыть") }
+            }
+        }
+    }
 }
 
 /** Лаборатория: 6 зелий планшета; растения на выбор — в окне «Приготовить зелье?». */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LabScreen(app: AppViewModel, localId: Long) {
     val scope = rememberCoroutineScope()
@@ -133,11 +167,13 @@ fun LabScreen(app: AppViewModel, localId: Long) {
                     Text(potion.name, fontWeight = FontWeight.Bold)
                     potion.units.forEach { Text(it.label, fontSize = 14.sp) }
                     if (!potion.affordable) Text("Не хватает растений", fontSize = 13.sp)
-                    Row {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { viewModel.onBrewRequested(potion) }, enabled = potion.affordable) { Text("Приготовить") }
                         if (!potion.affordable) {
-                            Spacer(Modifier.width(8.dp))
                             OutlinedButton(onClick = { viewModel.onExchangeRequested() }) { Text("Обменять ресурсы") }
+                        }
+                        if (potion.card != null) {
+                            TextButton(onClick = { viewModel.onDescriptionRequested(potion) }) { Text("Описание") }
                         }
                     }
                 }
@@ -176,6 +212,7 @@ fun LabScreen(app: AppViewModel, localId: Long) {
         )
     }
     state.exchange?.let { request -> ExchangeDialog(app, localId, request) { viewModel.onExchangeClosed() } }
+    state.card?.let { card -> CardDialog(card) { viewModel.onDescriptionDismissed() } }
 }
 
 /** «Обменять ресурсы»: обмен, преобразование, продажа предмета. */

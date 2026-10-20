@@ -60,6 +60,13 @@ export default defineConfig({
             handler: 'NetworkFirst',
             options: { cacheName: 'primal-catalog', networkTimeoutSeconds: 4 },
           },
+          {
+            // Карты снаряжения (кнопка «Описание» в кузнице и лаборатории): сразу из кэша — после первого показа и без сети;
+            // перенарезанная карта подтягивается в фоне
+            urlPattern: ({ url }) => url.pathname.startsWith('/cards/'),
+            handler: 'StaleWhileRevalidate',
+            options: { cacheName: 'primal-cards', expiration: { maxEntries: 400 } },
+          },
         ],
       },
     }),

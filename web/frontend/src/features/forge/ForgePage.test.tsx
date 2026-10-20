@@ -144,6 +144,38 @@ describe('Кузница', () => {
     ]);
   });
 
+  it('«Описание» открывает карту снаряжения уровня кузни, даже если ресурсов не хватает', async () => {
+    // подготовка: Кара без ресурсов, кузня 2-го уровня
+    const kara = hunterFixture({ id: 33, class: 'KARA', playerName: 'Кара', position: 3, resources: {} });
+    const sheet = forgeSheet({ forgeLevel: 2 });
+    const { user } = await openForge({ ...sheet, hunters: [...sheet.hunters, kara] });
+    await user.click(screen.getAllByTestId('forge-hunter-option')[2]!);
+    expect(item('Крылья дракона').getByTestId('forge-item-create')).toBeDisabled();
+
+    // вызов
+    await user.click(item('Крылья дракона').getByTestId('forge-item-description'));
+
+    // проверка
+    const dialog = await screen.findByRole('dialog', { name: 'Крылья дракона · 2-й уровень' });
+    expect(within(dialog).getByRole('img', { name: 'Крылья дракона · 2-й уровень' })).toHaveAttribute(
+      'src',
+      '/cards/FIRE_05-2.webp',
+    );
+  });
+
+  it('«Описание» — у всего снаряжения кузни: оружие, шлем, доспех, предметы', async () => {
+    // подготовка
+    const { user } = await openForge();
+
+    // вызов
+    await user.click(item('Чешуйчатый шлем').getByTestId('forge-item-description'));
+
+    // проверка
+    expect(screen.getAllByTestId('forge-item-description')).toHaveLength(screen.getAllByTestId('forge-item').length);
+    const dialog = await screen.findByRole('dialog', { name: 'Чешуйчатый шлем · 1-й уровень' });
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', '/cards/FIRE_09-1.webp');
+  });
+
   it('цена — 1 стихия и материи текущего уровня; чего не хватает — подсказка, «Создать» недоступна', async () => {
     // вызов
     await openForge();

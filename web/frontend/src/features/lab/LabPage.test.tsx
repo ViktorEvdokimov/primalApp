@@ -202,6 +202,20 @@ describe('Лаборатория', () => {
     ).toBeInTheDocument();
   });
 
+  it('«Описание» открывает карту зелья уровня лаборатории, даже если растений не хватает', async () => {
+    // подготовка: растений нет, лаборатория 2-го уровня
+    const { user } = await openLab(labSheet({}, { labLevel: 2 }));
+    expect(potion('Ирден').getByTestId('lab-potion-brew')).toBeDisabled();
+
+    // вызов
+    await user.click(potion('Ирден').getByTestId('lab-potion-description'));
+
+    // проверка
+    expect(screen.getAllByTestId('lab-potion-description')).toHaveLength(6);
+    const dialog = await screen.findByRole('dialog', { name: 'Ирден · 2-й уровень' });
+    expect(within(dialog).getByRole('img', { name: 'Ирден · 2-й уровень' })).toHaveAttribute('src', '/cards/LAB_03-2.webp');
+  });
+
   it('зелье уже есть: в подтверждении — повышение уровня, после — «уровень зелья повышен»', async () => {
     // подготовка: у охотника «Имперум» 1-го уровня, лаборатория 3-го
     server.use(

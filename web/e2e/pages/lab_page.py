@@ -46,6 +46,14 @@ class LabPage(BasePage):
         expect(dialog).to_be_visible()
         return dialog
 
+    @allure.step("Описание «{name}»")
+    def open_card(self, name: str) -> Locator:
+        """«Описание» зелья — окно с картой; возвращает картинку карты."""
+        self.potion(name).get_by_test_id("lab-potion-description").click()
+        image = self.by_test_id("card-image")
+        expect(image).to_be_visible()
+        return image
+
     @allure.step("Приготовить")
     def confirm(self) -> None:
         self.click("lab-confirm-ok")

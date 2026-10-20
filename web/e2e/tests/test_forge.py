@@ -1,12 +1,16 @@
 """Кузница (задача 9.1): кузня стихии открывается победой над её боссом, охотник создаёт снаряжение."""
 
+import re
+
 import allure
 from playwright.sync_api import Page, expect
 from pytest_check import check
 
 from pages.campaign_sheet_page import CampaignSheetPage
+from pages.campaigns_page import CampaignsPage
 from pages.forge_page import ForgePage
 from tests.test_campaign_progression import campaign_id, play_prologue  # noqa: F401 — фикстура campaign_id
+from tests.test_login import register
 
 
 @allure.feature("Кузница")
@@ -53,3 +57,30 @@ class TestForge:
         sheet.select_hunter("Дареон")
         with check("На листе кости Дареона списаны"):
             assert sheet.resource_value("Кости") == before["BONES"] - 1
+
+    @allure.title("«Описание» показывает карту снаряжения из файлов игры: оружие Кары, шлем Миры")
+    def test_equipment_card(self, page: Page):
+        # подготовка: кампания с Карой и Мирой, пролог открыл кузню огня
+        register(page)
+        CampaignsPage(page).open().create().create("Карты снаряжения", ["KARA", "MIRA"])
+        expect(page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))
+        play_prologue(page, int(page.url.rstrip("/").split("/")[-3]))
+        page.get_by_test_id("sheet-open-forge").click()
+        forge = ForgePage(page)
+        forge.should_be_open()
+        forge.select_hunter("Кара")
+
+        # вызов
+        image = forge.open_card("Крылья дракона")
+
+        # проверка
+        with check("Карта «Крылья дракона» 1-го уровня загружена"):
+            expect(image).to_have_attribute("src", "/cards/FIRE_05-1.webp")
+            assert image.evaluate("img => img.complete && img.naturalWidth") > 0
+        page.keyboard.press("Escape")
+        expect(image).to_be_hidden()
+        forge.select_hunter("Мира")
+        image = forge.open_card("Чешуйчатый шлем")
+        with check("Карта шлема «Чешуйчатый шлем» 1-го уровня загружена"):
+            expect(image).to_have_attribute("src", "/cards/FIRE_09-1.webp")
+            assert image.evaluate("img => img.complete && img.naturalWidth") > 0

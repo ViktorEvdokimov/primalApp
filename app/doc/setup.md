@@ -371,7 +371,7 @@ primalApp/
 
 ---
 
-## Сервер для приложения (версия 1.3)
+## Сервер для приложения (версия 1.4)
 
 Приложение работает и без сервера (офлайн-режим), а онлайн по умолчанию обращается к `https://primalhelper.ru/`.
 Для проверки с локальным сервером:
@@ -384,8 +384,9 @@ primalApp/
 3. «Регистрация» или «Вход» — кампании аккаунта появятся в списке; кампании устройства можно загрузить кнопкой
    «Загрузить на сервер».
 
-Серверу нужны эндпоинты версии 1.3 (`GET /api/v1/catalog/bundle`, `GET/PUT /api/v1/campaigns/{id}/snapshot`,
-`POST /api/v1/campaigns/import` — `web/doc/api.md` §4.1 и §11): обновите сайт на сервере до выпуска приложения.
+Серверу нужны эндпоинты версии 1.4 (`GET /api/v1/catalog/bundle`, `GET/PUT /api/v1/campaigns/{id}/snapshot`,
+`POST /api/v1/campaigns/import` — `web/doc/api.md` §4.1 и §11; `PUT /api/v1/campaigns/{id}/main-hunter` и
+`mainHunter` в списке кампаний — основной персонаж): обновите сайт на сервере до выпуска приложения.
 
 **Файлы по умолчанию** (`androidApp/src/main/assets`): `catalog-bundle.json` — ответ `GET /api/v1/catalog/bundle`
 сервера без правок администратора, `default-info.json` — копия `web/backend/src/main/resources/info/default-info.json`.

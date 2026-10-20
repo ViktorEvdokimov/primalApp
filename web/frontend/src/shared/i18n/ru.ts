@@ -75,6 +75,10 @@ export const ru = {
       fields: 'Проверьте заполнение полей.',
     },
   },
+  cards: {
+    description: 'Описание',
+    title: (name: string, level: number) => `${name} · ${level}-й уровень`,
+  },
   forge: {
     open: 'Кузница',
     title: 'Кузница',

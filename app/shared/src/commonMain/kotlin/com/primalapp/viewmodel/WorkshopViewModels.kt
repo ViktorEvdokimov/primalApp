@@ -1,5 +1,6 @@
 package com.primalapp.viewmodel
 
+import com.primalapp.catalog.EquipmentCard
 import com.primalapp.campaign.CampaignOp
 import com.primalapp.campaign.HunterState
 import com.primalapp.campaign.InventoryItem
@@ -28,7 +29,9 @@ data class ForgeItemRow(
     val name: String,
     val kind: String,
     val cost: List<CostPart>,
-    val missing: List<CostPart>
+    val missing: List<CostPart>,
+    /** карта предмета уровня кузни из файлов игры — «Описание»; нет — `null` */
+    val card: EquipmentCard? = null
 ) {
     val canCraft: Boolean get() = missing.isEmpty()
 }
@@ -44,7 +47,9 @@ data class ForgeState(
     val items: List<ForgeItemRow> = emptyList(),
     val stock: List<CostPart> = emptyList(),
     val confirm: ForgeItemRow? = null,
-    val exchange: ExchangeRequest? = null
+    val exchange: ExchangeRequest? = null,
+    /** Открытое окно «Описание» — карта предмета. */
+    val card: EquipmentCard? = null
 ) {
     val hunter: HunterState? get() = hunters.firstOrNull { it.hunterClass == selectedHunter }
 }
@@ -95,7 +100,8 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
                     missing = cost.mapNotNull { part ->
                         val lack = part.quantity - hunter.quantity(part.code)
                         if (lack > 0) CostPart(part.code, lack) else null
-                    }
+                    },
+                    card = core.equipmentCards.card(item.code, state.forgeLevel)
                 )
             }
         val stock = (ResourceCode.elements + ResourceCode.materials).mapNotNull { code ->
@@ -110,6 +116,11 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
     }
 
     fun onElementSelected(element: Element) = _state.update { rebuild(it.copy(element = element)) }
+
+    /** «Описание»: карта снаряжения — показывается всегда, даже если ресурсов не хватает (web qa № 151, 152). */
+    fun onDescriptionRequested(item: ForgeItemRow) = _state.update { it.copy(card = item.card) }
+
+    fun onDescriptionDismissed() = _state.update { it.copy(card = null) }
 
     fun onCraftRequested(row: ForgeItemRow) = _state.update { it.copy(confirm = row) }
 
@@ -142,7 +153,14 @@ data class LabUnitChoice(val options: List<Plant>, val any: Boolean, val selecte
     val label: String get() = if (any) "1 любое растение" else "1 " + options.joinToString(" / ") { it.displayName }
 }
 
-data class PotionRow(val code: String, val name: String, val units: List<LabUnitChoice>, val affordable: Boolean)
+/** [card] — карта зелья уровня лаборатории из файлов игры («Описание»). */
+data class PotionRow(
+    val code: String,
+    val name: String,
+    val units: List<LabUnitChoice>,
+    val affordable: Boolean,
+    val card: EquipmentCard? = null
+)
 
 /** Окно «Приготовить зелье?»; [existingLevel] — уровень такого же зелья у охотника, `null` — зелья нет. */
 data class LabConfirm(val potion: PotionRow, val choices: List<LabUnitChoice>, val existingLevel: Int? = null) {
@@ -158,7 +176,9 @@ data class LabState(
     val potions: List<PotionRow> = emptyList(),
     val stock: List<CostPart> = emptyList(),
     val confirm: LabConfirm? = null,
-    val exchange: ExchangeRequest? = null
+    val exchange: ExchangeRequest? = null,
+    /** открытое «Описание» зелья */
+    val card: EquipmentCard? = null
 ) {
     val hunter: HunterState? get() = hunters.firstOrNull { it.hunterClass == selectedHunter }
 
@@ -216,7 +236,8 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
         val hunter = current.hunter ?: return current
         val potions = catalog.lab.map { potion ->
             val units = potion.units.map { LabUnitChoice(if (it.any) Plant.entries else it.options, it.any, null) }
-            PotionRow(potion.code, potion.name, units, defaultChoice(units, hunter) != null)
+            PotionRow(potion.code, potion.name, units, defaultChoice(units, hunter) != null,
+                core.equipmentCards.card(potion.code, current.labLevel))
         }
         val stock = ResourceCode.plants.mapNotNull { code -> hunter.quantity(code).takeIf { it > 0 }?.let { CostPart(code, it) } }
         return current.copy(potions = potions, stock = stock)
@@ -258,6 +279,11 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
     }
 
     fun onBrewDismissed() = _state.update { it.copy(confirm = null) }
+
+    /** «Описание»: карта зелья уровня лаборатории — показывается всегда, даже если растений не хватает (web qa № 152). */
+    fun onDescriptionRequested(row: PotionRow) = _state.update { it.copy(card = row.card) }
+
+    fun onDescriptionDismissed() = _state.update { it.copy(card = null) }
 
     fun onBrewConfirmed() {
         val confirm = _state.value.confirm ?: return

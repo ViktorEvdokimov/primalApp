@@ -51,6 +51,14 @@ class ForgePage(BasePage):
         else:
             expect(entry).to_have_text(re.compile(rf"\s{value}$"))
 
+    @allure.step("Описание «{name}»")
+    def open_card(self, name: str) -> Locator:
+        """«Описание» предмета — окно с картой; возвращает картинку карты."""
+        self.item(name).get_by_test_id("forge-item-description").click()
+        image = self.by_test_id("card-image")
+        expect(image).to_be_visible()
+        return image
+
     def selected_hunter(self) -> str:
         return selected_player(self.page, "forge-hunter-switch", "forge-hunter-option")
 

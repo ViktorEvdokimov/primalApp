@@ -1,0 +1,2116 @@
+{
+  "cards": [
+    {
+      "code": "ARMOR",
+      "level": 1,
+      "name": "Основной доспех",
+      "file": "ARMOR-1.webp"
+    },
+    {
+      "code": "CORAL_01",
+      "level": 1,
+      "name": "Кровавый риф",
+      "file": "CORAL_01-1.webp"
+    },
+    {
+      "code": "CORAL_01",
+      "level": 2,
+      "name": "Кровавый риф",
+      "file": "CORAL_01-2.webp"
+    },
+    {
+      "code": "CORAL_01",
+      "level": 3,
+      "name": "Кровавый риф",
+      "file": "CORAL_01-3.webp"
+    },
+    {
+      "code": "CORAL_02",
+      "level": 1,
+      "name": "Лук бездны",
+      "file": "CORAL_02-1.webp"
+    },
+    {
+      "code": "CORAL_02",
+      "level": 2,
+      "name": "Лук бездны",
+      "file": "CORAL_02-2.webp"
+    },
+    {
+      "code": "CORAL_02",
+      "level": 3,
+      "name": "Лук бездны",
+      "file": "CORAL_02-3.webp"
+    },
+    {
+      "code": "CORAL_03",
+      "level": 1,
+      "name": "Молот тифона",
+      "file": "CORAL_03-1.webp"
+    },
+    {
+      "code": "CORAL_03",
+      "level": 2,
+      "name": "Молот тифона",
+      "file": "CORAL_03-2.webp"
+    },
+    {
+      "code": "CORAL_03",
+      "level": 3,
+      "name": "Молот тифона",
+      "file": "CORAL_03-3.webp"
+    },
+    {
+      "code": "CORAL_04",
+      "level": 1,
+      "name": "Океанический щит",
+      "file": "CORAL_04-1.webp"
+    },
+    {
+      "code": "CORAL_04",
+      "level": 2,
+      "name": "Океанический щит",
+      "file": "CORAL_04-2.webp"
+    },
+    {
+      "code": "CORAL_04",
+      "level": 3,
+      "name": "Океанический щит",
+      "file": "CORAL_04-3.webp"
+    },
+    {
+      "code": "CORAL_05",
+      "level": 1,
+      "name": "Взрывные волны",
+      "file": "CORAL_05-1.webp"
+    },
+    {
+      "code": "CORAL_05",
+      "level": 2,
+      "name": "Взрывные волны",
+      "file": "CORAL_05-2.webp"
+    },
+    {
+      "code": "CORAL_05",
+      "level": 3,
+      "name": "Взрывные волны",
+      "file": "CORAL_05-3.webp"
+    },
+    {
+      "code": "CORAL_06",
+      "level": 1,
+      "name": "Океаническая пушка",
+      "file": "CORAL_06-1.webp"
+    },
+    {
+      "code": "CORAL_06",
+      "level": 2,
+      "name": "Океаническая пушка",
+      "file": "CORAL_06-2.webp"
+    },
+    {
+      "code": "CORAL_06",
+      "level": 3,
+      "name": "Океаническая пушка",
+      "file": "CORAL_06-3.webp"
+    },
+    {
+      "code": "CORAL_07",
+      "level": 1,
+      "name": "Копьё приливов",
+      "file": "CORAL_07-1.webp"
+    },
+    {
+      "code": "CORAL_07",
+      "level": 2,
+      "name": "Копьё приливов",
+      "file": "CORAL_07-2.webp"
+    },
+    {
+      "code": "CORAL_07",
+      "level": 3,
+      "name": "Копьё приливов",
+      "file": "CORAL_07-3.webp"
+    },
+    {
+      "code": "CORAL_08",
+      "level": 1,
+      "name": "Волнобой",
+      "file": "CORAL_08-1.webp"
+    },
+    {
+      "code": "CORAL_08",
+      "level": 2,
+      "name": "Волнобой",
+      "file": "CORAL_08-2.webp"
+    },
+    {
+      "code": "CORAL_08",
+      "level": 3,
+      "name": "Волнобой",
+      "file": "CORAL_08-3.webp"
+    },
+    {
+      "code": "CORAL_09",
+      "level": 1,
+      "name": "Рифовый шлем",
+      "file": "CORAL_09-1.webp"
+    },
+    {
+      "code": "CORAL_09",
+      "level": 2,
+      "name": "Рифовый шлем",
+      "file": "CORAL_09-2.webp"
+    },
+    {
+      "code": "CORAL_09",
+      "level": 3,
+      "name": "Рифовый шлем",
+      "file": "CORAL_09-3.webp"
+    },
+    {
+      "code": "CORAL_10",
+      "level": 1,
+      "name": "Рифовые латы",
+      "file": "CORAL_10-1.webp"
+    },
+    {
+      "code": "CORAL_10",
+      "level": 2,
+      "name": "Рифовые латы",
+      "file": "CORAL_10-2.webp"
+    },
+    {
+      "code": "CORAL_10",
+      "level": 3,
+      "name": "Рифовые латы",
+      "file": "CORAL_10-3.webp"
+    },
+    {
+      "code": "CORAL_11",
+      "level": 1,
+      "name": "Коралловый трезубец",
+      "file": "CORAL_11-1.webp"
+    },
+    {
+      "code": "CORAL_11",
+      "level": 2,
+      "name": "Коралловый трезубец",
+      "file": "CORAL_11-2.webp"
+    },
+    {
+      "code": "CORAL_11",
+      "level": 3,
+      "name": "Коралловый трезубец",
+      "file": "CORAL_11-3.webp"
+    },
+    {
+      "code": "CORAL_12",
+      "level": 1,
+      "name": "Перчатка из ракушек",
+      "file": "CORAL_12-1.webp"
+    },
+    {
+      "code": "CORAL_12",
+      "level": 2,
+      "name": "Перчатка из ракушек",
+      "file": "CORAL_12-2.webp"
+    },
+    {
+      "code": "CORAL_12",
+      "level": 3,
+      "name": "Перчатка из ракушек",
+      "file": "CORAL_12-3.webp"
+    },
+    {
+      "code": "CRYSTAL_01",
+      "level": 1,
+      "name": "Мерцающий клинок",
+      "file": "CRYSTAL_01-1.webp"
+    },
+    {
+      "code": "CRYSTAL_01",
+      "level": 2,
+      "name": "Мерцающий клинок",
+      "file": "CRYSTAL_01-2.webp"
+    },
+    {
+      "code": "CRYSTAL_01",
+      "level": 3,
+      "name": "Мерцающий клинок",
+      "file": "CRYSTAL_01-3.webp"
+    },
+    {
+      "code": "CRYSTAL_02",
+      "level": 1,
+      "name": "Лук погибели",
+      "file": "CRYSTAL_02-1.webp"
+    },
+    {
+      "code": "CRYSTAL_02",
+      "level": 2,
+      "name": "Лук погибели",
+      "file": "CRYSTAL_02-2.webp"
+    },
+    {
+      "code": "CRYSTAL_02",
+      "level": 3,
+      "name": "Лук погибели",
+      "file": "CRYSTAL_02-3.webp"
+    },
+    {
+      "code": "CRYSTAL_03",
+      "level": 1,
+      "name": "Молот излучения",
+      "file": "CRYSTAL_03-1.webp"
+    },
+    {
+      "code": "CRYSTAL_03",
+      "level": 2,
+      "name": "Молот излучения",
+      "file": "CRYSTAL_03-2.webp"
+    },
+    {
+      "code": "CRYSTAL_03",
+      "level": 3,
+      "name": "Молот излучения",
+      "file": "CRYSTAL_03-3.webp"
+    },
+    {
+      "code": "CRYSTAL_04",
+      "level": 1,
+      "name": "Темнокаменный щит",
+      "file": "CRYSTAL_04-1.webp"
+    },
+    {
+      "code": "CRYSTAL_04",
+      "level": 2,
+      "name": "Темнокаменный щит",
+      "file": "CRYSTAL_04-2.webp"
+    },
+    {
+      "code": "CRYSTAL_04",
+      "level": 3,
+      "name": "Темнокаменный щит",
+      "file": "CRYSTAL_04-3.webp"
+    },
+    {
+      "code": "CRYSTAL_05",
+      "level": 1,
+      "name": "Мерцающая звезда",
+      "file": "CRYSTAL_05-1.webp"
+    },
+    {
+      "code": "CRYSTAL_05",
+      "level": 2,
+      "name": "Мерцающая звезда",
+      "file": "CRYSTAL_05-2.webp"
+    },
+    {
+      "code": "CRYSTAL_05",
+      "level": 3,
+      "name": "Мерцающая звезда",
+      "file": "CRYSTAL_05-3.webp"
+    },
+    {
+      "code": "CRYSTAL_06",
+      "level": 1,
+      "name": "Аметист",
+      "file": "CRYSTAL_06-1.webp"
+    },
+    {
+      "code": "CRYSTAL_06",
+      "level": 2,
+      "name": "Аметист",
+      "file": "CRYSTAL_06-2.webp"
+    },
+    {
+      "code": "CRYSTAL_06",
+      "level": 3,
+      "name": "Аметист",
+      "file": "CRYSTAL_06-3.webp"
+    },
+    {
+      "code": "CRYSTAL_07",
+      "level": 1,
+      "name": "Звёздное копьё",
+      "file": "CRYSTAL_07-1.webp"
+    },
+    {
+      "code": "CRYSTAL_07",
+      "level": 2,
+      "name": "Звёздное копьё",
+      "file": "CRYSTAL_07-2.webp"
+    },
+    {
+      "code": "CRYSTAL_07",
+      "level": 3,
+      "name": "Звёздное копьё",
+      "file": "CRYSTAL_07-3.webp"
+    },
+    {
+      "code": "CRYSTAL_08",
+      "level": 1,
+      "name": "Барабан ночи",
+      "file": "CRYSTAL_08-1.webp"
+    },
+    {
+      "code": "CRYSTAL_08",
+      "level": 2,
+      "name": "Барабан ночи",
+      "file": "CRYSTAL_08-2.webp"
+    },
+    {
+      "code": "CRYSTAL_08",
+      "level": 3,
+      "name": "Барабан ночи",
+      "file": "CRYSTAL_08-3.webp"
+    },
+    {
+      "code": "CRYSTAL_09",
+      "level": 1,
+      "name": "Кристальный шлем",
+      "file": "CRYSTAL_09-1.webp"
+    },
+    {
+      "code": "CRYSTAL_09",
+      "level": 2,
+      "name": "Кристальный шлем",
+      "file": "CRYSTAL_09-2.webp"
+    },
+    {
+      "code": "CRYSTAL_09",
+      "level": 3,
+      "name": "Кристальный шлем",
+      "file": "CRYSTAL_09-3.webp"
+    },
+    {
+      "code": "CRYSTAL_10",
+      "level": 1,
+      "name": "Кристальный доспех",
+      "file": "CRYSTAL_10-1.webp"
+    },
+    {
+      "code": "CRYSTAL_10",
+      "level": 2,
+      "name": "Кристальный доспех",
+      "file": "CRYSTAL_10-2.webp"
+    },
+    {
+      "code": "CRYSTAL_10",
+      "level": 3,
+      "name": "Кристальный доспех",
+      "file": "CRYSTAL_10-3.webp"
+    },
+    {
+      "code": "CRYSTAL_11",
+      "level": 1,
+      "name": "Мерцающие сапоги",
+      "file": "CRYSTAL_11-1.webp"
+    },
+    {
+      "code": "CRYSTAL_11",
+      "level": 2,
+      "name": "Мерцающие сапоги",
+      "file": "CRYSTAL_11-2.webp"
+    },
+    {
+      "code": "CRYSTAL_11",
+      "level": 3,
+      "name": "Мерцающие сапоги",
+      "file": "CRYSTAL_11-3.webp"
+    },
+    {
+      "code": "CRYSTAL_12",
+      "level": 1,
+      "name": "Кристальное копьё",
+      "file": "CRYSTAL_12-1.webp"
+    },
+    {
+      "code": "CRYSTAL_12",
+      "level": 2,
+      "name": "Кристальное копьё",
+      "file": "CRYSTAL_12-2.webp"
+    },
+    {
+      "code": "CRYSTAL_12",
+      "level": 3,
+      "name": "Кристальное копьё",
+      "file": "CRYSTAL_12-3.webp"
+    },
+    {
+      "code": "DRUM",
+      "level": 1,
+      "name": "Барабан",
+      "file": "DRUM-1.webp"
+    },
+    {
+      "code": "DUAL_BLADES",
+      "level": 1,
+      "name": "Парные клинки",
+      "file": "DUAL_BLADES-1.webp"
+    },
+    {
+      "code": "FEATHER_01",
+      "level": 1,
+      "name": "Клинок ветра",
+      "file": "FEATHER_01-1.webp"
+    },
+    {
+      "code": "FEATHER_01",
+      "level": 2,
+      "name": "Клинок ветра",
+      "file": "FEATHER_01-2.webp"
+    },
+    {
+      "code": "FEATHER_01",
+      "level": 3,
+      "name": "Клинок ветра",
+      "file": "FEATHER_01-3.webp"
+    },
+    {
+      "code": "FEATHER_02",
+      "level": 1,
+      "name": "Лебединый лук",
+      "file": "FEATHER_02-1.webp"
+    },
+    {
+      "code": "FEATHER_02",
+      "level": 2,
+      "name": "Лебединый лук",
+      "file": "FEATHER_02-2.webp"
+    },
+    {
+      "code": "FEATHER_02",
+      "level": 3,
+      "name": "Лебединый лук",
+      "file": "FEATHER_02-3.webp"
+    },
+    {
+      "code": "FEATHER_03",
+      "level": 1,
+      "name": "Сотрясатель",
+      "file": "FEATHER_03-1.webp"
+    },
+    {
+      "code": "FEATHER_03",
+      "level": 2,
+      "name": "Сотрясатель",
+      "file": "FEATHER_03-2.webp"
+    },
+    {
+      "code": "FEATHER_03",
+      "level": 3,
+      "name": "Сотрясатель",
+      "file": "FEATHER_03-3.webp"
+    },
+    {
+      "code": "FEATHER_04",
+      "level": 1,
+      "name": "Щит полёта",
+      "file": "FEATHER_04-1.webp"
+    },
+    {
+      "code": "FEATHER_04",
+      "level": 2,
+      "name": "Щит полёта",
+      "file": "FEATHER_04-2.webp"
+    },
+    {
+      "code": "FEATHER_04",
+      "level": 3,
+      "name": "Щит полёта",
+      "file": "FEATHER_04-3.webp"
+    },
+    {
+      "code": "FEATHER_05",
+      "level": 1,
+      "name": "Зеркальные клинки",
+      "file": "FEATHER_05-1.webp"
+    },
+    {
+      "code": "FEATHER_05",
+      "level": 2,
+      "name": "Зеркальные клинки",
+      "file": "FEATHER_05-2.webp"
+    },
+    {
+      "code": "FEATHER_05",
+      "level": 3,
+      "name": "Зеркальные клинки",
+      "file": "FEATHER_05-3.webp"
+    },
+    {
+      "code": "FEATHER_06",
+      "level": 1,
+      "name": "Жар-пушка",
+      "file": "FEATHER_06-1.webp"
+    },
+    {
+      "code": "FEATHER_06",
+      "level": 2,
+      "name": "Жар-пушка",
+      "file": "FEATHER_06-2.webp"
+    },
+    {
+      "code": "FEATHER_06",
+      "level": 3,
+      "name": "Жар-пушка",
+      "file": "FEATHER_06-3.webp"
+    },
+    {
+      "code": "FEATHER_07",
+      "level": 1,
+      "name": "Клык джунглей",
+      "file": "FEATHER_07-1.webp"
+    },
+    {
+      "code": "FEATHER_07",
+      "level": 2,
+      "name": "Клык джунглей",
+      "file": "FEATHER_07-2.webp"
+    },
+    {
+      "code": "FEATHER_07",
+      "level": 3,
+      "name": "Клык джунглей",
+      "file": "FEATHER_07-3.webp"
+    },
+    {
+      "code": "FEATHER_08",
+      "level": 1,
+      "name": "Барабан джунглей",
+      "file": "FEATHER_08-1.webp"
+    },
+    {
+      "code": "FEATHER_08",
+      "level": 2,
+      "name": "Барабан джунглей",
+      "file": "FEATHER_08-2.webp"
+    },
+    {
+      "code": "FEATHER_08",
+      "level": 3,
+      "name": "Барабан джунглей",
+      "file": "FEATHER_08-3.webp"
+    },
+    {
+      "code": "FEATHER_09",
+      "level": 1,
+      "name": "Тотемный шлем",
+      "file": "FEATHER_09-1.webp"
+    },
+    {
+      "code": "FEATHER_09",
+      "level": 2,
+      "name": "Тотемный шлем",
+      "file": "FEATHER_09-2.webp"
+    },
+    {
+      "code": "FEATHER_09",
+      "level": 3,
+      "name": "Тотемный шлем",
+      "file": "FEATHER_09-3.webp"
+    },
+    {
+      "code": "FEATHER_10",
+      "level": 1,
+      "name": "Тотемные латы",
+      "file": "FEATHER_10-1.webp"
+    },
+    {
+      "code": "FEATHER_10",
+      "level": 2,
+      "name": "Тотемные латы",
+      "file": "FEATHER_10-2.webp"
+    },
+    {
+      "code": "FEATHER_10",
+      "level": 3,
+      "name": "Тотемные латы",
+      "file": "FEATHER_10-3.webp"
+    },
+    {
+      "code": "FEATHER_11",
+      "level": 1,
+      "name": "Накидка из перьев",
+      "file": "FEATHER_11-1.webp"
+    },
+    {
+      "code": "FEATHER_11",
+      "level": 2,
+      "name": "Накидка из перьев",
+      "file": "FEATHER_11-2.webp"
+    },
+    {
+      "code": "FEATHER_11",
+      "level": 3,
+      "name": "Накидка из перьев",
+      "file": "FEATHER_11-3.webp"
+    },
+    {
+      "code": "FEATHER_12",
+      "level": 1,
+      "name": "Бумеранг",
+      "file": "FEATHER_12-1.webp"
+    },
+    {
+      "code": "FEATHER_12",
+      "level": 2,
+      "name": "Бумеранг",
+      "file": "FEATHER_12-2.webp"
+    },
+    {
+      "code": "FEATHER_12",
+      "level": 3,
+      "name": "Бумеранг",
+      "file": "FEATHER_12-3.webp"
+    },
+    {
+      "code": "FIRE_01",
+      "level": 1,
+      "name": "Язык пламени",
+      "file": "FIRE_01-1.webp"
+    },
+    {
+      "code": "FIRE_01",
+      "level": 2,
+      "name": "Язык пламени",
+      "file": "FIRE_01-2.webp"
+    },
+    {
+      "code": "FIRE_01",
+      "level": 3,
+      "name": "Язык пламени",
+      "file": "FIRE_01-3.webp"
+    },
+    {
+      "code": "FIRE_02",
+      "level": 1,
+      "name": "Лук-испепелитель",
+      "file": "FIRE_02-1.webp"
+    },
+    {
+      "code": "FIRE_02",
+      "level": 2,
+      "name": "Лук-испепелитель",
+      "file": "FIRE_02-2.webp"
+    },
+    {
+      "code": "FIRE_02",
+      "level": 3,
+      "name": "Лук-испепелитель",
+      "file": "FIRE_02-3.webp"
+    },
+    {
+      "code": "FIRE_03",
+      "level": 1,
+      "name": "Молот пламени",
+      "file": "FIRE_03-1.webp"
+    },
+    {
+      "code": "FIRE_03",
+      "level": 2,
+      "name": "Молот пламени",
+      "file": "FIRE_03-2.webp"
+    },
+    {
+      "code": "FIRE_03",
+      "level": 3,
+      "name": "Молот пламени",
+      "file": "FIRE_03-3.webp"
+    },
+    {
+      "code": "FIRE_04",
+      "level": 1,
+      "name": "Вулканический щит",
+      "file": "FIRE_04-1.webp"
+    },
+    {
+      "code": "FIRE_04",
+      "level": 2,
+      "name": "Вулканический щит",
+      "file": "FIRE_04-2.webp"
+    },
+    {
+      "code": "FIRE_04",
+      "level": 3,
+      "name": "Вулканический щит",
+      "file": "FIRE_04-3.webp"
+    },
+    {
+      "code": "FIRE_05",
+      "level": 1,
+      "name": "Крылья дракона",
+      "file": "FIRE_05-1.webp"
+    },
+    {
+      "code": "FIRE_05",
+      "level": 2,
+      "name": "Крылья дракона",
+      "file": "FIRE_05-2.webp"
+    },
+    {
+      "code": "FIRE_05",
+      "level": 3,
+      "name": "Крылья дракона",
+      "file": "FIRE_05-3.webp"
+    },
+    {
+      "code": "FIRE_06",
+      "level": 1,
+      "name": "Игнис",
+      "file": "FIRE_06-1.webp"
+    },
+    {
+      "code": "FIRE_06",
+      "level": 2,
+      "name": "Игнис",
+      "file": "FIRE_06-2.webp"
+    },
+    {
+      "code": "FIRE_06",
+      "level": 3,
+      "name": "Игнис",
+      "file": "FIRE_06-3.webp"
+    },
+    {
+      "code": "FIRE_07",
+      "level": 1,
+      "name": "Магматическое копьё",
+      "file": "FIRE_07-1.webp"
+    },
+    {
+      "code": "FIRE_07",
+      "level": 2,
+      "name": "Магматическое копьё",
+      "file": "FIRE_07-2.webp"
+    },
+    {
+      "code": "FIRE_07",
+      "level": 3,
+      "name": "Магматическое копьё",
+      "file": "FIRE_07-3.webp"
+    },
+    {
+      "code": "FIRE_08",
+      "level": 1,
+      "name": "Лавовый барабан",
+      "file": "FIRE_08-1.webp"
+    },
+    {
+      "code": "FIRE_08",
+      "level": 2,
+      "name": "Лавовый барабан",
+      "file": "FIRE_08-2.webp"
+    },
+    {
+      "code": "FIRE_08",
+      "level": 3,
+      "name": "Лавовый барабан",
+      "file": "FIRE_08-3.webp"
+    },
+    {
+      "code": "FIRE_09",
+      "level": 1,
+      "name": "Чешуйчатый шлем",
+      "file": "FIRE_09-1.webp"
+    },
+    {
+      "code": "FIRE_09",
+      "level": 2,
+      "name": "Чешуйчатый шлем",
+      "file": "FIRE_09-2.webp"
+    },
+    {
+      "code": "FIRE_09",
+      "level": 3,
+      "name": "Чешуйчатый шлем",
+      "file": "FIRE_09-3.webp"
+    },
+    {
+      "code": "FIRE_10",
+      "level": 1,
+      "name": "Чешуйчатый доспех",
+      "file": "FIRE_10-1.webp"
+    },
+    {
+      "code": "FIRE_10",
+      "level": 2,
+      "name": "Чешуйчатый доспех",
+      "file": "FIRE_10-2.webp"
+    },
+    {
+      "code": "FIRE_10",
+      "level": 3,
+      "name": "Чешуйчатый доспех",
+      "file": "FIRE_10-3.webp"
+    },
+    {
+      "code": "FIRE_11",
+      "level": 1,
+      "name": "Перчатка Волтьяра",
+      "file": "FIRE_11-1.webp"
+    },
+    {
+      "code": "FIRE_11",
+      "level": 2,
+      "name": "Перчатка Волтьяра",
+      "file": "FIRE_11-2.webp"
+    },
+    {
+      "code": "FIRE_11",
+      "level": 3,
+      "name": "Перчатка Волтьяра",
+      "file": "FIRE_11-3.webp"
+    },
+    {
+      "code": "FIRE_12",
+      "level": 1,
+      "name": "Лавовый щит",
+      "file": "FIRE_12-1.webp"
+    },
+    {
+      "code": "FIRE_12",
+      "level": 2,
+      "name": "Лавовый щит",
+      "file": "FIRE_12-2.webp"
+    },
+    {
+      "code": "FIRE_12",
+      "level": 3,
+      "name": "Лавовый щит",
+      "file": "FIRE_12-3.webp"
+    },
+    {
+      "code": "GREATBOW",
+      "level": 1,
+      "name": "Большой лук",
+      "file": "GREATBOW-1.webp"
+    },
+    {
+      "code": "GREATSWORD",
+      "level": 1,
+      "name": "Большой меч",
+      "file": "GREATSWORD-1.webp"
+    },
+    {
+      "code": "GUN",
+      "level": 1,
+      "name": "Пушка",
+      "file": "GUN-1.webp"
+    },
+    {
+      "code": "HAMMER",
+      "level": 1,
+      "name": "Молот",
+      "file": "HAMMER-1.webp"
+    },
+    {
+      "code": "HELMET",
+      "level": 1,
+      "name": "Основной шлем",
+      "file": "HELMET-1.webp"
+    },
+    {
+      "code": "HORN_01",
+      "level": 1,
+      "name": "Коготь дракона",
+      "file": "HORN_01-1.webp"
+    },
+    {
+      "code": "HORN_01",
+      "level": 2,
+      "name": "Коготь дракона",
+      "file": "HORN_01-2.webp"
+    },
+    {
+      "code": "HORN_01",
+      "level": 3,
+      "name": "Коготь дракона",
+      "file": "HORN_01-3.webp"
+    },
+    {
+      "code": "HORN_02",
+      "level": 1,
+      "name": "Лук-бивень",
+      "file": "HORN_02-1.webp"
+    },
+    {
+      "code": "HORN_02",
+      "level": 2,
+      "name": "Лук-бивень",
+      "file": "HORN_02-2.webp"
+    },
+    {
+      "code": "HORN_02",
+      "level": 3,
+      "name": "Лук-бивень",
+      "file": "HORN_02-3.webp"
+    },
+    {
+      "code": "HORN_03",
+      "level": 1,
+      "name": "Молот-панцирь",
+      "file": "HORN_03-1.webp"
+    },
+    {
+      "code": "HORN_03",
+      "level": 2,
+      "name": "Молот-панцирь",
+      "file": "HORN_03-2.webp"
+    },
+    {
+      "code": "HORN_03",
+      "level": 3,
+      "name": "Молот-панцирь",
+      "file": "HORN_03-3.webp"
+    },
+    {
+      "code": "HORN_04",
+      "level": 1,
+      "name": "Рогатый щит",
+      "file": "HORN_04-1.webp"
+    },
+    {
+      "code": "HORN_04",
+      "level": 2,
+      "name": "Рогатый щит",
+      "file": "HORN_04-2.webp"
+    },
+    {
+      "code": "HORN_04",
+      "level": 3,
+      "name": "Рогатый щит",
+      "file": "HORN_04-3.webp"
+    },
+    {
+      "code": "HORN_05",
+      "level": 1,
+      "name": "Танцующие кости",
+      "file": "HORN_05-1.webp"
+    },
+    {
+      "code": "HORN_05",
+      "level": 2,
+      "name": "Танцующие кости",
+      "file": "HORN_05-2.webp"
+    },
+    {
+      "code": "HORN_05",
+      "level": 3,
+      "name": "Танцующие кости",
+      "file": "HORN_05-3.webp"
+    },
+    {
+      "code": "HORN_06",
+      "level": 1,
+      "name": "Тигр",
+      "file": "HORN_06-1.webp"
+    },
+    {
+      "code": "HORN_06",
+      "level": 2,
+      "name": "Тигр",
+      "file": "HORN_06-2.webp"
+    },
+    {
+      "code": "HORN_06",
+      "level": 3,
+      "name": "Тигр",
+      "file": "HORN_06-3.webp"
+    },
+    {
+      "code": "HORN_07",
+      "level": 1,
+      "name": "Пронзатель костей",
+      "file": "HORN_07-1.webp"
+    },
+    {
+      "code": "HORN_07",
+      "level": 2,
+      "name": "Пронзатель костей",
+      "file": "HORN_07-2.webp"
+    },
+    {
+      "code": "HORN_07",
+      "level": 3,
+      "name": "Пронзатель костей",
+      "file": "HORN_07-3.webp"
+    },
+    {
+      "code": "HORN_08",
+      "level": 1,
+      "name": "Гремучие кости",
+      "file": "HORN_08-1.webp"
+    },
+    {
+      "code": "HORN_08",
+      "level": 2,
+      "name": "Гремучие кости",
+      "file": "HORN_08-2.webp"
+    },
+    {
+      "code": "HORN_08",
+      "level": 3,
+      "name": "Гремучие кости",
+      "file": "HORN_08-3.webp"
+    },
+    {
+      "code": "HORN_09",
+      "level": 1,
+      "name": "Шипастый шлем",
+      "file": "HORN_09-1.webp"
+    },
+    {
+      "code": "HORN_09",
+      "level": 2,
+      "name": "Шипастый шлем",
+      "file": "HORN_09-2.webp"
+    },
+    {
+      "code": "HORN_09",
+      "level": 3,
+      "name": "Шипастый шлем",
+      "file": "HORN_09-3.webp"
+    },
+    {
+      "code": "HORN_10",
+      "level": 1,
+      "name": "Шипастый доспех",
+      "file": "HORN_10-1.webp"
+    },
+    {
+      "code": "HORN_10",
+      "level": 2,
+      "name": "Шипастый доспех",
+      "file": "HORN_10-2.webp"
+    },
+    {
+      "code": "HORN_10",
+      "level": 3,
+      "name": "Шипастый доспех",
+      "file": "HORN_10-3.webp"
+    },
+    {
+      "code": "HORN_11",
+      "level": 1,
+      "name": "Большая пасть",
+      "file": "HORN_11-1.webp"
+    },
+    {
+      "code": "HORN_11",
+      "level": 2,
+      "name": "Большая пасть",
+      "file": "HORN_11-2.webp"
+    },
+    {
+      "code": "HORN_11",
+      "level": 3,
+      "name": "Большая пасть",
+      "file": "HORN_11-3.webp"
+    },
+    {
+      "code": "HORN_12",
+      "level": 1,
+      "name": "Костяное копьё",
+      "file": "HORN_12-1.webp"
+    },
+    {
+      "code": "HORN_12",
+      "level": 2,
+      "name": "Костяное копьё",
+      "file": "HORN_12-2.webp"
+    },
+    {
+      "code": "HORN_12",
+      "level": 3,
+      "name": "Костяное копьё",
+      "file": "HORN_12-3.webp"
+    },
+    {
+      "code": "ICE_01",
+      "level": 1,
+      "name": "Осколок льда",
+      "file": "ICE_01-1.webp"
+    },
+    {
+      "code": "ICE_01",
+      "level": 2,
+      "name": "Осколок льда",
+      "file": "ICE_01-2.webp"
+    },
+    {
+      "code": "ICE_01",
+      "level": 3,
+      "name": "Осколок льда",
+      "file": "ICE_01-3.webp"
+    },
+    {
+      "code": "ICE_02",
+      "level": 1,
+      "name": "Лук севера",
+      "file": "ICE_02-1.webp"
+    },
+    {
+      "code": "ICE_02",
+      "level": 2,
+      "name": "Лук севера",
+      "file": "ICE_02-2.webp"
+    },
+    {
+      "code": "ICE_02",
+      "level": 3,
+      "name": "Лук севера",
+      "file": "ICE_02-3.webp"
+    },
+    {
+      "code": "ICE_03",
+      "level": 1,
+      "name": "Молот тундры",
+      "file": "ICE_03-1.webp"
+    },
+    {
+      "code": "ICE_03",
+      "level": 2,
+      "name": "Молот тундры",
+      "file": "ICE_03-2.webp"
+    },
+    {
+      "code": "ICE_03",
+      "level": 3,
+      "name": "Молот тундры",
+      "file": "ICE_03-3.webp"
+    },
+    {
+      "code": "ICE_04",
+      "level": 1,
+      "name": "Ледяной щит",
+      "file": "ICE_04-1.webp"
+    },
+    {
+      "code": "ICE_04",
+      "level": 2,
+      "name": "Ледяной щит",
+      "file": "ICE_04-2.webp"
+    },
+    {
+      "code": "ICE_04",
+      "level": 3,
+      "name": "Ледяной щит",
+      "file": "ICE_04-3.webp"
+    },
+    {
+      "code": "ICE_05",
+      "level": 1,
+      "name": "Ледяные крылья",
+      "file": "ICE_05-1.webp"
+    },
+    {
+      "code": "ICE_05",
+      "level": 2,
+      "name": "Ледяные крылья",
+      "file": "ICE_05-2.webp"
+    },
+    {
+      "code": "ICE_05",
+      "level": 3,
+      "name": "Ледяные крылья",
+      "file": "ICE_05-3.webp"
+    },
+    {
+      "code": "ICE_06",
+      "level": 1,
+      "name": "Морозная пушка",
+      "file": "ICE_06-1.webp"
+    },
+    {
+      "code": "ICE_06",
+      "level": 2,
+      "name": "Морозная пушка",
+      "file": "ICE_06-2.webp"
+    },
+    {
+      "code": "ICE_06",
+      "level": 3,
+      "name": "Морозная пушка",
+      "file": "ICE_06-3.webp"
+    },
+    {
+      "code": "ICE_07",
+      "level": 1,
+      "name": "Зимнее копьё",
+      "file": "ICE_07-1.webp"
+    },
+    {
+      "code": "ICE_07",
+      "level": 2,
+      "name": "Зимнее копьё",
+      "file": "ICE_07-2.webp"
+    },
+    {
+      "code": "ICE_07",
+      "level": 3,
+      "name": "Зимнее копьё",
+      "file": "ICE_07-3.webp"
+    },
+    {
+      "code": "ICE_08",
+      "level": 1,
+      "name": "Морозный барабан",
+      "file": "ICE_08-1.webp"
+    },
+    {
+      "code": "ICE_08",
+      "level": 2,
+      "name": "Морозный барабан",
+      "file": "ICE_08-2.webp"
+    },
+    {
+      "code": "ICE_08",
+      "level": 3,
+      "name": "Морозный барабан",
+      "file": "ICE_08-3.webp"
+    },
+    {
+      "code": "ICE_09",
+      "level": 1,
+      "name": "Морозный шлем",
+      "file": "ICE_09-1.webp"
+    },
+    {
+      "code": "ICE_09",
+      "level": 2,
+      "name": "Морозный шлем",
+      "file": "ICE_09-2.webp"
+    },
+    {
+      "code": "ICE_09",
+      "level": 3,
+      "name": "Морозный шлем",
+      "file": "ICE_09-3.webp"
+    },
+    {
+      "code": "ICE_10",
+      "level": 1,
+      "name": "Морозный доспех",
+      "file": "ICE_10-1.webp"
+    },
+    {
+      "code": "ICE_10",
+      "level": 2,
+      "name": "Морозный доспех",
+      "file": "ICE_10-2.webp"
+    },
+    {
+      "code": "ICE_10",
+      "level": 3,
+      "name": "Морозный доспех",
+      "file": "ICE_10-3.webp"
+    },
+    {
+      "code": "ICE_11",
+      "level": 1,
+      "name": "Морозные сапоги",
+      "file": "ICE_11-1.webp"
+    },
+    {
+      "code": "ICE_11",
+      "level": 2,
+      "name": "Морозные сапоги",
+      "file": "ICE_11-2.webp"
+    },
+    {
+      "code": "ICE_11",
+      "level": 3,
+      "name": "Морозные сапоги",
+      "file": "ICE_11-3.webp"
+    },
+    {
+      "code": "ICE_12",
+      "level": 1,
+      "name": "Мини-арбалет",
+      "file": "ICE_12-1.webp"
+    },
+    {
+      "code": "ICE_12",
+      "level": 2,
+      "name": "Мини-арбалет",
+      "file": "ICE_12-2.webp"
+    },
+    {
+      "code": "ICE_12",
+      "level": 3,
+      "name": "Мини-арбалет",
+      "file": "ICE_12-3.webp"
+    },
+    {
+      "code": "LAB_01",
+      "level": 1,
+      "name": "Алемор",
+      "file": "LAB_01-1.webp"
+    },
+    {
+      "code": "LAB_01",
+      "level": 2,
+      "name": "Алемор",
+      "file": "LAB_01-2.webp"
+    },
+    {
+      "code": "LAB_01",
+      "level": 3,
+      "name": "Алемор",
+      "file": "LAB_01-3.webp"
+    },
+    {
+      "code": "LAB_02",
+      "level": 1,
+      "name": "Имперум",
+      "file": "LAB_02-1.webp"
+    },
+    {
+      "code": "LAB_02",
+      "level": 2,
+      "name": "Имперум",
+      "file": "LAB_02-2.webp"
+    },
+    {
+      "code": "LAB_02",
+      "level": 3,
+      "name": "Имперум",
+      "file": "LAB_02-3.webp"
+    },
+    {
+      "code": "LAB_03",
+      "level": 1,
+      "name": "Ирден",
+      "file": "LAB_03-1.webp"
+    },
+    {
+      "code": "LAB_03",
+      "level": 2,
+      "name": "Ирден",
+      "file": "LAB_03-2.webp"
+    },
+    {
+      "code": "LAB_03",
+      "level": 3,
+      "name": "Ирден",
+      "file": "LAB_03-3.webp"
+    },
+    {
+      "code": "LAB_04",
+      "level": 1,
+      "name": "Хатрокс",
+      "file": "LAB_04-1.webp"
+    },
+    {
+      "code": "LAB_04",
+      "level": 2,
+      "name": "Хатрокс",
+      "file": "LAB_04-2.webp"
+    },
+    {
+      "code": "LAB_04",
+      "level": 3,
+      "name": "Хатрокс",
+      "file": "LAB_04-3.webp"
+    },
+    {
+      "code": "LAB_05",
+      "level": 1,
+      "name": "Эвок",
+      "file": "LAB_05-1.webp"
+    },
+    {
+      "code": "LAB_05",
+      "level": 2,
+      "name": "Эвок",
+      "file": "LAB_05-2.webp"
+    },
+    {
+      "code": "LAB_05",
+      "level": 3,
+      "name": "Эвок",
+      "file": "LAB_05-3.webp"
+    },
+    {
+      "code": "LAB_06",
+      "level": 1,
+      "name": "Видья",
+      "file": "LAB_06-1.webp"
+    },
+    {
+      "code": "LAB_06",
+      "level": 2,
+      "name": "Видья",
+      "file": "LAB_06-2.webp"
+    },
+    {
+      "code": "LAB_06",
+      "level": 3,
+      "name": "Видья",
+      "file": "LAB_06-3.webp"
+    },
+    {
+      "code": "LIGHTNING_01",
+      "level": 1,
+      "name": "Радужное лезвие",
+      "file": "LIGHTNING_01-1.webp"
+    },
+    {
+      "code": "LIGHTNING_01",
+      "level": 2,
+      "name": "Радужное лезвие",
+      "file": "LIGHTNING_01-2.webp"
+    },
+    {
+      "code": "LIGHTNING_01",
+      "level": 3,
+      "name": "Радужное лезвие",
+      "file": "LIGHTNING_01-3.webp"
+    },
+    {
+      "code": "LIGHTNING_02",
+      "level": 1,
+      "name": "Лук-молния",
+      "file": "LIGHTNING_02-1.webp"
+    },
+    {
+      "code": "LIGHTNING_02",
+      "level": 2,
+      "name": "Лук-молния",
+      "file": "LIGHTNING_02-2.webp"
+    },
+    {
+      "code": "LIGHTNING_02",
+      "level": 3,
+      "name": "Лук-молния",
+      "file": "LIGHTNING_02-3.webp"
+    },
+    {
+      "code": "LIGHTNING_03",
+      "level": 1,
+      "name": "Костяной молот",
+      "file": "LIGHTNING_03-1.webp"
+    },
+    {
+      "code": "LIGHTNING_03",
+      "level": 2,
+      "name": "Костяной молот",
+      "file": "LIGHTNING_03-2.webp"
+    },
+    {
+      "code": "LIGHTNING_03",
+      "level": 3,
+      "name": "Костяной молот",
+      "file": "LIGHTNING_03-3.webp"
+    },
+    {
+      "code": "LIGHTNING_04",
+      "level": 1,
+      "name": "Громовой щит",
+      "file": "LIGHTNING_04-1.webp"
+    },
+    {
+      "code": "LIGHTNING_04",
+      "level": 2,
+      "name": "Громовой щит",
+      "file": "LIGHTNING_04-2.webp"
+    },
+    {
+      "code": "LIGHTNING_04",
+      "level": 3,
+      "name": "Громовой щит",
+      "file": "LIGHTNING_04-3.webp"
+    },
+    {
+      "code": "LIGHTNING_05",
+      "level": 1,
+      "name": "Вольтражи",
+      "file": "LIGHTNING_05-1.webp"
+    },
+    {
+      "code": "LIGHTNING_05",
+      "level": 2,
+      "name": "Вольтражи",
+      "file": "LIGHTNING_05-2.webp"
+    },
+    {
+      "code": "LIGHTNING_05",
+      "level": 3,
+      "name": "Вольтражи",
+      "file": "LIGHTNING_05-3.webp"
+    },
+    {
+      "code": "LIGHTNING_06",
+      "level": 1,
+      "name": "Электроскачок",
+      "file": "LIGHTNING_06-1.webp"
+    },
+    {
+      "code": "LIGHTNING_06",
+      "level": 2,
+      "name": "Электроскачок",
+      "file": "LIGHTNING_06-2.webp"
+    },
+    {
+      "code": "LIGHTNING_06",
+      "level": 3,
+      "name": "Электроскачок",
+      "file": "LIGHTNING_06-3.webp"
+    },
+    {
+      "code": "LIGHTNING_07",
+      "level": 1,
+      "name": "Громовое копьё",
+      "file": "LIGHTNING_07-1.webp"
+    },
+    {
+      "code": "LIGHTNING_07",
+      "level": 2,
+      "name": "Громовое копьё",
+      "file": "LIGHTNING_07-2.webp"
+    },
+    {
+      "code": "LIGHTNING_07",
+      "level": 3,
+      "name": "Громовое копьё",
+      "file": "LIGHTNING_07-3.webp"
+    },
+    {
+      "code": "LIGHTNING_08",
+      "level": 1,
+      "name": "Призыватель бури",
+      "file": "LIGHTNING_08-1.webp"
+    },
+    {
+      "code": "LIGHTNING_08",
+      "level": 2,
+      "name": "Призыватель бури",
+      "file": "LIGHTNING_08-2.webp"
+    },
+    {
+      "code": "LIGHTNING_08",
+      "level": 3,
+      "name": "Призыватель бури",
+      "file": "LIGHTNING_08-3.webp"
+    },
+    {
+      "code": "LIGHTNING_09",
+      "level": 1,
+      "name": "Громовой шлем",
+      "file": "LIGHTNING_09-1.webp"
+    },
+    {
+      "code": "LIGHTNING_09",
+      "level": 2,
+      "name": "Громовой шлем",
+      "file": "LIGHTNING_09-2.webp"
+    },
+    {
+      "code": "LIGHTNING_09",
+      "level": 3,
+      "name": "Громовой шлем",
+      "file": "LIGHTNING_09-3.webp"
+    },
+    {
+      "code": "LIGHTNING_10",
+      "level": 1,
+      "name": "Громовой доспех",
+      "file": "LIGHTNING_10-1.webp"
+    },
+    {
+      "code": "LIGHTNING_10",
+      "level": 2,
+      "name": "Громовой доспех",
+      "file": "LIGHTNING_10-2.webp"
+    },
+    {
+      "code": "LIGHTNING_10",
+      "level": 3,
+      "name": "Громовой доспех",
+      "file": "LIGHTNING_10-3.webp"
+    },
+    {
+      "code": "LIGHTNING_11",
+      "level": 1,
+      "name": "Электрическая плеть",
+      "file": "LIGHTNING_11-1.webp"
+    },
+    {
+      "code": "LIGHTNING_11",
+      "level": 2,
+      "name": "Электрическая плеть",
+      "file": "LIGHTNING_11-2.webp"
+    },
+    {
+      "code": "LIGHTNING_11",
+      "level": 3,
+      "name": "Электрическая плеть",
+      "file": "LIGHTNING_11-3.webp"
+    },
+    {
+      "code": "LIGHTNING_12",
+      "level": 1,
+      "name": "Электрический кинжал",
+      "file": "LIGHTNING_12-1.webp"
+    },
+    {
+      "code": "LIGHTNING_12",
+      "level": 2,
+      "name": "Электрический кинжал",
+      "file": "LIGHTNING_12-2.webp"
+    },
+    {
+      "code": "LIGHTNING_12",
+      "level": 3,
+      "name": "Электрический кинжал",
+      "file": "LIGHTNING_12-3.webp"
+    },
+    {
+      "code": "METAL_01",
+      "level": 1,
+      "name": "Ауреанский клинок",
+      "file": "METAL_01-1.webp"
+    },
+    {
+      "code": "METAL_01",
+      "level": 2,
+      "name": "Ауреанский клинок",
+      "file": "METAL_01-2.webp"
+    },
+    {
+      "code": "METAL_01",
+      "level": 3,
+      "name": "Ауреанский клинок",
+      "file": "METAL_01-3.webp"
+    },
+    {
+      "code": "METAL_02",
+      "level": 1,
+      "name": "Железный лук",
+      "file": "METAL_02-1.webp"
+    },
+    {
+      "code": "METAL_02",
+      "level": 2,
+      "name": "Железный лук",
+      "file": "METAL_02-2.webp"
+    },
+    {
+      "code": "METAL_02",
+      "level": 3,
+      "name": "Железный лук",
+      "file": "METAL_02-3.webp"
+    },
+    {
+      "code": "METAL_03",
+      "level": 1,
+      "name": "Необработанный молот",
+      "file": "METAL_03-1.webp"
+    },
+    {
+      "code": "METAL_03",
+      "level": 2,
+      "name": "Необработанный молот",
+      "file": "METAL_03-2.webp"
+    },
+    {
+      "code": "METAL_03",
+      "level": 3,
+      "name": "Необработанный молот",
+      "file": "METAL_03-3.webp"
+    },
+    {
+      "code": "METAL_04",
+      "level": 1,
+      "name": "Медный щит",
+      "file": "METAL_04-1.webp"
+    },
+    {
+      "code": "METAL_04",
+      "level": 2,
+      "name": "Медный щит",
+      "file": "METAL_04-2.webp"
+    },
+    {
+      "code": "METAL_04",
+      "level": 3,
+      "name": "Медный щит",
+      "file": "METAL_04-3.webp"
+    },
+    {
+      "code": "METAL_05",
+      "level": 1,
+      "name": "Лунные клинки",
+      "file": "METAL_05-1.webp"
+    },
+    {
+      "code": "METAL_05",
+      "level": 2,
+      "name": "Лунные клинки",
+      "file": "METAL_05-2.webp"
+    },
+    {
+      "code": "METAL_05",
+      "level": 3,
+      "name": "Лунные клинки",
+      "file": "METAL_05-3.webp"
+    },
+    {
+      "code": "METAL_06",
+      "level": 1,
+      "name": "Матерь-пушка",
+      "file": "METAL_06-1.webp"
+    },
+    {
+      "code": "METAL_06",
+      "level": 2,
+      "name": "Матерь-пушка",
+      "file": "METAL_06-2.webp"
+    },
+    {
+      "code": "METAL_06",
+      "level": 3,
+      "name": "Матерь-пушка",
+      "file": "METAL_06-3.webp"
+    },
+    {
+      "code": "METAL_07",
+      "level": 1,
+      "name": "Копьё из Аркеума",
+      "file": "METAL_07-1.webp"
+    },
+    {
+      "code": "METAL_07",
+      "level": 2,
+      "name": "Копьё из Аркеума",
+      "file": "METAL_07-2.webp"
+    },
+    {
+      "code": "METAL_07",
+      "level": 3,
+      "name": "Копьё из Аркеума",
+      "file": "METAL_07-3.webp"
+    },
+    {
+      "code": "METAL_08",
+      "level": 1,
+      "name": "Железное сердце",
+      "file": "METAL_08-1.webp"
+    },
+    {
+      "code": "METAL_08",
+      "level": 2,
+      "name": "Железное сердце",
+      "file": "METAL_08-2.webp"
+    },
+    {
+      "code": "METAL_08",
+      "level": 3,
+      "name": "Железное сердце",
+      "file": "METAL_08-3.webp"
+    },
+    {
+      "code": "METAL_09",
+      "level": 1,
+      "name": "Железный шлем",
+      "file": "METAL_09-1.webp"
+    },
+    {
+      "code": "METAL_09",
+      "level": 2,
+      "name": "Железный шлем",
+      "file": "METAL_09-2.webp"
+    },
+    {
+      "code": "METAL_09",
+      "level": 3,
+      "name": "Железный шлем",
+      "file": "METAL_09-3.webp"
+    },
+    {
+      "code": "METAL_10",
+      "level": 1,
+      "name": "Железные латы",
+      "file": "METAL_10-1.webp"
+    },
+    {
+      "code": "METAL_10",
+      "level": 2,
+      "name": "Железные латы",
+      "file": "METAL_10-2.webp"
+    },
+    {
+      "code": "METAL_10",
+      "level": 3,
+      "name": "Железные латы",
+      "file": "METAL_10-3.webp"
+    },
+    {
+      "code": "METAL_11",
+      "level": 1,
+      "name": "Взрывчатка",
+      "file": "METAL_11-1.webp"
+    },
+    {
+      "code": "METAL_11",
+      "level": 2,
+      "name": "Взрывчатка",
+      "file": "METAL_11-2.webp"
+    },
+    {
+      "code": "METAL_11",
+      "level": 3,
+      "name": "Взрывчатка",
+      "file": "METAL_11-3.webp"
+    },
+    {
+      "code": "METAL_12",
+      "level": 1,
+      "name": "Железные поножи",
+      "file": "METAL_12-1.webp"
+    },
+    {
+      "code": "METAL_12",
+      "level": 2,
+      "name": "Железные поножи",
+      "file": "METAL_12-2.webp"
+    },
+    {
+      "code": "METAL_12",
+      "level": 3,
+      "name": "Железные поножи",
+      "file": "METAL_12-3.webp"
+    },
+    {
+      "code": "POISON_01",
+      "level": 1,
+      "name": "Кобра",
+      "file": "POISON_01-1.webp"
+    },
+    {
+      "code": "POISON_01",
+      "level": 2,
+      "name": "Кобра",
+      "file": "POISON_01-2.webp"
+    },
+    {
+      "code": "POISON_01",
+      "level": 3,
+      "name": "Кобра",
+      "file": "POISON_01-3.webp"
+    },
+    {
+      "code": "POISON_02",
+      "level": 1,
+      "name": "Паучье жало",
+      "file": "POISON_02-1.webp"
+    },
+    {
+      "code": "POISON_02",
+      "level": 2,
+      "name": "Паучье жало",
+      "file": "POISON_02-2.webp"
+    },
+    {
+      "code": "POISON_02",
+      "level": 3,
+      "name": "Паучье жало",
+      "file": "POISON_02-3.webp"
+    },
+    {
+      "code": "POISON_03",
+      "level": 1,
+      "name": "Драконья отрава",
+      "file": "POISON_03-1.webp"
+    },
+    {
+      "code": "POISON_03",
+      "level": 2,
+      "name": "Драконья отрава",
+      "file": "POISON_03-2.webp"
+    },
+    {
+      "code": "POISON_03",
+      "level": 3,
+      "name": "Драконья отрава",
+      "file": "POISON_03-3.webp"
+    },
+    {
+      "code": "POISON_04",
+      "level": 1,
+      "name": "Змеиная кожа",
+      "file": "POISON_04-1.webp"
+    },
+    {
+      "code": "POISON_04",
+      "level": 2,
+      "name": "Змеиная кожа",
+      "file": "POISON_04-2.webp"
+    },
+    {
+      "code": "POISON_04",
+      "level": 3,
+      "name": "Змеиная кожа",
+      "file": "POISON_04-3.webp"
+    },
+    {
+      "code": "POISON_05",
+      "level": 1,
+      "name": "Гадюки",
+      "file": "POISON_05-1.webp"
+    },
+    {
+      "code": "POISON_05",
+      "level": 2,
+      "name": "Гадюки",
+      "file": "POISON_05-2.webp"
+    },
+    {
+      "code": "POISON_05",
+      "level": 3,
+      "name": "Гадюки",
+      "file": "POISON_05-3.webp"
+    },
+    {
+      "code": "POISON_06",
+      "level": 1,
+      "name": "Рептилия",
+      "file": "POISON_06-1.webp"
+    },
+    {
+      "code": "POISON_06",
+      "level": 2,
+      "name": "Рептилия",
+      "file": "POISON_06-2.webp"
+    },
+    {
+      "code": "POISON_06",
+      "level": 3,
+      "name": "Рептилия",
+      "file": "POISON_06-3.webp"
+    },
+    {
+      "code": "POISON_07",
+      "level": 1,
+      "name": "Копьё погибели",
+      "file": "POISON_07-1.webp"
+    },
+    {
+      "code": "POISON_07",
+      "level": 2,
+      "name": "Копьё погибели",
+      "file": "POISON_07-2.webp"
+    },
+    {
+      "code": "POISON_07",
+      "level": 3,
+      "name": "Копьё погибели",
+      "file": "POISON_07-3.webp"
+    },
+    {
+      "code": "POISON_08",
+      "level": 1,
+      "name": "Лиановый барабан",
+      "file": "POISON_08-1.webp"
+    },
+    {
+      "code": "POISON_08",
+      "level": 2,
+      "name": "Лиановый барабан",
+      "file": "POISON_08-2.webp"
+    },
+    {
+      "code": "POISON_08",
+      "level": 3,
+      "name": "Лиановый барабан",
+      "file": "POISON_08-3.webp"
+    },
+    {
+      "code": "POISON_09",
+      "level": 1,
+      "name": "Стальной шлем",
+      "file": "POISON_09-1.webp"
+    },
+    {
+      "code": "POISON_09",
+      "level": 2,
+      "name": "Стальной шлем",
+      "file": "POISON_09-2.webp"
+    },
+    {
+      "code": "POISON_09",
+      "level": 3,
+      "name": "Стальной шлем",
+      "file": "POISON_09-3.webp"
+    },
+    {
+      "code": "POISON_10",
+      "level": 1,
+      "name": "Стальной доспех",
+      "file": "POISON_10-1.webp"
+    },
+    {
+      "code": "POISON_10",
+      "level": 2,
+      "name": "Стальной доспех",
+      "file": "POISON_10-2.webp"
+    },
+    {
+      "code": "POISON_10",
+      "level": 3,
+      "name": "Стальной доспех",
+      "file": "POISON_10-3.webp"
+    },
+    {
+      "code": "POISON_11",
+      "level": 1,
+      "name": "Кровоискатель",
+      "file": "POISON_11-1.webp"
+    },
+    {
+      "code": "POISON_11",
+      "level": 2,
+      "name": "Кровоискатель",
+      "file": "POISON_11-2.webp"
+    },
+    {
+      "code": "POISON_11",
+      "level": 3,
+      "name": "Кровоискатель",
+      "file": "POISON_11-3.webp"
+    },
+    {
+      "code": "POISON_12",
+      "level": 1,
+      "name": "Чёрная вдова",
+      "file": "POISON_12-1.webp"
+    },
+    {
+      "code": "POISON_12",
+      "level": 2,
+      "name": "Чёрная вдова",
+      "file": "POISON_12-2.webp"
+    },
+    {
+      "code": "POISON_12",
+      "level": 3,
+      "name": "Чёрная вдова",
+      "file": "POISON_12-3.webp"
+    },
+    {
+      "code": "SPEAR",
+      "level": 1,
+      "name": "Копьё",
+      "file": "SPEAR-1.webp"
+    },
+    {
+      "code": "SWORD_AND_SHIELD",
+      "level": 1,
+      "name": "Щит и меч",
+      "file": "SWORD_AND_SHIELD-1.webp"
+    }
+  ]
+}
