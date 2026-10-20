@@ -62,6 +62,7 @@ export function sheetFixture(overrides: Partial<CampaignSheet> = {}): CampaignSh
     activeBattles: [],
     recentBattles: [],
     pendingTransition: false,
+    mainHunter: null,
     ...overrides,
   };
 }

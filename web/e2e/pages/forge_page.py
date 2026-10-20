@@ -4,6 +4,7 @@ import allure
 from playwright.sync_api import Locator, Page, expect
 
 from pages.base_page import BasePage
+from pages.campaign_sheet_page import selected_player
 
 
 class ForgePage(BasePage):
@@ -49,6 +50,9 @@ class ForgePage(BasePage):
             expect(entry).to_have_count(0)
         else:
             expect(entry).to_have_text(re.compile(rf"\s{value}$"))
+
+    def selected_hunter(self) -> str:
+        return selected_player(self.page, "forge-hunter-switch", "forge-hunter-option")
 
     @allure.step("Выбрать охотника «{player}»")
     def select_hunter(self, player: str) -> "ForgePage":

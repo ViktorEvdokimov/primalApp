@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ApiError } from '../../api/errors';
 import { getGetCampaignQueryKey, useGetCampaign } from '../../api/generated/campaigns/campaigns';
-import type { CampaignSheet, HunterSheet } from '../../api/generated/primal.schemas';
+import type { CampaignSheet, CampaignSheetMainHunter, HunterSheet } from '../../api/generated/primal.schemas';
 import { ru } from '../../shared/i18n/ru';
 
 type Patch = (current: CampaignSheet) => CampaignSheet;
@@ -37,6 +37,13 @@ export function useCampaignSheet(campaignId: number) {
         refetch();
       },
 
+      /** Основной персонаж участника выбран или снят: это не изменение кампании — версия прежняя. */
+      mainHunterChanged: (mainHunter: CampaignSheetMainHunter) => {
+        queryClient.setQueryData<CampaignSheet>(key, (current) =>
+          current === undefined ? current : { ...current, mainHunter },
+        );
+      },
+
       /** Лист целиком из ответа сервера (`PATCH /campaigns/{id}`). */
       replace: (next: CampaignSheet) => {
         queryClient.setQueryData(key, next);
@@ -46,7 +53,13 @@ export function useCampaignSheet(campaignId: number) {
       failed: (error: unknown) => {
         if (error instanceof ApiError && error.code === 'VERSION_CONFLICT') {
           const current = error.problem?.current as CampaignSheet | undefined;
-          if (current !== undefined) queryClient.setQueryData(key, current);
+          // в листе из ответа 409 основного персонажа нет — он прежний до перезапроса
+          if (current !== undefined) {
+            queryClient.setQueryData<CampaignSheet>(key, (previous) => ({
+              ...current,
+              mainHunter: previous?.mainHunter ?? current.mainHunter,
+            }));
+          }
           notifications.show({ id: 'sheet-conflict', color: 'yellow', message: ru.sheet.conflict });
         } else {
           notifications.show({ color: 'red', message: errorMessage(error) });

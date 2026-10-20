@@ -4,6 +4,7 @@ import com.primalapp.database.currentTimeMillis
 import com.primalapp.database.entity.CampaignStoreEntity
 import com.primalapp.net.ApiException
 import com.primalapp.net.CampaignSnapshotDto
+import com.primalapp.net.CampaignSummaryDto
 import com.primalapp.net.Fetched
 import com.primalapp.net.MeDto
 import com.primalapp.net.OfflineException
@@ -171,6 +172,29 @@ class SyncEngine(
         }
         for (entity in store.allEntities().filter { it.serverId == null && it.pendingDelete }) {
             store.delete(entity.localId)
+        }
+        syncMainHunters(key, summaries)
+    }
+
+    /**
+     * Основной персонаж — свой у каждого входа (web qa № 150): выбор, сделанный в приложении, — на сервер; остальные
+     * берутся из списка кампаний. Отказ сервера (охотника нет в отряде) — остаётся выбор сервера.
+     */
+    private suspend fun syncMainHunters(account: String, summaries: List<CampaignSummaryDto>) {
+        val fromServer = summaries.associate { it.id to it.mainHunter }
+        for (entity in store.allEntities().filter { it.account == account && it.serverId != null && !it.pendingDelete }) {
+            val serverId = entity.serverId ?: continue
+            if (entity.mainHunterDirty) {
+                val saved = try {
+                    api.setMainHunter(serverId, entity.mainHunter)
+                } catch (error: ApiException) {
+                    if (error.status !in 400..499) throw error
+                    fromServer[serverId]
+                }
+                store.mainHunterSent(entity.localId, entity.mainHunter, saved)
+            } else if (serverId in fromServer) {
+                store.applyServerMainHunter(entity.localId, fromServer[serverId])
+            }
         }
     }
 

@@ -20,6 +20,8 @@ import com.primalapp.model.campaign.ResourceCode
 import com.primalapp.net.CampaignSnapshotDto
 import com.primalapp.net.CampaignSummaryDto
 import com.primalapp.net.CookieJar
+import com.primalapp.net.MainHunterDto
+import com.primalapp.net.MainHunterRequest
 import com.primalapp.net.MeDto
 import com.primalapp.net.PrimalApi
 import com.primalapp.net.SnapshotStateDto
@@ -68,6 +70,10 @@ class SyncEngineTest {
     private lateinit var serverState: SnapshotStateDto
     private val puts = mutableListOf<Int>()
 
+    /** Основной персонаж входа на сервере и отправленные выборы. */
+    private var serverMain: String? = null
+    private val mainPuts = mutableListOf<String?>()
+
     private val settings = SettingsStore(db.keyValueDao())
     private val store = CampaignStore(db.campaignStoreDao(), { catalog }, { Expansion.entries.toSet() })
     private lateinit var sync: SyncEngine
@@ -80,7 +86,14 @@ class SyncEngineTest {
         request.url.encodedPath.endsWith("/auth/csrf") ->
             respond("", HttpStatusCode.NoContent, headersOf(HttpHeaders.SetCookie, "XSRF-TOKEN=t; Path=/"))
         request.url.encodedPath.endsWith("/campaigns") -> respondJson(json.encodeToString(ListSerializer(CampaignSummaryDto.serializer()),
-            listOf(CampaignSummaryDto(12, serverState.name, serverState.chapter, serverState.status, "OWNER", "Алиса"))))
+            listOf(CampaignSummaryDto(12, serverState.name, serverState.chapter, serverState.status, "OWNER", "Алиса",
+                mainHunter = serverMain))))
+        request.url.encodedPath.endsWith("/campaigns/12/main-hunter") && request.method == HttpMethod.Put -> {
+            val body = json.decodeFromString(MainHunterRequest.serializer(), (request.body as TextContent).text)
+            mainPuts += body.hunterClass
+            serverMain = body.hunterClass
+            respondJson(json.encodeToString(MainHunterDto.serializer(), MainHunterDto(serverMain)))
+        }
         request.url.encodedPath.endsWith("/campaigns/12/snapshot") && request.method == HttpMethod.Get ->
             respondJson(json.encodeToString(CampaignSnapshotDto.serializer(), snapshot()))
         request.url.encodedPath.endsWith("/campaigns/12/snapshot") && request.method == HttpMethod.Put -> {
@@ -160,5 +173,45 @@ class SyncEngineTest {
         assertTrue(local.pendingOps.isEmpty())
         assertEquals(3, local.baseVersion)
         assertEquals(server.hunters.map { it.resources }, local.state.hunters.map { it.resources })
+    }
+
+    @Test
+    fun `основной персонаж с сервера приходит в копию и не теряется при обновлении снимка`() = runBlocking {
+        // Подготовка
+        setUp(chapterOne())
+        serverMain = "MIRA"
+        sync.sync(references = false)
+        assertEquals(HunterClass.MIRA, store.all().single().mainHunter)
+        serverState = SnapshotMapper.toDto(rules.adjustResources(SnapshotMapper.toState(serverState), HunterClass.MIRA,
+            mapOf(ResourceCode.ZLATIA to 2)))
+        serverVersion++
+
+        // Вызов проверяемого кода
+        sync.sync(references = false)
+
+        // Проверка
+        val local = store.all().single()
+        assertEquals(2, local.baseVersion)
+        assertEquals(HunterClass.MIRA, local.mainHunter)
+    }
+
+    @Test
+    fun `выбор основного персонажа в приложении уходит на сервер`() = runBlocking {
+        // Подготовка
+        setUp(chapterOne())
+        sync.sync(references = false)
+        val localId = store.all().single().localId
+        store.onLocalChange = {}
+        store.setMainHunter(localId, HunterClass.DAREON)
+        assertTrue(store.entity(localId)!!.mainHunterDirty)
+
+        // Вызов проверяемого кода
+        sync.sync(references = false)
+
+        // Проверка
+        assertEquals(listOf<String?>("DAREON"), mainPuts)
+        assertEquals("DAREON", serverMain)
+        assertEquals(HunterClass.DAREON, store.all().single().mainHunter)
+        assertEquals(false, store.entity(localId)!!.mainHunterDirty)
     }
 }

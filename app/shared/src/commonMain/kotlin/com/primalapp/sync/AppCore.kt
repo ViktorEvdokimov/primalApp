@@ -4,6 +4,7 @@ import com.primalapp.database.PlatformContext
 import com.primalapp.database.PrimalDatabase
 import com.primalapp.database.createPrimalDatabase
 import com.primalapp.model.campaign.Expansion
+import com.primalapp.model.campaign.HunterClass
 import com.primalapp.net.ApiException
 import com.primalapp.net.CookieJar
 import com.primalapp.net.JoinResultDto
@@ -165,8 +166,12 @@ class AppCore(
     suspend fun shareInfo(token: String): ShareInfoDto = api.shareInfo(token)
 
     /** Присоединиться по ссылке: без входа — гостем (имя — в истории боёв). Возвращает id кампании на сервере. */
-    suspend fun join(token: String, displayName: String?): JoinResultDto {
-        val result = api.join(token, displayName)
+    /**
+     * Вход по ссылке: [hunterClass] — свой персонаж (становится основным; у гостя без имени имя его игрока — имя в
+     * истории боёв), [displayName] — имя гостя вручную (сервер без выбора персонажа).
+     */
+    suspend fun join(token: String, displayName: String?, hunterClass: HunterClass? = null): JoinResultDto {
+        val result = api.join(token, displayName, hunterClass?.name)
         if (settings.current.activeAccount == null) {
             settings.setAccount(SyncEngine.accountInfo(settings.current.serverUrl, api.me()))
         }

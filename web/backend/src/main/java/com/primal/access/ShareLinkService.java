@@ -12,6 +12,7 @@ import com.primal.identity.GuestDeviceAttached;
 import com.primal.identity.PrimalPrincipal;
 import com.primal.identity.PrimalPrincipal.GuestPrincipal;
 import com.primal.identity.PrimalPrincipal.UserPrincipal;
+import com.primal.rules.model.HunterClass;
 import java.net.InetAddress;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -40,8 +41,12 @@ public class ShareLinkService {
     public record LinkView(String url, Instant createdAt, List<Participant> joined) {
     }
 
-    /** Что за приглашение — показывается до входа. */
-    public record Invitation(long campaignId, String name, String ownerName) {
+    /** Охотник отряда в приглашении. */
+    public record InvitationHunter(HunterClass hunterClass, String playerName) {
+    }
+
+    /** Что за приглашение — показывается до входа; {@code hunters} — отряд для выбора своего персонажа. */
+    public record Invitation(long campaignId, String name, String ownerName, List<InvitationHunter> hunters) {
     }
 
     /** Итог входа по ссылке; {@code newDevice} — гостевое устройство, если cookie не было. */
@@ -54,6 +59,7 @@ public class ShareLinkService {
     private final AccessService access;
     private final AccountService accounts;
     private final DeviceService devices;
+    private final MainHunterService mainHunters;
     private final RateLimiter rateLimiter;
     private final ApplicationEventPublisher events;
     private final JdbcTemplate jdbc;
@@ -61,7 +67,7 @@ public class ShareLinkService {
     private final Clock clock;
 
     ShareLinkService(ShareLinkRepository links, ShareAccessRepository accesses, ShareTokenCodec codec, AccessService access,
-                     AccountService accounts, DeviceService devices, RateLimiter rateLimiter,
+                     AccountService accounts, DeviceService devices, MainHunterService mainHunters, RateLimiter rateLimiter,
                      ApplicationEventPublisher events, JdbcTemplate jdbc, PrimalProperties properties, Clock clock) {
         this.links = links;
         this.accesses = accesses;
@@ -69,6 +75,7 @@ public class ShareLinkService {
         this.access = access;
         this.accounts = accounts;
         this.devices = devices;
+        this.mainHunters = mainHunters;
         this.rateLimiter = rateLimiter;
         this.events = events;
         this.jdbc = jdbc;
@@ -112,37 +119,53 @@ public class ShareLinkService {
     public Invitation invitation(String token) {
         ShareLink link = active(token);
         Map<String, Object> campaign = jdbc.queryForMap("select name, owner_id from campaign where id = ?", link.getCampaignId());
+        List<InvitationHunter> hunters = jdbc.query(
+                "select hunter_class, player_name from campaign_hunter where campaign_id = ? order by position",
+                (rs, row) -> new InvitationHunter(HunterClass.valueOf(rs.getString(1)), rs.getString(2)), link.getCampaignId());
         return new Invitation(link.getCampaignId(), (String) campaign.get("name"),
-                accounts.userName(((Number) campaign.get("owner_id")).longValue()));
+                accounts.userName(((Number) campaign.get("owner_id")).longValue()), hunters);
     }
 
     /**
      * Вход по ссылке: без cookie — новое гостевое устройство; гость — доступ на устройство (и имя в истории
      * боёв); пользователь — на аккаунт; владелец ничего не получает. Повтор ничего не дублирует.
+     * {@code hunterClass} — свой персонаж (qa № 150): становится основным; у гостя без имени имя игрока этого
+     * охотника становится именем в истории боёв. Охотника нет в отряде — {@code 400}.
      */
     @Transactional
-    public Joined join(PrimalPrincipal principal, String token, String displayName, String userAgent, InetAddress ip) {
+    public Joined join(PrimalPrincipal principal, String token, String displayName, HunterClass hunterClass,
+                       String userAgent, InetAddress ip) {
         rateLimiter.check(RateLimiter.Limit.JOIN_PER_IP, ip == null ? "unknown" : ip.getHostAddress());
         ShareLink link = active(token);
         long campaignId = link.getCampaignId();
         String name = displayName == null || displayName.isBlank() ? null : displayName.strip();
+        String playerName = hunterClass == null ? null : mainHunters.playerName(campaignId, hunterClass);
         switch (principal) {
             case null -> {
-                IssuedDevice device = devices.createGuest(userAgent, name);
+                IssuedDevice device = devices.createGuest(userAgent, name != null ? name : playerName);
                 grant(link.getId(), null, device.id());
+                mainHunters.save(campaignId, null, device.id(), hunterClass);
                 return new Joined(campaignId, device);
             }
             case GuestPrincipal guest -> {
                 if (name != null) {
                     accounts.rename(guest, name);
+                } else if (playerName != null && accounts.me(guest).deviceName() == null) {
+                    accounts.rename(guest, playerName);
                 }
                 grant(link.getId(), null, guest.deviceId());
+                if (hunterClass != null) {
+                    mainHunters.save(campaignId, null, guest.deviceId(), hunterClass);
+                }
             }
             case UserPrincipal user -> {
                 boolean owner = Long.valueOf(user.userId()).equals(
                         jdbc.queryForObject("select owner_id from campaign where id = ?", Long.class, campaignId));
                 if (!owner) {
                     grant(link.getId(), user.userId(), null);
+                }
+                if (hunterClass != null) {
+                    mainHunters.save(campaignId, user.userId(), null, hunterClass);
                 }
             }
         }

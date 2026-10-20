@@ -503,11 +503,19 @@ fun seedBosses(db: SQLiteConnection) {
     insert3("Мумараак", "ICE", 3, 20, 7, 25, 4, 30, 0)
 }
 
+/** 18→19: основной персонаж кампании (qa № 137 приложения, web qa № 150). */
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SQLiteConnection) {
+        db.execSQL("ALTER TABLE campaign_store ADD COLUMN main_hunter TEXT")
+        db.execSQL("ALTER TABLE campaign_store ADD COLUMN main_hunter_dirty INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 /** Все миграции по порядку — для построителя БД на Android и iOS. */
 val ALL_MIGRATIONS = arrayOf(
     MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
     MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-    MIGRATION_16_17, MIGRATION_17_18
+    MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19
 )
 
 /**
@@ -521,7 +529,7 @@ val ALL_MIGRATIONS = arrayOf(
         KeyValueEntity::class,
         CacheBlobEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = true
 )
 abstract class PrimalDatabase : RoomDatabase() {

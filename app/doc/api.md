@@ -539,14 +539,14 @@ class BattleViewModel(
 | `BattleSetupViewModel(app, localId?, questNumber?)` | Подготовка к бою | `BattleSetupState`: боссы каталога, префилл стойки I, сложность по главе, предупреждения «Уже идёт бой» и о замене боя; `onStart`, `onConfirmActiveWarning`, `onConfirmReplace` |
 | `CampaignListViewModel` | Кампании | Все кампании устройства; `CampaignListItem.detached` — копия, оставшаяся после выхода или от другого аккаунта («· синхронизируется после входа в аккаунт»); `onUpload`, `onDeleteConfirmed` (`LOCAL` и `detached` — с устройства, `OWNER` — `pendingDelete`) |
 | `CampaignCreateViewModel` | Новая кампания | Отряд 2–5, `onCreate` → `CampaignRules.create` + `CampaignStore.create(upload = вошёл)` |
-| `CampaignSheetViewModel` | Лист кампании | Вкладки, навыки, ресурсы, инвентарь, имя игрока, задания («Выполнено», «Отмена», редактор), достижения, заметки (0,8 с), глава, история, «Поделиться» (`ShareState`) и «Ссылка на сайт» — у любой кампании: `onShareOpened`, `onSiteLink`, окна `SheetPrompt.Login` (без входа — «Войти» → `onLoginRequested` → `Screen.Login`) и `SheetPrompt.Upload` (кампания только на устройстве — `onUploadConfirmed`), `shareText` → системное окно «Поделиться»; `detached`; поток событий сервера (SSE) — только у кампаний текущего аккаунта |
-| `ForgeViewModel`, `LabViewModel`, `ExchangeViewModel` | Кузница, лаборатория, «Обменять ресурсы» | Цены и нехватка, выбор растений, обмен/преобразование/продажа |
+| `CampaignSheetViewModel` | Лист кампании | Вкладки, навыки, ресурсы, инвентарь, имя игрока, задания («Выполнено», «Отмена», редактор), достижения, заметки (0,8 с), глава, история, основной персонаж (`mainHunter`, `isMainHunter`, `onMainHunterToggled`; без выбора игрока выбран основной, иначе первый), «Поделиться» (`ShareState`) и «Ссылка на сайт» — у любой кампании: `onShareOpened`, `onSiteLink`, окна `SheetPrompt.Login` (без входа — «Войти» → `onLoginRequested` → `Screen.Login`) и `SheetPrompt.Upload` (кампания только на устройстве — `onUploadConfirmed`), `shareText` → системное окно «Поделиться»; `detached`; поток событий сервера (SSE) — только у кампаний текущего аккаунта |
+| `ForgeViewModel`, `LabViewModel`, `ExchangeViewModel` | Кузница, лаборатория, «Обменять ресурсы» | Цены и нехватка, выбор растений, обмен/преобразование/продажа; охотник по умолчанию — основной персонаж (`CampaignScopedViewModel.defaultHunter`) |
 | `QuestSelectViewModel` | Выбор задания | Открытые задания с боссами |
 | `OutcomeViewModel` | Итог боя | `BattleReport` из боя, обновление кампании с сервера, `previewResult`, «Принять» / «Редактировать» (`OverridesForm`) / «Отклонить», держатели карт наград |
 | `TransitionViewModel` | Переход главы | Решения главы, `previewTransition`, «Принять» / «Отклонить» |
 | `InfoViewModel` | Инфо | Разделы, поиск, фильтр, раскрытие, ссылки «См. также», картинки |
 | `SettingsViewModel` | Настройки, экран входа | Режим, сервер, вход/регистрация, имя, дополнения, выход (кампании остаются, без подтверждения) |
-| `JoinViewModel` | Приглашение | `GET /share/{token}`, «Присоединиться» |
+| `JoinViewModel` | Приглашение | `GET /share/{token}`; окно «Кто вы в этой кампании?» (`hunters`, `choosing`, `onHunterChosen` → `AppCore.join(token, null, hunterClass)`); сервер без отряда — имя гостя и `onJoin` |
 
 Экраны одной кампании наследуют `CampaignScopedViewModel`: наблюдают документ кампании (`CampaignStore.observe`) и
 выполняют действия `perform(op)` с сообщением об ошибке правил.
@@ -608,7 +608,7 @@ class BattleViewModel(
 | `createHttpEngine()` | expect/actual: OkHttp (Android), Darwin (iOS) |
 | `SettingsStore` | `AppSettings`: режим (`ConnectionMode`), сервер, `AccountInfo`, дополнения, время синхронизации |
 | `CatalogRepository`, `InfoRepository` | Справочники: кэш → файл приложения; `refresh(api)` по ETag |
-| `CampaignStore` | `observeAll`, `observe`, `create`, `perform(localId, op)`, `requestUpload`, `markDeleted`, `reassign(from, to)` (копии гостя → аккаунту), `replay(base, ops)` |
+| `CampaignStore` | `observeAll`, `observe`, `create`, `perform(localId, op)`, `requestUpload`, `markDeleted`, `reassign(from, to)` (копии гостя → аккаунту), `setMainHunter(localId, hunterClass)` (основной персонаж входа; уходит на сервер при синхронизации), `replay(base, ops)` |
 | `SnapshotMapper` | Снимок сервера ↔ `CampaignState` |
 | `SyncEngine` | `sync(references)`, `syncCampaign(localId)`, `requestPush()`; `status: StateFlow<SyncStatus>`, `messages` |
 | `AppCore` | Корень: БД, настройки, справочники, хранилище, API, синхронизация (раз в минуту), `login`, `register`, `logout` (кампании остаются на устройстве), `forgetAccount`, `setServer`, `setMode`, `setExpansions`, `join` |

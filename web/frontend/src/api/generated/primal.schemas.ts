@@ -257,6 +257,50 @@ export interface QuestLists {
   expired: QuestItem[];
 }
 
+/**
+ * @nullable
+ */
+export type MainHunterRequestHunterClass = typeof MainHunterRequestHunterClass[keyof typeof MainHunterRequestHunterClass] | null;
+
+
+export const MainHunterRequestHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export interface MainHunterRequest {
+  /** @nullable */
+  hunterClass: MainHunterRequestHunterClass;
+}
+
+/**
+ * @nullable
+ */
+export type MainHunterViewMainHunter = typeof MainHunterViewMainHunter[keyof typeof MainHunterViewMainHunter] | null;
+
+
+export const MainHunterViewMainHunter = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export interface MainHunterView {
+  /** @nullable */
+  mainHunter: MainHunterViewMainHunter;
+}
+
 export interface PasswordChangeRequest {
   /**
      * @minLength 0
@@ -580,6 +624,23 @@ export interface AdminBoss {
   edited: boolean;
 }
 
+/**
+ * @nullable
+ */
+export type JoinRequestHunterClass = typeof JoinRequestHunterClass[keyof typeof JoinRequestHunterClass] | null;
+
+
+export const JoinRequestHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
 export interface JoinRequest {
   /**
      * @minLength 0
@@ -587,6 +648,8 @@ export interface JoinRequest {
      * @nullable
      */
   displayName: string | null;
+  /** @nullable */
+  hunterClass: JoinRequestHunterClass;
 }
 
 export type JoinResponseKind = typeof JoinResponseKind[keyof typeof JoinResponseKind];
@@ -690,6 +753,23 @@ export const CampaignSheetOpenForgesItem = {
   FEATHER: 'FEATHER',
   POISON: 'POISON',
   ICE: 'ICE',
+} as const;
+
+/**
+ * @nullable
+ */
+export type CampaignSheetMainHunter = typeof CampaignSheetMainHunter[keyof typeof CampaignSheetMainHunter] | null;
+
+
+export const CampaignSheetMainHunter = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
 } as const;
 
 export type HunterSheetClass = typeof HunterSheetClass[keyof typeof HunterSheetClass];
@@ -812,6 +892,8 @@ export interface CampaignSheet {
   activeBattles: ActiveBattle[];
   recentBattles: RecentBattle[];
   pendingTransition: boolean;
+  /** @nullable */
+  mainHunter: CampaignSheetMainHunter;
 }
 
 export type ParticipantViewKind = typeof ParticipantViewKind[keyof typeof ParticipantViewKind];
@@ -1433,6 +1515,25 @@ export interface RenameRequest {
   displayName: string;
 }
 
+export type InvitationHunterClass = typeof InvitationHunterClass[keyof typeof InvitationHunterClass];
+
+
+export const InvitationHunterClass = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
+export interface InvitationHunter {
+  class: InvitationHunterClass;
+  playerName: string;
+}
+
 export type InvitationViewKind = typeof InvitationViewKind[keyof typeof InvitationViewKind];
 
 
@@ -1444,6 +1545,7 @@ export interface InvitationView {
   kind: InvitationViewKind;
   name: string;
   ownerName: string;
+  hunters: InvitationHunter[];
 }
 
 export type InfoSectionViewCode = typeof InfoSectionViewCode[keyof typeof InfoSectionViewCode];
@@ -1684,6 +1786,23 @@ export const CampaignSummaryAccess = {
   LINK: 'LINK',
 } as const;
 
+/**
+ * @nullable
+ */
+export type CampaignSummaryMainHunter = typeof CampaignSummaryMainHunter[keyof typeof CampaignSummaryMainHunter] | null;
+
+
+export const CampaignSummaryMainHunter = {
+  DAREON: 'DAREON',
+  MIRA: 'MIRA',
+  TOREG: 'TOREG',
+  LIONAR: 'LIONAR',
+  KARA: 'KARA',
+  HELEREN: 'HELEREN',
+  DRUSK: 'DRUSK',
+  ZARAIA: 'ZARAIA',
+} as const;
+
 export type HunterSummaryClass = typeof HunterSummaryClass[keyof typeof HunterSummaryClass];
 
 
@@ -1713,6 +1832,8 @@ export interface CampaignSummary {
   hunters: HunterSummary[];
   pendingTransition: boolean;
   updatedAt: string;
+  /** @nullable */
+  mainHunter: CampaignSummaryMainHunter;
 }
 
 export interface SseEmitter {

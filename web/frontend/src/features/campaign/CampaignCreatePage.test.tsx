@@ -120,6 +120,7 @@ describe('Список кампаний', () => {
     ],
     pendingTransition: false,
     updatedAt: '2026-09-28T10:00:00Z',
+    mainHunter: null,
   };
 
   it('кампания видна с главой «Пролог» и отрядом', async () => {

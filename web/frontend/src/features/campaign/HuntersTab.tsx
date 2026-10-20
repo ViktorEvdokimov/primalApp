@@ -1,6 +1,9 @@
-import { SegmentedControl, Stack } from '@mantine/core';
-import { useState } from 'react';
-import type { Dictionaries, HunterSheet } from '../../api/generated/primal.schemas';
+import { Checkbox, Stack } from '@mantine/core';
+import { useSetMainHunter } from '../../api/generated/campaigns/campaigns';
+import type { Dictionaries, HunterSheet, MainHunterRequestHunterClass } from '../../api/generated/primal.schemas';
+import { ru } from '../../shared/i18n/ru';
+import { HunterSwitch } from './HunterSwitch';
+import { useHunterSelection } from './hunterSelection';
 import { InventoryPanel } from './InventoryPanel';
 import { ResourcesGrid } from './ResourcesGrid';
 import { SkillTree } from './SkillTree';
@@ -9,36 +12,51 @@ import type { SheetActions } from './useCampaignSheet';
 interface HuntersTabProps {
   campaignId: number;
   hunters: HunterSheet[];
+  /** основной персонаж участника — выбран по умолчанию и выделен жирным */
+  mainHunter: string | null | undefined;
   dictionaries: Dictionaries;
   actions: SheetActions;
 }
 
-/** Охотники отряда: переключатель, древо навыков, ресурсы и инвентарь выбранного охотника. */
-export function HuntersTab({ campaignId, hunters, dictionaries, actions }: HuntersTabProps) {
-  const [selectedId, setSelectedId] = useState(hunters[0]?.id);
-  const hunter = hunters.find((item) => item.id === selectedId) ?? hunters[0];
+/**
+ * Охотники отряда: переключатель (основной персонаж — по умолчанию и жирным), «Основной персонаж», древо навыков,
+ * ресурсы и инвентарь выбранного охотника.
+ */
+export function HuntersTab({ campaignId, hunters, mainHunter, dictionaries, actions }: HuntersTabProps) {
+  const { hunter, select } = useHunterSelection(hunters, mainHunter);
+  const setMain = useSetMainHunter();
   const classNames = new Map(dictionaries.hunterClasses.map((item) => [item.code, item.name]));
   if (hunter === undefined) return null;
+  const isMain = hunter.class === mainHunter;
+
+  const toggleMain = (checked: boolean) => {
+    const hunterClass = checked ? (hunter.class as MainHunterRequestHunterClass) : null;
+    setMain
+      .mutateAsync({ campaignId, data: { hunterClass } })
+      .then((result) => actions.mainHunterChanged(result.mainHunter), actions.failed);
+  };
 
   return (
     <Stack gap="lg">
-      <SegmentedControl
-        fullWidth
-        orientation={hunters.length > 3 ? 'vertical' : 'horizontal'}
-        value={String(hunter.id)}
-        onChange={(value) => setSelectedId(Number(value))}
-        data={hunters.map((item) => ({
-          value: String(item.id),
-          label: (
-            <span data-testid="hunter-option" data-player={item.playerName} data-class={classNames.get(item.class) ?? item.class}>
-              {item.playerName === classNames.get(item.class)
-                ? item.playerName
-                : `${item.playerName} · ${classNames.get(item.class) ?? item.class}`}
-            </span>
-          ),
-        }))}
-        data-testid="hunter-switch"
-      />
+      <Stack gap="xs">
+        <HunterSwitch
+          hunters={hunters}
+          mainHunter={mainHunter}
+          value={hunter.id}
+          onChange={select}
+          classNames={classNames}
+          testIdPrefix="hunter"
+          classAttribute="name"
+        />
+        <Checkbox
+          label={ru.sheet.mainHunter}
+          description={ru.sheet.mainHunterHint}
+          checked={isMain}
+          disabled={setMain.isPending}
+          onChange={(event) => toggleMain(event.currentTarget.checked)}
+          data-testid="main-hunter"
+        />
+      </Stack>
       <SkillTree campaignId={campaignId} hunter={hunter} branches={dictionaries.skillBranches} actions={actions} />
       {/* key: при смене охотника накопленные +/− прежнего уходят на сервер сразу */}
       <ResourcesGrid

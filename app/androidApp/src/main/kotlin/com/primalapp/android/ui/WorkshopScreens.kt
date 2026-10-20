@@ -42,13 +42,17 @@ import com.primalapp.viewmodel.ForgeViewModel
 import com.primalapp.viewmodel.LabViewModel
 import com.primalapp.viewmodel.describe
 
+/** Охотники отряда; основной персонаж ([main]) выделен жирным (web qa № 150). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HunterChips(hunters: List<HunterState>, selected: HunterClass?, onSelected: (HunterClass) -> Unit) {
+fun HunterChips(hunters: List<HunterState>, selected: HunterClass?, main: HunterClass?, onSelected: (HunterClass) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         hunters.forEach { hunter ->
             FilterChip(selected = hunter.hunterClass == selected, onClick = { onSelected(hunter.hunterClass) },
-                label = { Text("${hunter.hunterClass.displayName} — ${hunter.playerName}") })
+                label = {
+                    Text("${hunter.hunterClass.displayName} — ${hunter.playerName}",
+                        fontWeight = if (hunter.hunterClass == main) FontWeight.Bold else null)
+                })
         }
     }
 }
@@ -65,7 +69,7 @@ fun ForgeScreen(app: AppViewModel, localId: Long) {
 
     ScreenScaffold(title = "Кузница", onBack = { app.back() }) {
         Text("Кузня: ${state.forgeLevel}", fontWeight = FontWeight.Bold)
-        HunterChips(state.hunters, state.selectedHunter) { viewModel.onHunterSelected(it) }
+        HunterChips(state.hunters, state.selectedHunter, state.mainHunter) { viewModel.onHunterSelected(it) }
         if (state.openForges.isEmpty()) {
             Hint("Кузни ещё не открыты: кузня стихии открывается победой над боссом этой стихии.")
             return@ScreenScaffold
@@ -119,7 +123,7 @@ fun LabScreen(app: AppViewModel, localId: Long) {
 
     ScreenScaffold(title = "Лаборатория", onBack = { app.back() }) {
         Text("Лаборатория: ${state.labLevel}", fontWeight = FontWeight.Bold)
-        HunterChips(state.hunters, state.selectedHunter) { viewModel.onHunterSelected(it) }
+        HunterChips(state.hunters, state.selectedHunter, state.mainHunter) { viewModel.onHunterSelected(it) }
         Text("Запас:", fontWeight = FontWeight.Medium, modifier = Modifier.padding(top = 8.dp))
         ResourceLine(state.stock.pairs(), "растений нет")
         Hint("Цены одинаковы на всех уровнях; уровень лаборатории — уровень карты зелья.")

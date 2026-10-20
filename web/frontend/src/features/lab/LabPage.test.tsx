@@ -76,6 +76,16 @@ describe('Лаборатория', () => {
     expect(router.state.location.pathname).toBe('/campaigns/12/lab');
   });
 
+  it('по умолчанию выбран основной персонаж, он выделен жирным', async () => {
+    // вызов
+    await openLab(labSheet({}, { mainHunter: 'MIRA' }));
+
+    // проверка
+    expect(screen.getByRole('radio', { name: 'Мира' })).toBeChecked();
+    const main = screen.getAllByTestId('lab-hunter-option').filter((element) => element.dataset.main === 'true');
+    expect(main.map((element) => element.dataset.player)).toEqual(['Мира']);
+  });
+
   it('6 зелий с ценой: растение, выбор «A / B», «любое»; без растений — «Не хватает», кнопка недоступна', async () => {
     // вызов
     await openLab(labSheet({ ANTHEMON: 1, NILLEA: 1 }));

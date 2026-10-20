@@ -2,6 +2,7 @@ package com.primal.campaign;
 
 import com.primal.access.AccessService;
 import com.primal.access.AccessService.CampaignAccess;
+import com.primal.access.MainHunterService;
 import com.primal.campaign.CampaignSheetDto.CampaignSheet;
 import com.primal.campaign.CampaignSheetDto.CampaignSummary;
 import com.primal.campaign.CampaignSheetDto.HunterSummary;
@@ -48,19 +49,21 @@ public class CampaignService {
     private final HunterItemRepository items;
     private final CampaignSheetService sheets;
     private final AccessService access;
+    private final MainHunterService mainHunters;
     private final AccountService accounts;
     private final PrimalProperties properties;
     private final ChangeEvents events;
     private final Clock clock;
 
     CampaignService(CampaignRepository campaigns, CampaignHunterRepository hunters, HunterItemRepository items, CampaignSheetService sheets,
-                    AccessService access, AccountService accounts, PrimalProperties properties, ChangeEvents events,
-                    Clock clock) {
+                    AccessService access, MainHunterService mainHunters, AccountService accounts,
+                    PrimalProperties properties, ChangeEvents events, Clock clock) {
         this.campaigns = campaigns;
         this.hunters = hunters;
         this.items = items;
         this.sheets = sheets;
         this.access = access;
+        this.mainHunters = mainHunters;
         this.accounts = accounts;
         this.properties = properties;
         this.events = events;
@@ -85,6 +88,7 @@ public class CampaignService {
         });
         found.sort(Comparator.comparing(Campaign::getUpdatedAt).reversed());
 
+        Map<Long, HunterClass> mains = mainHunters.mainHunters(principal, List.copyOf(accessById.keySet()));
         Map<Long, List<HunterSummary>> squads = new LinkedHashMap<>();
         hunters.findByCampaignIdInOrderByPosition(accessById.keySet()).forEach(hunter ->
                 squads.computeIfAbsent(hunter.getCampaignId(), key -> new ArrayList<>())
@@ -93,7 +97,8 @@ public class CampaignService {
                 .map(campaign -> new CampaignSummary(campaign.getId(), campaign.getName(), campaign.getChapter(),
                         campaign.getStatus(), accessById.get(campaign.getId()), accounts.userName(campaign.getOwnerId()),
                         squads.getOrDefault(campaign.getId(), List.of()),
-                        campaign.getStatus() == Campaign.Status.CHAPTER_TRANSITION, campaign.getUpdatedAt()))
+                        campaign.getStatus() == Campaign.Status.CHAPTER_TRANSITION, campaign.getUpdatedAt(),
+                        mains.get(campaign.getId())))
                 .toList();
     }
 
@@ -120,13 +125,13 @@ public class CampaignService {
         }
         hunters.flush();
         items.flush();
-        return sheets.sheet(campaign, CampaignAccess.OWNER);
+        return sheets.sheet(campaign, CampaignAccess.OWNER, null);
     }
 
     @Transactional(readOnly = true)
     public CampaignSheet sheet(PrimalPrincipal principal, long campaignId) {
         CampaignAccess campaignAccess = access.require(principal, campaignId);
-        return sheets.sheet(campaign(campaignId), campaignAccess);
+        return sheets.sheet(campaign(campaignId), campaignAccess, mainHunters.get(principal, campaignId).orElse(null));
     }
 
     /**
@@ -152,7 +157,8 @@ public class CampaignService {
         }
         campaign.touch(clock.instant());
         events.campaignChanged(campaignId);
-        return sheets.sheet(campaigns.saveAndFlush(campaign), campaignAccess);
+        return sheets.sheet(campaigns.saveAndFlush(campaign), campaignAccess,
+                mainHunters.get(principal, campaignId).orElse(null));
     }
 
     /** Состояние для боя; доступ проверяет вызывающий. Нет кампании — {@code 404}. */
@@ -198,11 +204,12 @@ public class CampaignService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "Кампания не найдена."));
     }
 
+    /** В {@code current} основной персонаж не передаётся: после конфликта клиент всё равно перезапрашивает лист. */
     void requireVersion(Campaign campaign, int expectedVersion, CampaignAccess campaignAccess) {
         if (campaign.getVersion() != expectedVersion) {
             throw new ApiException(ErrorCode.VERSION_CONFLICT, "Кампания уже изменена на другом устройстве (версия "
                     + campaign.getVersion() + ", ожидалась " + expectedVersion + ").")
-                    .with("current", sheets.sheet(campaign, campaignAccess));
+                    .with("current", sheets.sheet(campaign, campaignAccess, null));
         }
     }
 

@@ -11,6 +11,7 @@ from pages.battle_page import BattlePage
 from pages.campaign_battle_page import CampaignBattleSetupPage, to_rewards, win
 from pages.campaign_sheet_page import CampaignSheetPage
 from pages.campaigns_page import CampaignsPage
+from pages.join_page import JoinPage
 from pages.main_page import MainPage
 from pages.rewards_page import OutcomePage, TransitionPage
 from pages.share_dialog import ShareDialog
@@ -25,7 +26,7 @@ class TestSharedCampaign:
     def test_owner_and_guest(self, page: Page, browser: Browser, base_url: str):
         # подготовка: владелец создаёт кампанию, проходит пролог и делится ссылкой
         register(page, name="Алиса")
-        CampaignsPage(page).open().create().create("Общая", ["DAREON", "MIRA"])
+        CampaignsPage(page).open().create().create("Общая", ["DAREON", "MIRA"], {"DAREON": "Алиса", "MIRA": "Вадим"})
         expect(page).to_have_url(re.compile(r"/campaigns/\d+/battle/new$"))
         campaign_id = int(page.url.rstrip("/").split("/")[-3])
         owner_sheet = play_prologue(page, campaign_id)
@@ -33,15 +34,21 @@ class TestSharedCampaign:
         invite = urlparse(share.create()).path
         share.close()
 
-        # гость открывает ссылку в другом браузере и присоединяется под именем
+        # гость открывает ссылку в другом браузере и выбирает своего персонажа вместо ввода имени
         guest_context = browser.new_context(base_url=base_url, locale="ru-RU", viewport={"width": 412, "height": 915})
         guest = guest_context.new_page()
         guest.goto(invite)
+        join = JoinPage(guest)
         expect(guest.get_by_test_id("join-campaign")).to_contain_text("«Общая»")
-        guest.get_by_test_id("join-name").fill("Вадим")
-        guest.get_by_test_id("join-submit").click()
+        with check("Окно выбора персонажа: игроки отряда, поля имени нет"):
+            assert join.hunters() == ["Алиса", "Вадим"]
+            assert not join.has_name_field()
+        join.choose("Вадим")
         guest_sheet = CampaignSheetPage(guest, campaign_id)
         guest_sheet.should_be_open()
+        with check("Выбранный персонаж — основной у гостя: выбран и выделен"):
+            assert guest_sheet.main_hunter() == "Вадим"
+            assert guest_sheet.selected_hunter() == "Вадим"
         with check("Токен убран из адресной строки гостя"):
             expect(guest).to_have_url(re.compile(rf"/campaigns/{campaign_id}$"))
         with check("У гостя нет «Поделиться» и «Удалить кампанию»"):

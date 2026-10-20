@@ -125,6 +125,57 @@ describe('Лист кампании: шапка', () => {
   });
 });
 
+describe('Лист кампании: основной персонаж', () => {
+  const option = (player: string) => {
+    const found = screen.getAllByTestId('hunter-option').find((element) => element.dataset.player === player);
+    if (found === undefined) throw new Error(`Нет охотника «${player}»`);
+    return found;
+  };
+
+  it('основной персонаж выбран по умолчанию и выделен жирным', async () => {
+    // вызов
+    await openSheet(sheetFixture({ mainHunter: 'MIRA' }));
+
+    // проверка
+    expect(await screen.findByRole('radio', { name: 'Мира' })).toBeChecked();
+    expect(option('Мира').dataset.main).toBe('true');
+    expect(option('Мира')).toHaveStyle({ fontWeight: '700' });
+    expect(option('Боец').dataset.main).toBe('false');
+    expect(screen.getByRole('checkbox', { name: 'Основной персонаж' })).toBeChecked();
+  });
+
+  it('без основного персонажа выбран первый охотник; «Основной персонаж» отправляет выбор и снимает его', async () => {
+    // подготовка
+    const requests: unknown[] = [];
+    server.use(
+      http.put('*/api/v1/campaigns/12/main-hunter', async ({ request }) => {
+        const body = (await request.json()) as { hunterClass: string | null };
+        requests.push(body);
+        return HttpResponse.json({ mainHunter: body.hunterClass });
+      }),
+    );
+    const { user } = await openSheet();
+    expect(await screen.findByRole('radio', { name: 'Боец · Дареон' })).toBeChecked();
+    const checkbox = screen.getByRole('checkbox', { name: 'Основной персонаж' });
+    expect(checkbox).not.toBeChecked();
+
+    // вызов
+    await user.click(screen.getByRole('radio', { name: 'Мира' }));
+    await user.click(checkbox);
+
+    // проверка
+    await waitFor(() => expect(option('Мира').dataset.main).toBe('true'));
+    expect(screen.getByRole('checkbox', { name: 'Основной персонаж' })).toBeChecked();
+
+    // вызов: снять выбор
+    await user.click(screen.getByRole('checkbox', { name: 'Основной персонаж' }));
+
+    // проверка
+    await waitFor(() => expect(option('Мира').dataset.main).toBe('false'));
+    expect(requests).toEqual([{ hunterClass: 'MIRA' }, { hunterClass: null }]);
+  });
+});
+
 describe('Лист кампании: навыки', () => {
   it('в новой кампании навыки закрыты, ступень 2 недоступна без ступени 1', async () => {
     // вызов

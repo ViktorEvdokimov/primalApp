@@ -79,6 +79,16 @@ describe('Кузница', () => {
     expect(router.state.location.pathname).toBe('/campaigns/12/forge');
   });
 
+  it('по умолчанию выбран основной персонаж, он выделен жирным', async () => {
+    // вызов
+    await openForge(forgeSheet({ mainHunter: 'MIRA' }));
+
+    // проверка
+    expect(screen.getByRole('radio', { name: 'Мира' })).toBeChecked();
+    const main = screen.getAllByTestId('forge-hunter-option').filter((element) => element.dataset.main === 'true');
+    expect(main.map((element) => element.dataset.player)).toEqual(['Мира']);
+  });
+
   it('кузни не открыты — пояснение, без планшетов', async () => {
     // вызов
     await openForge(forgeSheet({ openForges: [] }));

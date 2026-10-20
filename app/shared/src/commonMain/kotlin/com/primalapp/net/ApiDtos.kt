@@ -46,7 +46,9 @@ data class CampaignSummaryDto(
     val ownerName: String,
     val hunters: List<HunterSummaryDto> = emptyList(),
     val pendingTransition: Boolean = false,
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    /** основной персонаж этого входа (код класса); `null` — не выбран (web api.md §5.7) */
+    val mainHunter: String? = null
 )
 
 // region Снимок кампании (api.md §11)
@@ -159,10 +161,24 @@ data class JoinedDto(val kind: String, val name: String, val joinedAt: String? =
 data class ShareLinkDto(val url: String, val createdAt: String? = null, val joined: List<JoinedDto> = emptyList())
 
 @Serializable
-data class ShareInfoDto(val kind: String, val name: String, val ownerName: String)
+data class ShareInfoDto(
+    val kind: String,
+    val name: String,
+    val ownerName: String,
+    /** отряд — для выбора своего персонажа (старый сервер его не присылает) */
+    val hunters: List<HunterSummaryDto> = emptyList()
+)
+
+/** [hunterClass] — свой персонаж: становится основным; у гостя без имени имя его игрока — имя в истории боёв. */
+@Serializable
+data class JoinRequest(val displayName: String? = null, val hunterClass: String? = null)
+
+/** Основной персонаж: [hunterClass] — код класса охотника отряда, `null` — снять выбор. */
+@Serializable
+data class MainHunterRequest(val hunterClass: String?)
 
 @Serializable
-data class JoinRequest(val displayName: String? = null)
+data class MainHunterDto(val mainHunter: String? = null)
 
 @Serializable
 data class JoinResultDto(val kind: String, val id: Long)

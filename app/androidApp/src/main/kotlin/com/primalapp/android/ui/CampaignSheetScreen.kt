@@ -170,16 +170,13 @@ private fun BattleBlock(app: AppViewModel, localId: Long, state: CampaignSheetSt
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HuntersTab(state: CampaignSheetState, viewModel: CampaignSheetViewModel, onExchange: (ExchangeRequest) -> Unit) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        state.hunters.forEach { hunter ->
-            FilterChip(
-                selected = hunter.hunterClass == state.hunter?.hunterClass,
-                onClick = { viewModel.onHunterSelected(hunter.hunterClass) },
-                label = { Text("${hunter.hunterClass.displayName} — ${hunter.playerName}") }
-            )
-        }
-    }
+    HunterChips(state.hunters, state.hunter?.hunterClass, state.mainHunter) { viewModel.onHunterSelected(it) }
     val hunter = state.hunter ?: return
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = state.isMainHunter, onCheckedChange = { viewModel.onMainHunterToggled(it) })
+        Text("Основной персонаж")
+    }
+    Hint("Выбран по умолчанию в листе, кузнице и лаборатории и выделен жирным. У каждого участника свой.")
     TextButton(onClick = { viewModel.onRenameHunterRequested() }) { Text("Изменить имя игрока") }
     SectionTitle("Древо навыков")
     SkillBranch.entries.forEach { branch ->

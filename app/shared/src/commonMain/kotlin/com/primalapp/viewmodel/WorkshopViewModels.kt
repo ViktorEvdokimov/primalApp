@@ -36,6 +36,8 @@ data class ForgeItemRow(
 data class ForgeState(
     val hunters: List<HunterState> = emptyList(),
     val selectedHunter: HunterClass? = null,
+    /** основной персонаж — выбран по умолчанию, выделен жирным */
+    val mainHunter: HunterClass? = null,
     val forgeLevel: Int = 1,
     val openForges: List<Element> = emptyList(),
     val element: Element? = null,
@@ -56,6 +58,9 @@ data class ExchangeRequest(val hunter: HunterClass, val missing: List<CostPart>,
  */
 class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : CampaignScopedViewModel(app, localId, scope) {
 
+    /** Игрок сам выбрал охотника — до этого выбран основной персонаж (или первый в отряде). */
+    private var hunterPicked = false
+
     private val _state = MutableStateFlow(ForgeState())
     val state: StateFlow<ForgeState> = _state.asStateFlow()
 
@@ -67,10 +72,10 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
         val state = campaign.state
         val open = rules.openForges(state)
         _state.update { current ->
-            val hunter = current.selectedHunter?.takeIf { state.hunter(it) != null } ?: state.squad.firstOrNull()?.hunterClass
+            val hunter = defaultHunter(state, campaign, current.selectedHunter.takeIf { hunterPicked })
             val element = current.element?.takeIf { it in open } ?: open.firstOrNull()
             rebuild(current.copy(hunters = state.squad, selectedHunter = hunter, forgeLevel = state.forgeLevel,
-                openForges = open, element = element), campaign)
+                mainHunter = campaign.mainHunter, openForges = open, element = element), campaign)
         }
     }
 
@@ -99,7 +104,10 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
         return current.copy(items = items, stock = stock)
     }
 
-    fun onHunterSelected(hunterClass: HunterClass) = _state.update { rebuild(it.copy(selectedHunter = hunterClass)) }
+    fun onHunterSelected(hunterClass: HunterClass) {
+        hunterPicked = true
+        _state.update { rebuild(it.copy(selectedHunter = hunterClass)) }
+    }
 
     fun onElementSelected(element: Element) = _state.update { rebuild(it.copy(element = element)) }
 
@@ -144,6 +152,8 @@ data class LabConfirm(val potion: PotionRow, val choices: List<LabUnitChoice>, v
 data class LabState(
     val hunters: List<HunterState> = emptyList(),
     val selectedHunter: HunterClass? = null,
+    /** основной персонаж — выбран по умолчанию, выделен жирным */
+    val mainHunter: HunterClass? = null,
     val labLevel: Int = 1,
     val potions: List<PotionRow> = emptyList(),
     val stock: List<CostPart> = emptyList(),
@@ -183,6 +193,9 @@ data class LabState(
  */
 class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : CampaignScopedViewModel(app, localId, scope) {
 
+    /** Игрок сам выбрал охотника — до этого выбран основной персонаж (или первый в отряде). */
+    private var hunterPicked = false
+
     private val _state = MutableStateFlow(LabState())
     val state: StateFlow<LabState> = _state.asStateFlow()
 
@@ -193,8 +206,9 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
     override fun onCampaign(campaign: StoredCampaign) {
         val state = campaign.state
         _state.update { current ->
-            val hunter = current.selectedHunter?.takeIf { state.hunter(it) != null } ?: state.squad.firstOrNull()?.hunterClass
-            rebuild(current.copy(hunters = state.squad, selectedHunter = hunter, labLevel = state.labLevel))
+            val hunter = defaultHunter(state, campaign, current.selectedHunter.takeIf { hunterPicked })
+            rebuild(current.copy(hunters = state.squad, selectedHunter = hunter, mainHunter = campaign.mainHunter,
+                labLevel = state.labLevel))
         }
     }
 
@@ -223,7 +237,10 @@ class LabViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : Ca
         return search(0, emptyMap())
     }
 
-    fun onHunterSelected(hunterClass: HunterClass) = _state.update { rebuild(it.copy(selectedHunter = hunterClass)) }
+    fun onHunterSelected(hunterClass: HunterClass) {
+        hunterPicked = true
+        _state.update { rebuild(it.copy(selectedHunter = hunterClass)) }
+    }
 
     fun onBrewRequested(row: PotionRow) {
         val hunter = _state.value.hunter ?: return

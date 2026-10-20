@@ -163,9 +163,15 @@ class PrimalApi(
 
     suspend fun shareInfo(token: String): ShareInfoDto = get("/share/$token", ShareInfoDto.serializer())
 
-    suspend fun join(token: String, displayName: String?): JoinResultDto =
-        send(HttpMethod.Post, "/share/$token/join", JoinRequest(displayName?.takeIf { it.isNotBlank() }), JoinRequest.serializer(),
-            JoinResultDto.serializer())
+    /** Вход по ссылке; [hunterClass] — свой персонаж (становится основным), [displayName] — имя гостя вручную. */
+    suspend fun join(token: String, displayName: String?, hunterClass: String? = null): JoinResultDto =
+        send(HttpMethod.Post, "/share/$token/join", JoinRequest(displayName?.takeIf { it.isNotBlank() }, hunterClass),
+            JoinRequest.serializer(), JoinResultDto.serializer())
+
+    /** Основной персонаж этого входа в кампании; возвращает выбор сервера. */
+    suspend fun setMainHunter(id: Long, hunterClass: String?): String? =
+        send(HttpMethod.Put, "/campaigns/$id/main-hunter", MainHunterRequest(hunterClass), MainHunterRequest.serializer(),
+            MainHunterDto.serializer()).mainHunter
 
     /**
      * Поток событий кампании (SSE): события только уведомляют о новой версии — приложение само запрашивает снимок.

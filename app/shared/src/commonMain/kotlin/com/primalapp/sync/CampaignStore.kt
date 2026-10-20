@@ -12,6 +12,7 @@ import com.primalapp.database.currentTimeMillis
 import com.primalapp.database.dao.CampaignStoreDao
 import com.primalapp.database.entity.CampaignStoreEntity
 import com.primalapp.model.campaign.Expansion
+import com.primalapp.model.campaign.HunterClass
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -37,7 +38,9 @@ data class StoredCampaign(
     val upload: Boolean,
     val syncMessage: String?,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    /** основной персонаж этого входа: выбран по умолчанию в листе, кузнице и лаборатории (web qa № 150) */
+    val mainHunter: HunterClass? = null
 ) {
     val onServer: Boolean get() = serverId != null
 
@@ -132,6 +135,14 @@ class CampaignStore(
         }
     }
 
+    /**
+     * Основной персонаж ([hunterClass] `null` — снять выбор). Свой у каждого входа: у копии кампании с сервера выбор
+     * уходит на сервер при синхронизации, у кампании на устройстве — после её загрузки на сервер.
+     */
+    suspend fun setMainHunter(localId: Long, hunterClass: HunterClass?) = mutex.withLock {
+        dao.get(localId)?.let { dao.update(it.copy(mainHunter = hunterClass?.name, mainHunterDirty = true)) }
+    }.also { onLocalChange(localId) }
+
     suspend fun markDeleted(localId: Long) = mutex.withLock {
         dao.get(localId)?.let { dao.update(it.copy(pendingDelete = true)) }
     }.also { onLocalChange(localId) }
@@ -144,7 +155,23 @@ class CampaignStore(
 
     internal suspend fun insertEntity(entity: CampaignStoreEntity): Long = dao.insert(entity)
 
-    internal suspend fun updateEntity(entity: CampaignStoreEntity) = dao.update(entity)
+    /** Запись копии с сервера; основной персонаж — выбор этого входа — остаётся прежним (меняют его методы ниже). */
+    internal suspend fun updateEntity(entity: CampaignStoreEntity) {
+        val current = dao.get(entity.localId)
+        dao.update(if (current == null) entity else entity.copy(mainHunter = current.mainHunter, mainHunterDirty = current.mainHunterDirty))
+    }
+
+    /** Выбор с сервера — если свой выбор не ждёт отправки. */
+    internal suspend fun applyServerMainHunter(localId: Long, mainHunter: String?) = mutex.withLock {
+        val current = dao.get(localId) ?: return@withLock
+        if (!current.mainHunterDirty && current.mainHunter != mainHunter) dao.update(current.copy(mainHunter = mainHunter))
+    }
+
+    /** Выбор [sent] отправлен, сервер ответил [saved]; выбор, сделанный за время отправки, ждёт следующей. */
+    internal suspend fun mainHunterSent(localId: Long, sent: String?, saved: String?) = mutex.withLock {
+        val current = dao.get(localId) ?: return@withLock
+        if (current.mainHunter == sent) dao.update(current.copy(mainHunter = saved, mainHunterDirty = false))
+    }
 
     internal suspend fun allEntities(): List<CampaignStoreEntity> = dao.all()
 
@@ -195,7 +222,8 @@ class CampaignStore(
         upload = entity.upload,
         syncMessage = entity.syncMessage,
         createdAt = entity.createdAt,
-        updatedAt = entity.updatedAt
+        updatedAt = entity.updatedAt,
+        mainHunter = entity.mainHunter?.let { code -> HunterClass.entries.firstOrNull { it.name == code } }
     )
 
     private fun decodeOrNull(entity: CampaignStoreEntity): StoredCampaign? = runCatching { decode(entity) }.getOrNull()

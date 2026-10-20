@@ -416,8 +416,31 @@ class MigrationTest {
         migrated.close()
     }
 
+    //region Миграция 18→19: основной персонаж
+
     @Test
-    fun `чистая установка версии 18 — пустые кампании и настройки`() {
+    fun `миграция 18→19 добавляет основного персонажа — у старых кампаний он не выбран`() {
+        // Подготовка
+        helper.createDatabase(TEST_DB, 18).apply {
+            execSQL(
+                "INSERT INTO campaign_store (access, state_json, pending_ops, pending_delete, upload, created_at, updated_at) " +
+                    "VALUES ('LOCAL', '{}', '[]', 0, 0, 1, 1)"
+            )
+            close()
+        }
+
+        // Вызов проверяемого кода
+        val migrated = helper.runMigrationsAndValidate(TEST_DB, 19, true, MIGRATION_18_19)
+
+        // Проверка
+        assertEquals(1, migrated.queryInt("SELECT COUNT(*) FROM campaign_store WHERE main_hunter IS NULL AND main_hunter_dirty = 0"))
+        migrated.close()
+    }
+
+    //endregion
+
+    @Test
+    fun `чистая установка последней версии — пустые кампании и настройки`() {
         // Подготовка
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val db = createPrimalDatabase(PlatformContext(context))

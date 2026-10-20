@@ -85,6 +85,8 @@ public final class CampaignSheetDto {
      * Лист кампании целиком ({@code doc/api.md} §5.2).
      *
      * @param openForges кузни открытых стихий — стихии побеждённых боссов (трофеи) в порядке справочника
+     * @param mainHunter основной персонаж того, кто запросил лист (свой у каждого участника, qa № 150);
+     *                   {@code null} — не выбран
      */
     public record CampaignSheet(
             long id,
@@ -106,13 +108,14 @@ public final class CampaignSheetDto {
             List<TrophyItem> trophies,
             List<ActiveBattle> activeBattles,
             List<RecentBattle> recentBattles,
-            boolean pendingTransition) {
+            boolean pendingTransition,
+            @ApiNullable HunterClass mainHunter) {
     }
 
     public record HunterSummary(@JsonProperty("class") HunterClass hunterClass, String playerName) {
     }
 
-    /** Строка списка кампаний ({@code doc/api.md} §5.1). */
+    /** Строка списка кампаний ({@code doc/api.md} §5.1); {@code mainHunter} — основной персонаж участника. */
     public record CampaignSummary(
             long id,
             String name,
@@ -122,6 +125,7 @@ public final class CampaignSheetDto {
             String ownerName,
             List<HunterSummary> hunters,
             boolean pendingTransition,
-            Instant updatedAt) {
+            Instant updatedAt,
+            @ApiNullable HunterClass mainHunter) {
     }
 }

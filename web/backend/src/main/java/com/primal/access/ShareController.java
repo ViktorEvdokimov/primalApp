@@ -5,6 +5,8 @@ import com.primal.access.ShareLinkService.LinkView;
 import com.primal.common.api.ApiNullable;
 import com.primal.identity.DeviceCookies;
 import com.primal.identity.PrimalPrincipal;
+import com.primal.rules.model.HunterClass;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,11 +43,19 @@ class ShareController {
     record ShareLinkView(String url, Instant createdAt, List<ParticipantView> joined) {
     }
 
-    record InvitationView(InvitationKind kind, String name, String ownerName) {
+    /** Охотник отряда — для выбора своего персонажа при входе по ссылке. */
+    record InvitationHunter(@JsonProperty("class") HunterClass hunterClass, String playerName) {
     }
 
-    /** {@code displayName} — имя гостя в истории боёв; необязательно. */
-    record JoinRequest(@ApiNullable @Size(max = 60, message = "Имя — не длиннее 60 символов") String displayName) {
+    record InvitationView(InvitationKind kind, String name, String ownerName, List<InvitationHunter> hunters) {
+    }
+
+    /**
+     * {@code hunterClass} — свой персонаж: становится основным, а имя его игрока — именем гостя в истории боёв
+     * (если имени ещё нет). {@code displayName} — имя гостя вручную (версии приложения без выбора персонажа). Оба необязательны.
+     */
+    record JoinRequest(@ApiNullable @Size(max = 60, message = "Имя — не длиннее 60 символов") String displayName,
+                       @ApiNullable HunterClass hunterClass) {
     }
 
     record JoinResponse(InvitationKind kind, long id) {
@@ -85,7 +95,8 @@ class ShareController {
     @GetMapping("/api/v1/share/{token}")
     InvitationView invitation(@PathVariable String token) {
         ShareLinkService.Invitation invitation = links.invitation(token);
-        return new InvitationView(InvitationKind.CAMPAIGN, invitation.name(), invitation.ownerName());
+        return new InvitationView(InvitationKind.CAMPAIGN, invitation.name(), invitation.ownerName(),
+                invitation.hunters().stream().map(h -> new InvitationHunter(h.hunterClass(), h.playerName())).toList());
     }
 
     /** Без cookie создаётся гостевое устройство — ответ выдаёт его cookie {@code PRIMAL_DEVICE}. */
@@ -94,7 +105,7 @@ class ShareController {
     ResponseEntity<JoinResponse> join(@AuthenticationPrincipal PrimalPrincipal principal, @PathVariable String token,
                                       @Valid @RequestBody(required = false) JoinRequest body, HttpServletRequest request) {
         Joined joined = links.join(principal, token, body == null ? null : body.displayName(),
-                request.getHeader(HttpHeaders.USER_AGENT), clientIp(request));
+                body == null ? null : body.hunterClass(), request.getHeader(HttpHeaders.USER_AGENT), clientIp(request));
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
         if (joined.newDevice() != null) {
             response.header(HttpHeaders.SET_COOKIE, cookies.issue(joined.newDevice().token()).toString());

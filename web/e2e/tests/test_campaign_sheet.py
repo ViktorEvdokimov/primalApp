@@ -13,6 +13,8 @@ from pytest_check import check
 
 from pages.campaign_sheet_page import CampaignSheetPage
 from pages.campaigns_page import CampaignsPage
+from pages.forge_page import ForgePage
+from pages.lab_page import LabPage
 from tests.test_login import register
 
 CAMPAIGN_NAME = "SheetTest"
@@ -225,3 +227,29 @@ class TestCampaignSheet:
         campaigns.should_be_open()
         with check("Удалённой кампании нет в списке"):
             expect(campaigns.item(CAMPAIGN_NAME)).to_have_count(0)
+
+    @allure.title("Основной персонаж: выбран в листе — выделен и выбран по умолчанию в листе, кузнице и лаборатории")
+    def test_main_hunter(self, sheet: CampaignSheetPage):
+        # подготовка
+        campaign_id = int(sheet.page.url.rstrip("/").split("/")[-1])
+        with check("Без основного персонажа выбран первый охотник"):
+            assert sheet.main_hunter() is None
+            assert sheet.selected_hunter() == "Боец"
+
+        # вызов
+        sheet.select_hunter("Мира")
+        sheet.set_main_hunter()
+
+        # проверка
+        reopen(sheet)
+        with check("После перезагрузки Мира — основной и выбрана в листе"):
+            assert sheet.main_hunter() == "Мира"
+            assert sheet.selected_hunter() == "Мира"
+        forge = ForgePage(sheet.page, campaign_id).open()
+        forge.should_be_open()
+        with check("Кузница: выбрана Мира"):
+            assert forge.selected_hunter() == "Мира"
+        lab = LabPage(sheet.page, campaign_id).open()
+        lab.should_be_open()
+        with check("Лаборатория: выбрана Мира"):
+            assert lab.selected_hunter() == "Мира"

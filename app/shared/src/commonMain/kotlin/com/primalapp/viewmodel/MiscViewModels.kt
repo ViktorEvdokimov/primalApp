@@ -5,6 +5,7 @@ import com.primalapp.info.InfoEntry
 import com.primalapp.info.InfoSectionCode
 import com.primalapp.info.InfoText
 import com.primalapp.model.campaign.Expansion
+import com.primalapp.model.campaign.HunterClass
 import com.primalapp.net.ApiException
 import com.primalapp.net.OfflineException
 import com.primalapp.net.PrimalApi
@@ -362,17 +363,32 @@ class SettingsViewModel(private val app: AppViewModel, private val scope: Corout
 
 // region Приглашение
 
+/** Охотник отряда в окне «Кто вы в этой кампании?». */
+data class JoinHunter(val hunterClass: HunterClass, val playerName: String) {
+    val label: String get() = "${hunterClass.displayName} — $playerName"
+}
+
 data class JoinState(
     val loading: Boolean = true,
     val campaignName: String? = null,
     val ownerName: String? = null,
     val needsName: Boolean = true,
     val displayName: String = "",
+    /** Отряд для выбора своего персонажа; пусто — сервер без выбора: имя гостя вводится вручную. */
+    val hunters: List<JoinHunter> = emptyList(),
+    /** Окно «Кто вы в этой кампании?» открыто. */
+    val choosing: Boolean = false,
+    /** Персонаж, с которым идёт вход. */
+    val joiningAs: HunterClass? = null,
     val error: String? = null,
     val busy: Boolean = false
 )
 
-/** Ссылка-приглашение: «Вас пригласили в кампанию «…»», имя гостя и «Присоединиться». Нужен онлайн-режим. */
+/**
+ * Ссылка-приглашение: «Вас пригласили в кампанию «…»» и сразу окно «Кто вы в этой кампании?» — выбор своего
+ * персонажа вместо ввода имени (web qa № 150): он становится основным, у гостя без имени имя его игрока — имя в
+ * истории боёв. Сервер без выбора персонажа — имя гостя и «Присоединиться», как раньше. Нужен онлайн-режим.
+ */
 class JoinViewModel(private val app: AppViewModel, private val token: String, private val scope: CoroutineScope) {
 
     private val core = app.core
@@ -391,7 +407,13 @@ class JoinViewModel(private val app: AppViewModel, private val token: String, pr
         scope.launch {
             try {
                 val info = core.shareInfo(token)
-                _state.update { it.copy(loading = false, campaignName = info.name, ownerName = info.ownerName, error = null) }
+                val hunters = info.hunters.mapNotNull { hunter ->
+                    HunterClass.entries.firstOrNull { it.name == hunter.`class` }?.let { JoinHunter(it, hunter.playerName) }
+                }
+                _state.update {
+                    it.copy(loading = false, campaignName = info.name, ownerName = info.ownerName, hunters = hunters,
+                        choosing = hunters.isNotEmpty(), error = null)
+                }
             } catch (exception: Exception) {
                 val message = if (exception is ApiException && exception.status == 404) {
                     "Ссылка недействительна: её отозвали или перевыпустили. Попросите владельца кампании прислать новую."
@@ -405,11 +427,27 @@ class JoinViewModel(private val app: AppViewModel, private val token: String, pr
 
     fun onName(text: String) = _state.update { it.copy(displayName = text.take(60)) }
 
+    fun onChooseRequested() = _state.update { it.copy(choosing = true) }
+
+    fun onChooseDismissed() = _state.update { it.copy(choosing = false) }
+
+    /** Выбран свой персонаж — вход в кампанию. */
+    fun onHunterChosen(hunterClass: HunterClass) {
+        if (_state.value.busy) return
+        _state.update { it.copy(busy = true, joiningAs = hunterClass, error = null) }
+        join(null, hunterClass)
+    }
+
+    /** Сервер без выбора персонажа: вход с именем гостя. */
     fun onJoin() {
         _state.update { it.copy(busy = true) }
+        join(_state.value.displayName, null)
+    }
+
+    private fun join(displayName: String?, hunterClass: HunterClass?) {
         scope.launch {
             try {
-                val result = core.join(token, _state.value.displayName)
+                val result = core.join(token, displayName, hunterClass)
                 val localId = core.localIdForServer(result.id)
                 if (localId != null) {
                     app.replace(Screen.CampaignSheet(localId))
@@ -417,7 +455,7 @@ class JoinViewModel(private val app: AppViewModel, private val token: String, pr
                     app.replace(Screen.CampaignList)
                 }
             } catch (exception: Exception) {
-                _state.update { it.copy(busy = false, error = errorText(exception)) }
+                _state.update { it.copy(busy = false, joiningAs = null, choosing = false, error = errorText(exception)) }
             }
         }
     }

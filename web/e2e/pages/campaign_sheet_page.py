@@ -84,6 +84,25 @@ class CampaignSheetPage(BasePage):
     def select_hunter(self, player: str) -> None:
         self.page.locator(f'[data-testid="hunter-option"][data-player="{player}"]').click()
 
+    def selected_hunter(self) -> str:
+        """Игрок выбранного охотника (отмеченный вариант переключателя)."""
+        return selected_player(self.page, "hunter-switch", "hunter-option")
+
+    def main_hunter(self) -> str | None:
+        """Игрок основного персонажа (выделен жирным); не выбран — None."""
+        main = self.page.locator('[data-testid="hunter-option"][data-main="true"]')
+        expect(self.by_test_id("hunter-switch")).to_be_visible()
+        return main.get_attribute("data-player") if main.count() > 0 else None
+
+    def set_main_hunter(self, checked: bool = True) -> None:
+        """«Основной персонаж» для выбранного охотника; ждёт выделения."""
+        player = self.selected_hunter()
+        box = self.page.get_by_role("checkbox", name="Основной персонаж")
+        if box.is_checked() != checked:
+            box.click()
+        option = self.page.locator(f'[data-testid="hunter-option"][data-player="{player}"]')
+        expect(option).to_have_attribute("data-main", "true" if checked else "false")
+
     def skill(self, label: str) -> Locator:
         """Кнопка навыка по подписи: «А1», «Д2»."""
         return self.by_test_id("skill-tree").locator(f'[data-skill="{label}"]')
@@ -241,3 +260,14 @@ class QuestEditorDialog(BasePage):
     def cancel(self) -> None:
         self.click("quest-editor-cancel")
         expect(self.by_test_id(self.root_test_id)).to_be_hidden()
+
+
+def selected_player(page: Page, switch_test_id: str, option_test_id: str) -> str:
+    """Игрок отмеченного варианта переключателя охотников (Mantine SegmentedControl: радио + подпись)."""
+    switch = page.get_by_test_id(switch_test_id)
+    expect(switch).to_be_visible()
+    checked = switch.locator("input:checked")
+    return checked.evaluate(
+        "(input, testId) => input.parentElement.querySelector(`[data-testid=\"${testId}\"]`).dataset.player",
+        option_test_id,
+    )

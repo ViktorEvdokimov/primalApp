@@ -16,6 +16,8 @@ import androidx.room.PrimaryKey
  * @param pendingDelete удаление ждёт отправки на сервер
  * @param upload кампанию нужно загрузить на сервер (создана после входа или игрок попросил)
  * @param syncMessage последнее сообщение синхронизации для листа кампании
+ * @param mainHunter основной персонаж (код класса) этого входа — выбран по умолчанию в листе, кузнице и лаборатории
+ * @param mainHunterDirty выбор основного персонажа ещё не отправлен на сервер
  */
 @Entity(tableName = "campaign_store")
 data class CampaignStoreEntity(
@@ -49,7 +51,11 @@ data class CampaignStoreEntity(
     @ColumnInfo(name = "created_at")
     val createdAt: Long,
     @ColumnInfo(name = "updated_at")
-    val updatedAt: Long
+    val updatedAt: Long,
+    @ColumnInfo(name = "main_hunter")
+    val mainHunter: String? = null,
+    @ColumnInfo(name = "main_hunter_dirty", defaultValue = "0")
+    val mainHunterDirty: Boolean = false
 )
 
 /** Настройки приложения: режим, адрес сервера, сессия, дополнения — ключ и значение (JSON или текст). */

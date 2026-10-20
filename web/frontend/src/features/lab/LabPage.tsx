@@ -8,7 +8,6 @@ import {
   Loader,
   Modal,
   NativeSelect,
-  SegmentedControl,
   Stack,
   Text,
   Title,
@@ -22,6 +21,8 @@ import type { CampaignSheet, Dictionaries, HunterSheet, LabPotion, LabUnit } fro
 import { useLiveUpdates } from '../../api/useLiveUpdates';
 import { ru } from '../../shared/i18n/ru';
 import { ResourceIcon, ResourceStock } from '../../shared/ui/ResourceStock';
+import { HunterSwitch } from '../campaign/HunterSwitch';
+import { useHunterSelection } from '../campaign/hunterSelection';
 import { useCampaignSheet, withHunter, type SheetActions } from '../campaign/useCampaignSheet';
 import { ExchangeDialog, type Lack } from '../exchange/ExchangeDialog';
 import { affordable, defaultPlants, lackingPlants, spend, type PlantCode } from './lab';
@@ -75,10 +76,9 @@ interface LabProps {
 }
 
 function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
-  const [selectedId, setSelectedId] = useState(sheet.hunters[0]?.id);
+  const { hunter, select } = useHunterSelection(sheet.hunters, sheet.mainHunter);
   const [brewing, setBrewing] = useState<LabPotion | null>(null);
   const [exchanging, setExchanging] = useState<Lack[] | null>(null);
-  const hunter = sheet.hunters.find((item) => item.id === selectedId) ?? sheet.hunters[0];
   const names = new Map([...dictionaries.plants, ...dictionaries.hunterClasses].map((item) => [item.code, item.name]));
 
   return (
@@ -92,22 +92,13 @@ function Lab({ sheet, potions, dictionaries, actions, back }: LabProps) {
       </Group>
       {hunter !== undefined && (
         <>
-          <SegmentedControl
-            fullWidth
-            orientation={sheet.hunters.length > 3 ? 'vertical' : 'horizontal'}
-            value={String(hunter.id)}
-            onChange={(value) => setSelectedId(Number(value))}
-            data={sheet.hunters.map((item) => ({
-              value: String(item.id),
-              label: (
-                <span data-testid="lab-hunter-option" data-player={item.playerName} data-class={item.class}>
-                  {item.playerName === names.get(item.class)
-                    ? item.playerName
-                    : `${item.playerName} · ${names.get(item.class) ?? item.class}`}
-                </span>
-              ),
-            }))}
-            data-testid="lab-hunter-switch"
+          <HunterSwitch
+            hunters={sheet.hunters}
+            mainHunter={sheet.mainHunter}
+            value={hunter.id}
+            onChange={select}
+            classNames={names}
+            testIdPrefix="lab-hunter"
           />
           <ResourceStock
             resources={hunter.resources}

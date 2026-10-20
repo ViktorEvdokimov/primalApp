@@ -438,6 +438,27 @@ create unique index ux_share_access_device on share_access (share_link_id, devic
 действовать сразу, потому что проверка идёт через `share_link.revoked_at`. Когда гость входит по коду,
 `share_access` его устройства переписываются на пользователя (дубликаты удаляются).
 
+**Основной персонаж участника** (V14, qa № 150) — охотник, выбранный по умолчанию в листе, кузнице и
+лаборатории. Свой у каждого участника: строка пользователя или гостевого устройства.
+
+```sql
+create table campaign_main_hunter (
+    id            bigint      generated always as identity primary key,
+    campaign_id   bigint      not null references campaign(id) on delete cascade,
+    user_id       bigint      references app_user(id) on delete cascade,
+    device_id     uuid        references device(id) on delete cascade,
+    hunter_class  varchar(16) not null check (hunter_class in (…8 классов…)),
+    updated_at    timestamptz not null default now(),
+    check ((user_id is null) <> (device_id is null))
+);
+create unique index ux_campaign_main_hunter_user on campaign_main_hunter (campaign_id, user_id) where user_id is not null;
+create unique index ux_campaign_main_hunter_device on campaign_main_hunter (campaign_id, device_id) where device_id is not null;
+```
+
+Охотник проверяется по отряду кампании (`campaign_hunter`) при записи и при чтении: строка с охотником не из
+отряда не показывается. Гость, вошедший в аккаунт, передаёт строки устройства аккаунту (если у аккаунта в этой
+кампании выбора нет), строки устройства удаляются.
+
 ### 3.6 Инварианты и где они проверяются
 
 | Инвариант | Где |

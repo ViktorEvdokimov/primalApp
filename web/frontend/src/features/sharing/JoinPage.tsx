@@ -1,18 +1,24 @@
-import { Alert, Anchor, Button, Loader, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Anchor, Button, Loader, Modal, Stack, Text, Title } from '@mantine/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../../api/errors';
+import { useDictionaries } from '../../api/generated/catalog/catalog';
 import { getListCampaignsQueryKey } from '../../api/generated/campaigns/campaigns';
+import type { InvitationHunter, JoinRequestHunterClass } from '../../api/generated/primal.schemas';
 import { joinShareLink, useGetInvitation } from '../../api/generated/sharing/sharing';
 import { ru } from '../../shared/i18n/ru';
 import { ME_QUERY_KEY, useMe } from '../auth/useMe';
+import { hunterLabel } from '../campaign/hunterSelection';
 import { errorMessage } from '../campaign/useCampaignSheet';
 
+const CATALOG_STALE_MS = 60 * 60 * 1000;
+
 /**
- * Вход по ссылке-приглашению `/s/:token` (`api.md` §9.2): «Вас пригласили в кампанию…», имя для гостя,
- * `join` — и лист кампании. Токен убирается из адресной строки (`history.replaceState`), чтобы не остаться в
- * истории и закладках.
+ * Вход по ссылке-приглашению `/s/:token` (`api.md` §9.2): «Вас пригласили в кампанию…» и сразу окно «Кто вы в
+ * этой кампании?» — выбор своего персонажа вместо ввода имени (qa № 150). Выбранный охотник становится основным,
+ * у гостя без имени имя его игрока — имя в истории боёв. Токен убирается из адресной строки
+ * (`history.replaceState`), чтобы не остаться в истории и закладках.
  */
 export function JoinPage() {
   const token = useParams().token ?? '';
@@ -20,24 +26,33 @@ export function JoinPage() {
   const queryClient = useQueryClient();
   const { me, isLoading } = useMe();
   const invitation = useGetInvitation(token, { query: { retry: false } });
-  const [name, setName] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
+  const dictionaries = useDictionaries({ query: { staleTime: CATALOG_STALE_MS } });
+  // окно выбора открыто сразу, пока его не закрыли
+  const [dismissed, setDismissed] = useState(false);
+  const [joining, setJoining] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const signedIn = me?.kind === 'USER';
-  const guestName = name ?? (me?.kind === 'GUEST' ? (me.device.displayName ?? '') : '');
 
-  const join = async () => {
-    setJoining(true);
+  const classNames = new Map((dictionaries.data?.hunterClasses ?? []).map((item) => [item.code, item.name]));
+
+  const join = async (hunter: InvitationHunter) => {
+    setJoining(hunter.class);
     setError(null);
     try {
-      const joined = await joinShareLink(token, { displayName: signedIn || guestName.trim() === '' ? null : guestName.trim() });
+      const joined = await joinShareLink(token, {
+        displayName: null,
+        hunterClass: hunter.class as JoinRequestHunterClass,
+      });
       // Гость без cookie получил устройство: «кто я» и список кампаний изменились
       await queryClient.invalidateQueries({ queryKey: ME_QUERY_KEY });
       void queryClient.invalidateQueries({ queryKey: getListCampaignsQueryKey() });
       navigate(`/campaigns/${joined.id}`, { replace: true });
     } catch (failure) {
-      setError(failure instanceof ApiError && failure.code === 'SHARE_LINK_INVALID' ? ru.sharing.invalid : errorMessage(failure));
-      setJoining(false);
+      setError(
+        failure instanceof ApiError && failure.code === 'SHARE_LINK_INVALID' ? ru.sharing.invalid : errorMessage(failure),
+      );
+      setJoining(null);
+      setDismissed(true);
     }
   };
 
@@ -62,29 +77,55 @@ export function JoinPage() {
               {ru.sharing.owner(invitation.data.ownerName)}
             </Text>
           </div>
-          {!signedIn && (
-            <TextInput
-              label={ru.sharing.guestName}
-              description={ru.sharing.guestNameHint}
-              value={guestName}
-              maxLength={60}
-              onChange={(event) => setName(event.currentTarget.value)}
-              data-testid="join-name"
-            />
-          )}
           {error !== null && (
             <Alert color="red" data-testid="join-error">
               {error}
             </Alert>
           )}
-          <Button size="lg" loading={joining} onClick={() => void join()} data-testid="join-submit">
-            {ru.sharing.join}
+          <Button size="lg" loading={joining !== null} onClick={() => setDismissed(false)} data-testid="join-submit">
+            {ru.sharing.chooseHunter}
           </Button>
           {!signedIn && (
-            <Anchor component={Link} to={`/login?next=${encodeURIComponent(`/s/${token}`)}`} size="sm" data-testid="join-login">
+            <Anchor
+              component={Link}
+              to={`/login?next=${encodeURIComponent(`/s/${token}`)}`}
+              size="sm"
+              data-testid="join-login"
+            >
               {ru.sharing.loginHint}
             </Anchor>
           )}
+          <Modal
+            opened={!dismissed}
+            onClose={() => setDismissed(true)}
+            title={ru.sharing.chooseTitle}
+            centered
+            data-testid="join-hunters"
+          >
+            <Stack gap="sm">
+              <Text size="sm">{ru.sharing.chooseText}</Text>
+              {!signedIn && (
+                <Text size="sm" c="dimmed">
+                  {ru.sharing.chooseGuestText}
+                </Text>
+              )}
+              {invitation.data.hunters.map((hunter) => (
+                <Button
+                  key={hunter.class}
+                  variant="light"
+                  size="md"
+                  loading={joining === hunter.class}
+                  disabled={joining !== null && joining !== hunter.class}
+                  onClick={() => void join(hunter)}
+                  data-testid="join-hunter"
+                  data-class={hunter.class}
+                  data-player={hunter.playerName}
+                >
+                  {hunterLabel(hunter.playerName, classNames.get(hunter.class) ?? hunter.class)}
+                </Button>
+              ))}
+            </Stack>
+          </Modal>
         </Stack>
       )}
     </Stack>

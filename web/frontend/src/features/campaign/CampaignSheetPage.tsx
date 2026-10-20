@@ -119,7 +119,13 @@ function Sheet({ sheet, actions }: { sheet: CampaignSheet; actions: SheetActions
           {dictionaries.data === undefined ? (
             <Loader />
           ) : (
-            <HuntersTab campaignId={sheet.id} hunters={sheet.hunters} dictionaries={dictionaries.data} actions={actions} />
+            <HuntersTab
+              campaignId={sheet.id}
+              hunters={sheet.hunters}
+              mainHunter={sheet.mainHunter}
+              dictionaries={dictionaries.data}
+              actions={actions}
+            />
           )}
         </Tabs.Panel>
         <Tabs.Panel value="quests" pt="md">

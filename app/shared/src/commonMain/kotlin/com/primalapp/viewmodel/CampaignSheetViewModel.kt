@@ -107,6 +107,8 @@ data class CampaignSheetState(
     val tab: SheetTab = SheetTab.HUNTERS,
     val hunters: List<HunterState> = emptyList(),
     val selectedHunter: HunterClass? = null,
+    /** Основной персонаж этого входа: выбран по умолчанию в листе, кузнице и лаборатории, выделен жирным. */
+    val mainHunter: HunterClass? = null,
     val openQuests: List<QuestRow> = emptyList(),
     val completedQuests: List<QuestRow> = emptyList(),
     val expiredQuests: List<QuestRow> = emptyList(),
@@ -138,6 +140,7 @@ data class CampaignSheetState(
     val shareText: String? = null
 ) {
     val hunter: HunterState? get() = hunters.firstOrNull { it.hunterClass == selectedHunter } ?: hunters.firstOrNull()
+    val isMainHunter: Boolean get() = mainHunter != null && hunter?.hunterClass == mainHunter
     val canShare: Boolean get() = onServer && access == CampaignAccess.OWNER && !detached
     val canDelete: Boolean get() = access != CampaignAccess.LINK
     val pendingTransition: Boolean get() = status == CampaignStatus.CHAPTER_TRANSITION
@@ -163,6 +166,9 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
     val state: StateFlow<CampaignSheetState> = _state.asStateFlow()
 
     private var notesJob: Job? = null
+
+    /** Игрок сам выбрал охотника — до этого выбран основной персонаж (или первый в отряде). */
+    private var hunterPicked = false
     private var eventsJob: Job? = null
     private var pendingNotes: String? = null
 
@@ -198,8 +204,8 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
                 unsynced = campaign.hasUnsynced,
                 syncMessage = campaign.syncMessage,
                 hunters = state.squad,
-                selectedHunter = current.selectedHunter?.takeIf { selected -> state.hunter(selected) != null }
-                    ?: state.squad.firstOrNull()?.hunterClass,
+                mainHunter = campaign.mainHunter?.takeIf { state.hunter(it) != null },
+                selectedHunter = defaultHunter(state, campaign, current.selectedHunter.takeIf { hunterPicked }),
                 openQuests = state.openQuests.filter { questVisible(it.number) }.map { questRow(it.number, null) },
                 completedQuests = state.completedQuests.filter { questVisible(it.number) }.map { questRow(it.number, it.closedInChapter) },
                 expiredQuests = state.expiredQuests.filter { questVisible(it.number) }.map { questRow(it.number, it.closedInChapter) },
@@ -261,7 +267,18 @@ class CampaignSheetViewModel(app: AppViewModel, localId: Long, scope: CoroutineS
 
     fun onTabSelected(tab: SheetTab) = _state.update { it.copy(tab = tab) }
 
-    fun onHunterSelected(hunterClass: HunterClass) = _state.update { it.copy(selectedHunter = hunterClass) }
+    fun onHunterSelected(hunterClass: HunterClass) {
+        hunterPicked = true
+        _state.update { it.copy(selectedHunter = hunterClass) }
+    }
+
+    /** «Основной персонаж»: выбранный охотник становится основным, снятие флажка убирает выбор (web qa № 150). */
+    fun onMainHunterToggled(checked: Boolean) {
+        val selected = _state.value.hunter?.hunterClass ?: return
+        hunterPicked = true
+        _state.update { it.copy(selectedHunter = selected) }
+        scope.launch { core.store.setMainHunter(localId, if (checked) selected else null) }
+    }
 
     fun onRefresh() {
         if (!core.settings.current.online) {

@@ -7,6 +7,7 @@ import com.primalapp.campaign.CampaignState
 import com.primalapp.catalog.Catalog
 import com.primalapp.database.currentTimeMillis
 import com.primalapp.model.campaign.Expansion
+import com.primalapp.model.campaign.HunterClass
 import com.primalapp.sync.StoredCampaign
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +46,15 @@ abstract class CampaignScopedViewModel(
     protected abstract fun onCampaign(campaign: StoredCampaign)
 
     protected val actor get() = core.settings.current.activeAccount?.actor()
+
+    /**
+     * Охотник по умолчанию: выбранный игроком ([picked]), иначе основной персонаж, иначе первый в отряде
+     * (web qa № 150).
+     */
+    protected fun defaultHunter(state: CampaignState, campaign: StoredCampaign, picked: HunterClass?): HunterClass? =
+        picked?.takeIf { state.hunter(it) != null }
+            ?: campaign.mainHunter?.takeIf { state.hunter(it) != null }
+            ?: state.squad.firstOrNull()?.hunterClass
 
     protected fun now(): Long = currentTimeMillis()
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
@@ -152,7 +153,10 @@ fun LoginScreen(app: AppViewModel) {
     }
 }
 
-/** Приглашение по ссылке: «Вас пригласили в кампанию «…»», имя гостя и «Присоединиться». */
+/**
+ * Приглашение по ссылке: «Вас пригласили в кампанию «…»» и сразу окно «Кто вы в этой кампании?» — выбор своего
+ * персонажа вместо ввода имени (web qa № 150). Сервер без выбора персонажа — имя гостя и «Присоединиться».
+ */
 @Composable
 fun JoinScreen(app: AppViewModel, token: String) {
     val scope = rememberCoroutineScope()
@@ -169,14 +173,46 @@ fun JoinScreen(app: AppViewModel, token: String) {
                 Text("Вас пригласили в кампанию «${state.campaignName}»", fontWeight = FontWeight.Bold)
                 Text("Владелец: ${state.ownerName}")
                 Spacer(Modifier.height(8.dp))
+                if (state.hunters.isEmpty()) {
+                    // Сервер без выбора персонажа: имя гостя вручную
+                    if (state.needsName) {
+                        OutlinedTextField(value = state.displayName, onValueChange = { viewModel.onName(it) },
+                            label = { Text("Ваше имя (для истории боёв)") }, modifier = Modifier.fillMaxWidth())
+                    }
+                    ErrorText(state.error)
+                    Button(onClick = { viewModel.onJoin() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Присоединиться") }
+                } else {
+                    ErrorText(state.error)
+                    Button(onClick = { viewModel.onChooseRequested() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                        Text("Выбрать персонажа")
+                    }
+                }
                 if (state.needsName) {
-                    OutlinedTextField(value = state.displayName, onValueChange = { viewModel.onName(it) },
-                        label = { Text("Ваше имя (для истории боёв)") }, modifier = Modifier.fillMaxWidth())
                     Hint("Можно войти или зарегистрироваться в настройках — тогда кампания будет доступна в аккаунте.")
                 }
-                ErrorText(state.error)
-                Button(onClick = { viewModel.onJoin() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Присоединиться") }
-                Column {}
+                if (state.choosing && state.hunters.isNotEmpty()) {
+                    AlertDialog(
+                        onDismissRequest = { if (!state.busy) viewModel.onChooseDismissed() },
+                        title = { Text("Кто вы в этой кампании?") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Выберите своего персонажа — он станет основным: будет выбран по умолчанию в листе, кузнице и лаборатории.")
+                                if (state.needsName) Hint("Имя его игрока станет вашим именем в истории боёв.")
+                                state.hunters.forEach { hunter ->
+                                    OutlinedButton(onClick = { viewModel.onHunterChosen(hunter.hunterClass) }, enabled = !state.busy,
+                                        modifier = Modifier.fillMaxWidth()) {
+                                        if (state.joiningAs == hunter.hunterClass) CircularProgressIndicator(Modifier.height(18.dp))
+                                        else Text(hunter.label)
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = { viewModel.onChooseDismissed() }, enabled = !state.busy) { Text("Отмена") }
+                        }
+                    )
+                }
             }
         }
     }

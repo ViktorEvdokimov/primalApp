@@ -13,6 +13,7 @@ import com.primal.campaign.CampaignSheetDto.TrophyItem;
 import com.primal.identity.AccountService;
 import com.primal.rules.model.Difficulty;
 import com.primal.rules.model.Element;
+import com.primal.rules.model.HunterClass;
 import com.primal.rules.model.ResourceCode;
 import com.primal.rules.model.SkillTree;
 import com.primal.rules.model.SkillTree.Skill;
@@ -59,8 +60,9 @@ public class CampaignSheetService {
         this.accounts = accounts;
     }
 
+    /** Лист кампании; {@code mainHunter} — основной персонаж того, кто его запросил ({@code null} — не выбран). */
     @Transactional(readOnly = true)
-    public CampaignSheet sheet(Campaign campaign, CampaignAccess access) {
+    public CampaignSheet sheet(Campaign campaign, CampaignAccess access, HunterClass mainHunter) {
         long id = campaign.getId();
         return new CampaignSheet(
                 id,
@@ -85,7 +87,8 @@ public class CampaignSheetService {
                 trophyItems(id),
                 battles.active(id, campaign.getProgressSeq()),
                 battles.recent(id),
-                campaign.getStatus() == Campaign.Status.CHAPTER_TRANSITION);
+                campaign.getStatus() == Campaign.Status.CHAPTER_TRANSITION,
+                mainHunter);
     }
 
     /** Охотник листа: навыки, доступные ступени, ненулевые ресурсы в порядке справочника. */

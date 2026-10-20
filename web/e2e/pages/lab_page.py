@@ -4,6 +4,7 @@ import allure
 from playwright.sync_api import Locator, Page, expect
 
 from pages.base_page import BasePage
+from pages.campaign_sheet_page import selected_player
 
 
 class LabPage(BasePage):
@@ -18,6 +19,9 @@ class LabPage(BasePage):
 
     def should_be_open(self) -> None:
         expect(self.by_test_id("lab-level")).to_be_visible(timeout=10000)
+
+    def selected_hunter(self) -> str:
+        return selected_player(self.page, "lab-hunter-switch", "lab-hunter-option")
 
     def potion_names(self) -> list[str]:
         potions = self.by_test_id("lab-potion")

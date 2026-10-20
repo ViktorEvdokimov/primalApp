@@ -42,6 +42,8 @@ import type {
   HunterSheet,
   ItemChangeRequest,
   ItemRequest,
+  MainHunterRequest,
+  MainHunterView,
   OpenQuestsRequest,
   QuestLists,
   RenameHunterRequest,
@@ -332,6 +334,88 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSetOpenQuestsMutationOptions(options), queryClient);
+    }
+    export const getSetMainHunterUrl = (campaignId: number,) => {
+
+
+
+
+  return `/api/v1/campaigns/${campaignId}/main-hunter`
+}
+
+export const setMainHunter = async (campaignId: number,
+    mainHunterRequest: MainHunterRequest, options?: Parameters<typeof apiFetch>[1]): Promise<MainHunterView> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<MainHunterView>(getSetMainHunterUrl(campaignId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(mainHunterRequest)
+  }
+);}
+
+
+
+
+
+export const getSetMainHunterMutationKey = () => ['setMainHunter'] as const;
+
+export const getSetMainHunterMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMainHunter>>, TError,SetMainHunterMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setMainHunter>>, TError,SetMainHunterMutationVariables, TContext> => {
+
+const mutationKey = getSetMainHunterMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setMainHunter>>, SetMainHunterMutationVariables> = (props) => {
+          const {campaignId,data} = props ?? {};
+
+          return  setMainHunter(campaignId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetMainHunterMutationResult = NonNullable<Awaited<ReturnType<typeof setMainHunter>>>
+    export type SetMainHunterMutationBody = MainHunterRequest
+    export type SetMainHunterMutationError = unknown
+    export type SetMainHunterMutationVariables = {campaignId: number;data: MainHunterRequest}
+
+    export const useSetMainHunter = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMainHunter>>, TError,SetMainHunterMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setMainHunter>>,
+        TError,
+        SetMainHunterMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetMainHunterMutationOptions(options), queryClient);
     }
     export const getListCampaignsUrl = () => {
 
