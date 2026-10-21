@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useGetInfo } from '../../api/generated/info/info';
 import type { InfoEntry, InfoSectionView } from '../../api/generated/primal.schemas';
+import { cardCodes } from '../../shared/cards/equipmentCards';
 import { ru } from '../../shared/i18n/ru';
 import { InfoText } from './InfoText';
 import {
@@ -53,7 +54,7 @@ function BackLink() {
   );
 }
 
-function Frame({ title, children }: { title: string; children: ReactNode }) {
+export function Frame({ title, children }: { title: string; children: ReactNode }) {
   return (
     <Stack gap="md" data-testid="page-info">
       <BackLink />
@@ -160,6 +161,20 @@ export function InfoPage() {
               </Group>
             </Card>
           ))}
+          {/* Экипировка — из каталогов кузницы и лаборатории и карт игры, а не из статей «Инфо» (qa № 154) */}
+          <Card
+            withBorder
+            padding="md"
+            component={Link}
+            to="/info/equipment"
+            data-testid="info-section"
+            data-section="EQUIPMENT"
+          >
+            <Group justify="space-between">
+              <Text fw={600}>{ru.equipment.title}</Text>
+              <Badge variant="light">{cardCodes.length}</Badge>
+            </Group>
+          </Card>
         </Stack>
       )}
     </Frame>

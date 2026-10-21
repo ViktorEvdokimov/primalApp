@@ -45,6 +45,7 @@ import com.primalapp.info.InfoSegment
 import com.primalapp.info.InfoText
 import com.primalapp.viewmodel.AppViewModel
 import com.primalapp.viewmodel.InfoViewModel
+import com.primalapp.viewmodel.Screen
 
 /** «Инфо»: поиск по всем разделам, разделы; ключевые слова раскрываются, реакции и жетоны — карточки. */
 @Composable
@@ -88,6 +89,15 @@ fun InfoScreen(app: AppViewModel, section: InfoSectionCode?, entryId: Long?) {
                             Column(Modifier.padding(14.dp)) {
                                 Text(code.title, fontWeight = FontWeight.Bold)
                                 Hint(if (count == 0) "скоро" else "Статей: $count")
+                            }
+                        }
+                    }
+                    // Экипировка — карты снаряжения из файлов приложения, а не статьи «Инфо» (web qa № 154)
+                    item(key = "equipment") {
+                        Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { app.navigate(Screen.Equipment) }) {
+                            Column(Modifier.padding(14.dp)) {
+                                Text("Экипировка", fontWeight = FontWeight.Bold)
+                                Hint("Предметов: ${app.core.equipmentCards.codes.size}")
                             }
                         }
                     }

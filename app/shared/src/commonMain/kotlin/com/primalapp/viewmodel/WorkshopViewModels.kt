@@ -39,6 +39,9 @@ enum class ForgeItemType(val label: String) {
     }
 }
 
+/** Вид предмета для подписи: «Оружие · большой меч», «Шлем», «Предмет». */
+fun forgeKind(slot: ForgeSlot): String = if (slot.isWeapon) "Оружие · ${slot.displayName.lowercase()}" else slot.displayName
+
 data class ForgeItemRow(
     val code: String,
     val name: String,
@@ -114,7 +117,7 @@ class ForgeViewModel(app: AppViewModel, localId: Long, scope: CoroutineScope) : 
                 ForgeItemRow(
                     code = item.code,
                     name = item.name,
-                    kind = if (item.slot.isWeapon) "Оружие · ${item.slot.displayName.lowercase()}" else item.slot.displayName,
+                    kind = forgeKind(item.slot),
                     type = ForgeItemType.of(item.slot),
                     cost = cost,
                     missing = cost.mapNotNull { part ->

@@ -19,6 +19,9 @@ class EquipmentCards(cards: List<EquipmentCard> = emptyList()) {
 
     private val byKey = cards.associateBy { it.code to it.level }
 
+    /** Коды предметов, у которых есть карты, — без повторов по уровням. */
+    val codes: Set<String> = cards.mapTo(LinkedHashSet()) { it.code }
+
     /** Карта этого уровня; карты нет в файлах игры — `null`. */
     fun card(code: String, level: Int): EquipmentCard? = byKey[code to level]
 

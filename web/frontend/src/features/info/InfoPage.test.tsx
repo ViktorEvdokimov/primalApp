@@ -20,17 +20,18 @@ describe('Инфо', () => {
     server.use(http.get('*/api/v1/info', () => HttpResponse.json(infoFixture())));
   });
 
-  it('без входа: три раздела — у пустого «скоро»', async () => {
+  it('без входа: три раздела статей — у пустого «скоро» — и «Экипировка»', async () => {
     // вызов
     renderRoutes(routes, '/info');
 
     // проверка
     const sections = await screen.findAllByTestId('info-section');
-    expect(sections.map((node) => node.dataset.section)).toEqual(['KEYWORDS', 'REACTIONS', 'TOKENS']);
+    expect(sections.map((node) => node.dataset.section)).toEqual(['KEYWORDS', 'REACTIONS', 'TOKENS', 'EQUIPMENT']);
     expect(sections.map((node) => node.textContent)).toEqual([
       'Ключевые слова2',
       'Символы реакций монстровскоро',
       'Жетоны окружения1',
+      'Экипировка124',
     ]);
   });
 
@@ -163,7 +164,7 @@ describe('Инфо', () => {
     await user.click(await screen.findByTestId('menu-info'));
 
     // проверка
-    expect(await screen.findAllByTestId('info-section')).toHaveLength(3);
+    expect(await screen.findAllByTestId('info-section')).toHaveLength(4);
     await user.click(screen.getByTestId('info-back'));
     await waitFor(() => expect(router.state.location.pathname).toBe('/'));
   });

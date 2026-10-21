@@ -132,7 +132,7 @@ fun ForgeScreen(app: AppViewModel, localId: Long) {
 
 /** «Описание»: карта снаряжения из файлов игры во весь экран; закрывается «Закрыть» или касанием вне окна. */
 @Composable
-private fun CardDialog(card: EquipmentCard, onDismiss: () -> Unit) {
+internal fun CardDialog(card: EquipmentCard, onDismiss: () -> Unit) {
     val context = LocalContext.current
     val bitmap = remember(card.asset) {
         runCatching { context.assets.open(card.asset).use { BitmapFactory.decodeStream(it) } }.getOrNull()

@@ -42,6 +42,8 @@ sealed interface Screen {
     data class Outcome(val localId: Long) : Screen
     data class Transition(val localId: Long) : Screen
     data class Info(val section: InfoSectionCode? = null, val entryId: Long? = null) : Screen
+    /** «Инфо» → «Экипировка»: карты снаряжения и зелий. */
+    data object Equipment : Screen
     data object Settings : Screen
     /** Вход и регистрация; после входа — назад, откуда пришли. */
     data object Login : Screen

@@ -545,6 +545,7 @@ class BattleViewModel(
 | `OutcomeViewModel` | Итог боя | `BattleReport` из боя, обновление кампании с сервера, `previewResult`, «Принять» / «Редактировать» (`OverridesForm`) / «Отклонить», держатели карт наград |
 | `TransitionViewModel` | Переход главы | Решения главы, `previewTransition`, «Принять» / «Отклонить» |
 | `InfoViewModel` | Инфо | Разделы, поиск, фильтр, раскрытие, ссылки «См. также», картинки |
+| `EquipmentViewModel` | Инфо → Экипировка | Вкладки (`EquipmentTab`), фильтры типа, класса (только оружие) и уровня, карты (`EquipmentRow.card`), карта крупно |
 | `SettingsViewModel` | Настройки, экран входа | Режим, сервер, вход/регистрация, имя, дополнения, выход (кампании остаются, без подтверждения) |
 | `JoinViewModel` | Приглашение | `GET /share/{token}`; окно «Кто вы в этой кампании?» (`hunters`, `choosing`, `onHunterChosen` → `AppCore.join(token, null, hunterClass)`); сервер без отряда — имя гостя и `onJoin` |
 

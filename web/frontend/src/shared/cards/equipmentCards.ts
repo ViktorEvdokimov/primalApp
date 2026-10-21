@@ -20,3 +20,6 @@ const cards = new Map<string, EquipmentCard>(
 export function equipmentCard(code: string, level: number): EquipmentCard | undefined {
   return cards.get(`${code}-${level}`);
 }
+
+/** Коды предметов, у которых есть карты, — без повторов по уровням. */
+export const cardCodes: readonly string[] = [...new Set(manifest.cards.map((card) => card.code))];

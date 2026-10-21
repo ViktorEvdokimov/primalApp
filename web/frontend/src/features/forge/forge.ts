@@ -30,6 +30,6 @@ export type ItemType = 'WEAPON' | 'ARMOR' | 'HELMET' | 'ITEM';
 /** Порядок кнопок фильтра. */
 export const ITEM_TYPES: ItemType[] = ['WEAPON', 'ARMOR', 'HELMET', 'ITEM'];
 
-export function itemType(item: ForgeItem): ItemType {
+export function itemType(item: { slot: string }): ItemType {
   return item.slot === 'ARMOR' || item.slot === 'HELMET' || item.slot === 'ITEM' ? item.slot : 'WEAPON';
 }

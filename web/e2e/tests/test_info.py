@@ -7,6 +7,7 @@ from playwright.sync_api import Page, expect
 from pytest_check import check
 
 from pages.admin_page import AdminPage
+from pages.equipment_page import EquipmentPage
 from pages.expedition_page import ExpeditionPage
 from tests.test_admin import grant_admin, reset
 from tests.test_login import register
@@ -40,7 +41,7 @@ def delete_test_entries(page: Page) -> None:
 @allure.feature("Инфо")
 class TestInfo:
 
-    @allure.title("Из боя экспедиции без входа: «Инфо» — три раздела, «Назад» возвращает в бой")
+    @allure.title("Из боя экспедиции без входа: «Инфо» — три раздела и «Экипировка», «Назад» возвращает в бой")
     def test_from_battle(self, page: Page):
         # подготовка
         expedition = ExpeditionPage(page).open()
@@ -53,9 +54,14 @@ class TestInfo:
 
         # проверка
         sections = page.get_by_test_id("info-section")
-        expect(sections).to_have_count(3)
+        expect(sections).to_have_count(4)
         with check("Разделы по порядку"):
-            assert [s.get_attribute("data-section") for s in sections.all()] == ["KEYWORDS", "REACTIONS", "TOKENS"]
+            assert [s.get_attribute("data-section") for s in sections.all()] == [
+                "KEYWORDS",
+                "REACTIONS",
+                "TOKENS",
+                "EQUIPMENT",
+            ]
         page.get_by_test_id("info-back").click()
         expect(page).to_have_url(re.compile(r"/battle$"))
 
@@ -163,3 +169,34 @@ class TestInfo:
         finally:
             delete_test_entries(page)
 
+    @allure.title("«Экипировка» без входа: оружие Кары по уровням, шлемы для всех, зелья отдельной вкладкой")
+    def test_equipment(self, page: Page):
+        # подготовка
+        page.goto("/info")
+        page.locator('[data-testid="info-section"][data-section="EQUIPMENT"]').click()
+        equipment = EquipmentPage(page)
+        equipment.should_be_open()
+        with check("Снаряжение 1-го уровня: базовое (10) и все кузни (9 × 12)"):
+            expect(equipment.items()).to_have_count(118)
+
+        # вызов
+        equipment.filter_class("KARA").filter_type("WEAPON")
+
+        # проверка
+        with check("Оружие Кары: базовые «Парные клинки» и клинки 9 кузниц"):
+            expect(equipment.items()).to_have_count(10)
+            assert equipment.names()[0] == "Парные клинки"
+        equipment.filter_level(2)
+        with check("2-й уровень: базового нет, «Крылья дракона» — карта загружена"):
+            expect(equipment.items()).to_have_count(9)
+            image = equipment.image("Крылья дракона")
+            expect(image).to_have_attribute("src", "/cards/FIRE_05-2.webp")
+            expect(image).to_have_js_property("complete", True)
+            assert image.evaluate("img => img.naturalWidth") > 0
+        equipment.filter_type("HELMET")
+        with check("Шлемы класс не фильтрует: 9 кузниц"):
+            expect(equipment.items()).to_have_count(9)
+        equipment.select_tab("POTIONS")
+        with check("Зелья: 6, тип не фильтруется, уровень сохраняется"):
+            expect(equipment.items()).to_have_count(6)
+            expect(equipment.image("Ирден")).to_have_attribute("src", "/cards/LAB_03-2.webp")
